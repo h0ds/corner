@@ -44,13 +44,13 @@ function App() {
             className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
           >
             <div
-              className={`max-w-[80%] rounded-lg p-4 ${
+              className={`max-w-[80%] rounded-md px-4 py-2 ${
                 message.isUser
                   ? 'bg-blue-500 text-white'
                   : 'bg-white text-gray-900'
               }`}
             >
-              <p className="whitespace-pre-wrap">{message.content}</p>
+              <p className="whitespace-pre-wrap text-sm">{message.content}</p>
             </div>
           </div>
         ))}
@@ -64,15 +64,15 @@ function App() {
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
             placeholder="Type your message..."
-            className="flex-1 rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none"
+            className="flex-1 rounded-md border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none text-sm"
           />
-          <button
+          {/* <button
             type="submit"
-            className="rounded-lg bg-blue-500 px-6 py-2 text-white hover:bg-blue-600 focus:outline-none disabled:opacity-50"
+            className="rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 focus:outline-none disabled:opacity-50 "
             disabled={!inputMessage.trim()}
           >
             Send
-          </button>
+          </button> */}
         </div>
       </form>
     </div>
