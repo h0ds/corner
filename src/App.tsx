@@ -3,6 +3,9 @@ import { invoke } from "@tauri-apps/api/core";
 import { ChatMessage } from "./components/ChatMessage";
 import { ChatInput } from "./components/ChatInput";
 import { Preferences } from "./components/Preferences";
+import { ModelSelector, AVAILABLE_MODELS } from "./components/ModelSelector";
+import { TypingIndicator } from "./components/TypingIndicator";
+import { AnimatePresence } from "framer-motion";
 
 interface Message {
   role: 'user' | 'assistant' | 'error';
@@ -18,6 +21,7 @@ function App() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const [showPreferences, setShowPreferences] = useState(false);
+  const [selectedModel, setSelectedModel] = useState(AVAILABLE_MODELS[0].id);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -33,7 +37,17 @@ function App() {
     setMessages(prev => [...prev, userMessage]);
 
     try {
-      const response = await invoke<ApiResponse>('send_message', { message });
+      const model = AVAILABLE_MODELS.find(m => m.id === selectedModel);
+      if (!model) throw new Error('Invalid model selected');
+
+      // Send parameters as a single request object
+      const response = await invoke<ApiResponse>('send_message', { 
+        request: {
+          message,
+          model: selectedModel,
+          provider: model.provider
+        }
+      });
       
       if (response.error) {
         const errorMessage: Message = {
@@ -65,28 +79,35 @@ function App() {
         ref={chatContainerRef}
         className="flex-1 overflow-y-auto p-6 space-y-6"
       >
-        {messages.length === 0 ? (
-          <div className="text-center text-gray-500 mt-8 text-sm">
-            Start a conversation with Claude
-          </div>
-        ) : (
-          messages.map((message, index) => (
-            <ChatMessage
-              key={index}
-              role={message.role}
-              content={message.content}
-            />
-          ))
-        )}
-        {loading && (
-          <div className="flex justify-start">
-            <div className="flex space-x-2">
-              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0.2s]"></div>
-              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0.4s]"></div>
+        <div className="flex justify-end">
+          <ModelSelector
+            selectedModel={selectedModel}
+            onModelChange={setSelectedModel}
+            disabled={loading}
+          />
+        </div>
+
+        <AnimatePresence>
+          {messages.length === 0 ? (
+            <div className="text-center text-gray-500 mt-8 text-sm">
+              Start a conversation with Claude
             </div>
-          </div>
-        )}
+          ) : (
+            messages.map((message, index) => (
+              <ChatMessage
+                key={index}
+                role={message.role}
+                content={message.content}
+                onErrorClick={() => setShowPreferences(true)}
+              />
+            ))
+          )}
+          {loading && (
+            <div className="flex justify-start">
+              <TypingIndicator />
+            </div>
+          )}
+        </AnimatePresence>
       </main>
 
       <footer className="relative p-4 bg-white border-t border-gray-200">

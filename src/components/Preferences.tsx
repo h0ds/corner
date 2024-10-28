@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 
 interface PreferencesProps {
   isOpen: boolean;
@@ -20,51 +21,78 @@ interface PreferencesProps {
 
 type VerificationStatus = 'idle' | 'verifying' | 'success' | 'error';
 
+interface ApiKeys {
+  anthropic: string;
+  perplexity: string;
+}
+
 export const Preferences: React.FC<PreferencesProps> = ({ isOpen, onClose }) => {
-  const [apiKey, setApiKey] = useState('');
+  const [keys, setKeys] = useState<ApiKeys>({ anthropic: '', perplexity: '' });
   const [isSaving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [verificationStatus, setVerificationStatus] = useState<VerificationStatus>('idle');
+  const [verificationStatus, setVerificationStatus] = useState<{
+    anthropic: VerificationStatus;
+    perplexity: VerificationStatus;
+  }>({
+    anthropic: 'idle',
+    perplexity: 'idle'
+  });
 
   useEffect(() => {
     if (isOpen) {
-      invoke('get_api_key').then((key: string) => {
-        setApiKey(key);
-        if (key) {
-          verifyApiKey(key);
-        }
+      invoke<ApiKeys>('get_api_keys').then((savedKeys) => {
+        setKeys(savedKeys);
+        // Don't verify on load - wait for changes
       }).catch(err => {
-        setError('Failed to load API key');
+        setError('Failed to load API keys');
         console.error(err);
       });
     } else {
-      // Reset states when dialog closes
-      setVerificationStatus('idle');
+      setVerificationStatus({ anthropic: 'idle', perplexity: 'idle' });
       setError(null);
     }
   }, [isOpen]);
 
-  const verifyApiKey = async (key: string) => {
-    setVerificationStatus('verifying');
+  const verifyKey = async (type: keyof ApiKeys, key: string) => {
+    if (!key.trim()) {
+      setVerificationStatus(prev => ({ ...prev, [type]: 'idle' }));
+      return;
+    }
+
+    setVerificationStatus(prev => ({ ...prev, [type]: 'verifying' }));
     setError(null);
 
     try {
-      // Send a test message to verify the API key
-      const response = await invoke<{ error?: string }>('send_message', { 
-        message: 'Test connection' 
+      // Send only the key being verified
+      const response = await invoke<{ error?: string }>('verify_api_key', { 
+        key,
+        provider: type
       });
 
       if (response.error) {
-        setVerificationStatus('error');
-        setError('Invalid API key');
+        setVerificationStatus(prev => ({ ...prev, [type]: 'error' }));
+        setError(`Invalid ${type} API key`);
       } else {
-        setVerificationStatus('success');
+        setVerificationStatus(prev => ({ ...prev, [type]: 'success' }));
       }
     } catch (err) {
-      setVerificationStatus('error');
-      setError('Failed to verify API key');
+      setVerificationStatus(prev => ({ ...prev, [type]: 'error' }));
+      setError(`Failed to verify ${type} API key`);
       console.error(err);
     }
+  };
+
+  const handleKeyChange = (type: keyof ApiKeys, value: string) => {
+    setKeys(prev => ({ ...prev, [type]: value }));
+    setVerificationStatus(prev => ({ ...prev, [type]: 'idle' }));
+    setError(null);
+    
+    // Use a debounce to verify after typing stops
+    const timeoutId = setTimeout(() => {
+      verifyKey(type, value);
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
   };
 
   const handleSave = async () => {
@@ -72,22 +100,35 @@ export const Preferences: React.FC<PreferencesProps> = ({ isOpen, onClose }) => 
     setError(null);
     
     try {
-      await verifyApiKey(apiKey);
+      // Only verify keys that have been changed and have a value
+      const verifyPromises: Promise<void>[] = [];
       
-      if (verificationStatus === 'success') {
-        await invoke('set_api_key', { apiKey });
+      Object.entries(keys).forEach(([type, value]) => {
+        if (value && verificationStatus[type as keyof ApiKeys] === 'idle') {
+          verifyPromises.push(verifyKey(type as keyof ApiKeys, value));
+        }
+      });
+
+      await Promise.all(verifyPromises);
+      
+      // Check if any verifications failed
+      if (!Object.values(verificationStatus).some(status => status === 'error')) {
+        await invoke('set_api_keys', { 
+          anthropic: keys.anthropic || null,
+          perplexity: keys.perplexity || null
+        });
         onClose();
       }
     } catch (err) {
-      setError('Failed to save API key');
+      setError('Failed to save API keys');
       console.error(err);
     } finally {
       setSaving(false);
     }
   };
 
-  const getVerificationIcon = () => {
-    switch (verificationStatus) {
+  const getVerificationIcon = (status: VerificationStatus) => {
+    switch (status) {
       case 'verifying':
         return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />;
       case 'success':
@@ -99,6 +140,28 @@ export const Preferences: React.FC<PreferencesProps> = ({ isOpen, onClose }) => 
     }
   };
 
+  const renderApiKeyInput = (type: keyof ApiKeys, label: string) => (
+    <div className="space-y-2">
+      <Label htmlFor={`${type}Key`} className="text-sm">{label}</Label>
+      <div className="relative">
+        <Input
+          id={`${type}Key`}
+          type="password"
+          value={keys[type]}
+          onChange={(e) => handleKeyChange(type, e.target.value)}
+          placeholder={`Enter your ${type == "anthropic" ? "Anthropic" : "Perplexity"} API key`}
+          className="rounded-sm text-sm pr-8"
+        />
+        <div className="absolute right-2 top-1/2 -translate-y-1/2">
+          {getVerificationIcon(verificationStatus[type])}
+        </div>
+      </div>
+      {verificationStatus[type] === 'success' && (
+        <p className="text-sm text-green-600">API key verified successfully</p>
+      )}
+    </div>
+  );
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="rounded-sm">
@@ -107,29 +170,9 @@ export const Preferences: React.FC<PreferencesProps> = ({ isOpen, onClose }) => 
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="apiKey" className="text-sm">Anthropic API Key</Label>
-            <div className="relative">
-              <Input
-                id="apiKey"
-                type="password"
-                value={apiKey}
-                onChange={(e) => {
-                  setApiKey(e.target.value);
-                  setVerificationStatus('idle');
-                  setError(null);
-                }}
-                placeholder="Enter your API key"
-                className="rounded-sm text-sm pr-8"
-              />
-              <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                {getVerificationIcon()}
-              </div>
-            </div>
-            {verificationStatus === 'success' && (
-              <p className="text-sm text-green-600">API key verified successfully</p>
-            )}
-          </div>
+          {renderApiKeyInput('anthropic', 'Anthropic API Key')}
+          <Separator className="my-4" />
+          {renderApiKeyInput('perplexity', 'Perplexity API Key')}
 
           {error && (
             <Alert variant="destructive" className="rounded-sm">
@@ -148,7 +191,10 @@ export const Preferences: React.FC<PreferencesProps> = ({ isOpen, onClose }) => 
           </Button>
           <Button 
             onClick={handleSave} 
-            disabled={isSaving || !apiKey.trim() || verificationStatus === 'verifying'}
+            disabled={isSaving || 
+              (!keys.anthropic && !keys.perplexity) || 
+              verificationStatus.anthropic === 'verifying' || 
+              verificationStatus.perplexity === 'verifying'}
             className="rounded-sm text-sm"
           >
             {isSaving ? 'Saving...' : 'Save'}
