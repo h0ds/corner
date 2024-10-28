@@ -39,7 +39,7 @@ struct ChatResponseContent {
 }
 
 struct AnthropicState {
-    api_key: Mutex<String>,
+    api_key: Mutex<Option<String>>,
 }
 
 #[derive(Serialize)]
@@ -54,12 +54,21 @@ async fn send_message(
     state: State<'_, AnthropicState>,
 ) -> Result<ApiResponse, String> {
     let client = reqwest::Client::new();
-    let api_key = state.api_key.lock().unwrap().clone();
+    
+    // Try UI-set key first, fall back to env var
+    let api_key = {
+        let state_key = state.api_key.lock().unwrap();
+        match state_key.clone() {
+            Some(key) if !key.is_empty() => key,
+            _ => env::var("ANTHROPIC_API_KEY")
+                .unwrap_or_default()
+        }
+    };
 
     if api_key.is_empty() {
         return Ok(ApiResponse {
             content: None,
-            error: Some("API key not configured".to_string()),
+            error: Some("API key not configured. Please set it in preferences.".to_string()),
         });
     }
 
@@ -115,23 +124,31 @@ async fn send_message(
     }
 }
 
+#[tauri::command]
+fn get_api_key(state: State<AnthropicState>) -> Result<String, String> {
+    let api_key = state.api_key.lock().unwrap();
+    Ok(api_key.clone().unwrap_or_default())
+}
+
+#[tauri::command]
+fn set_api_key(api_key: String, state: State<AnthropicState>) -> Result<(), String> {
+    let mut current_key = state.api_key.lock().unwrap();
+    *current_key = Some(api_key);
+    Ok(())
+}
+
 fn main() {
-    // Get the path to the project root (parent of src-tauri)
-    let current_dir = env::current_dir().expect("Failed to get current directory");
-    let root_dir = current_dir.parent().expect("Failed to get project root");
+    dotenv().ok(); // Still load .env but don't require it
     
-    // Load .env from project root
-    dotenv::from_path(root_dir.join(".env"))
-        .expect("Failed to load .env file");
-
-    let api_key = env::var("ANTHROPIC_API_KEY")
-        .expect("ANTHROPIC_API_KEY must be set in environment");
-
     tauri::Builder::default()
         .manage(AnthropicState {
-            api_key: Mutex::new(api_key),
+            api_key: Mutex::new(None), // Start with no key set
         })
-        .invoke_handler(tauri::generate_handler![send_message])
+        .invoke_handler(tauri::generate_handler![
+            send_message,
+            get_api_key,
+            set_api_key
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
