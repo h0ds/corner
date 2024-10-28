@@ -1,0 +1,15 @@
+@font-face {
+  font-family: 'Server Mono';
+  src: url('./assets/fonts/ServerMono-Regular.woff2') format('woff2'),
+       url('./assets/fonts/ServerMono-Regular.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+}
+
+/* @font-face {
+  font-family: 'Server Mono';
+  src: url('./assets/fonts/ServerMono-Bold.woff2') format('woff2'),
+       url('./assets/fonts/ServerMono-Bold.woff') format('woff');
+  font-weight: bold;
+  font-style: normal;
+} */

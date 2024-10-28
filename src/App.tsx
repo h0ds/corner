@@ -1,50 +1,81 @@
 import { useState } from "react";
-import reactLogo from "./assets/react.svg";
 import { invoke } from "@tauri-apps/api/core";
-import "./App.css";
+
+interface Message {
+  id: number;
+  content: string;
+  isUser: boolean;
+}
 
 function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [inputMessage, setInputMessage] = useState("");
 
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
-  }
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputMessage.trim()) return;
+
+    // Add user message
+    const userMessage: Message = {
+      id: Date.now(),
+      content: inputMessage,
+      isUser: true,
+    };
+    setMessages(prev => [...prev, userMessage]);
+    setInputMessage("");
+
+    // TODO: Add AI response using invoke
+    // For now, let's add a mock response
+    const aiMessage: Message = {
+      id: Date.now() + 1,
+      content: "This is a mock AI response.",
+      isUser: false,
+    };
+    setMessages(prev => [...prev, aiMessage]);
+  };
 
   return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
-
-      <div className="row">
-        <a href="https://vitejs.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://reactjs.org" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <div className="flex flex-col h-screen bg-gray-100">
+      {/* Chat messages area */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {messages.map((message) => (
+          <div
+            key={message.id}
+            className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
+          >
+            <div
+              className={`max-w-[80%] rounded-lg p-4 ${
+                message.isUser
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-white text-gray-900'
+              }`}
+            >
+              <p className="whitespace-pre-wrap">{message.content}</p>
+            </div>
+          </div>
+        ))}
       </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
 
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
-        />
-        <button type="submit">Greet</button>
+      {/* Input area */}
+      <form onSubmit={handleSubmit} className="border-t bg-white p-4">
+        <div className="flex gap-4">
+          <input
+            type="text"
+            value={inputMessage}
+            onChange={(e) => setInputMessage(e.target.value)}
+            placeholder="Type your message..."
+            className="flex-1 rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none"
+          />
+          <button
+            type="submit"
+            className="rounded-lg bg-blue-500 px-6 py-2 text-white hover:bg-blue-600 focus:outline-none disabled:opacity-50"
+            disabled={!inputMessage.trim()}
+          >
+            Send
+          </button>
+        </div>
       </form>
-      <p>{greetMsg}</p>
-    </main>
+    </div>
   );
 }
 
