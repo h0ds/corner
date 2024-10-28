@@ -1,80 +1,102 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { ChatMessage } from "./components/ChatMessage";
+import { ChatInput } from "./components/ChatInput";
 
 interface Message {
-  id: number;
+  role: 'user' | 'assistant' | 'error';
   content: string;
-  isUser: boolean;
+}
+
+interface ApiResponse {
+  content?: string;
+  error?: string;
 }
 
 function App() {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [inputMessage, setInputMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputMessage.trim()) return;
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [messages]);
 
-    // Add user message
-    const userMessage: Message = {
-      id: Date.now(),
-      content: inputMessage,
-      isUser: true,
-    };
+  const handleSendMessage = async (message: string) => {
+    setLoading(true);
+    
+    const userMessage: Message = { role: 'user', content: message };
     setMessages(prev => [...prev, userMessage]);
-    setInputMessage("");
 
-    // TODO: Add AI response using invoke
-    // For now, let's add a mock response
-    const aiMessage: Message = {
-      id: Date.now() + 1,
-      content: "This is a mock AI response.",
-      isUser: false,
-    };
-    setMessages(prev => [...prev, aiMessage]);
+    try {
+      const response = await invoke<ApiResponse>('send_message', { message });
+      
+      if (response.error) {
+        const errorMessage: Message = {
+          role: 'error',
+          content: response.error,
+        };
+        setMessages(prev => [...prev, errorMessage]);
+      } else if (response.content) {
+        const assistantMessage: Message = {
+          role: 'assistant',
+          content: response.content,
+        };
+        setMessages(prev => [...prev, assistantMessage]);
+      }
+    } catch (error) {
+      const errorMessage: Message = {
+        role: 'error',
+        content: `Application error: ${error}`,
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-100">
-      {/* Chat messages area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
-          >
-            <div
-              className={`max-w-[80%] rounded-md px-4 py-2 ${
-                message.isUser
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-white text-gray-900'
-              }`}
-            >
-              <p className="whitespace-pre-wrap text-sm">{message.content}</p>
+    <div className="flex flex-col h-screen bg-gray-50">
+      <header className="px-6 py-4 bg-white border-b border-gray-200 shadow-sm">
+        <h1 className="text-xl font-semibold text-gray-800">Chat with Claude</h1>
+      </header>
+
+      <main 
+        ref={chatContainerRef}
+        className="flex-1 overflow-y-auto p-6 space-y-6"
+      >
+        {messages.length === 0 ? (
+          <div className="text-center text-gray-500 mt-8">
+            Start a conversation with Claude
+          </div>
+        ) : (
+          messages.map((message, index) => (
+            <ChatMessage
+              key={index}
+              role={message.role}
+              content={message.content}
+            />
+          ))
+        )}
+        {loading && (
+          <div className="flex justify-start">
+            <div className="flex space-x-2">
+              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0.2s]"></div>
+              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0.4s]"></div>
             </div>
           </div>
-        ))}
-      </div>
+        )}
+      </main>
 
-      {/* Input area */}
-      <form onSubmit={handleSubmit} className="border-t bg-white p-4">
-        <div className="flex gap-4">
-          <input
-            type="text"
-            value={inputMessage}
-            onChange={(e) => setInputMessage(e.target.value)}
-            placeholder="Type your message..."
-            className="flex-1 rounded-md border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none text-sm"
-          />
-          {/* <button
-            type="submit"
-            className="rounded-md bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 focus:outline-none disabled:opacity-50 "
-            disabled={!inputMessage.trim()}
-          >
-            Send
-          </button> */}
-        </div>
-      </form>
+      <footer className="p-4 bg-white border-t border-gray-200">
+        <ChatInput
+          onSendMessage={handleSendMessage}
+          disabled={loading}
+        />
+      </footer>
     </div>
   );
 }
