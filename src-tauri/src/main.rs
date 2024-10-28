@@ -25,9 +25,17 @@ struct ChatRequest {
 
 #[derive(Serialize, Deserialize)]
 struct ChatResponse {
-    content: String,
+    id: String,
+    content: Vec<ChatResponseContent>,
+    model: String,
     role: String,
-    // Add other fields from Claude's response if needed
+}
+
+#[derive(Serialize, Deserialize)]
+struct ChatResponseContent {
+    text: String,
+    #[serde(rename = "type")]
+    content_type: String,
 }
 
 struct AnthropicState {
@@ -82,10 +90,24 @@ async fn send_message(
     }
 
     match response.json::<ChatResponse>().await {
-        Ok(chat_response) => Ok(ApiResponse {
-            content: Some(chat_response.content),
-            error: None,
-        }),
+        Ok(chat_response) => {
+            // Extract the text content from the first content item
+            let content = chat_response.content
+                .first()
+                .and_then(|content| {
+                    if content.content_type == "text" {
+                        Some(content.text.clone())
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or_default();
+            
+            Ok(ApiResponse {
+                content: Some(content),
+                error: None,
+            })
+        },
         Err(e) => Ok(ApiResponse {
             content: None,
             error: Some(format!("Failed to parse response: {}", e)),
