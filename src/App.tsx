@@ -5,6 +5,7 @@ import { ChatInput } from "./components/ChatInput";
 import { Preferences } from "./components/Preferences";
 import { ModelSelector, AVAILABLE_MODELS } from "./components/ModelSelector";
 import { TypingIndicator } from "./components/TypingIndicator";
+import { ThemeToggle } from "./components/ThemeToggle";
 import { AnimatePresence } from "framer-motion";
 
 interface Message {
@@ -74,12 +75,13 @@ function App() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
+    <div className="flex flex-col h-screen bg-background">
       <main 
         ref={chatContainerRef}
         className="flex-1 overflow-y-auto p-6 space-y-6"
       >
-        <div className="flex justify-end">
+        <div className="flex justify-between items-center">
+          <ThemeToggle />
           <ModelSelector
             selectedModel={selectedModel}
             onModelChange={setSelectedModel}
@@ -89,7 +91,7 @@ function App() {
 
         <AnimatePresence>
           {messages.length === 0 ? (
-            <div className="text-center text-gray-500 mt-8 text-sm">
+            <div className="text-center text-muted-foreground mt-8 text-sm">
               Start a conversation with Claude
             </div>
           ) : (
@@ -110,11 +112,11 @@ function App() {
         </AnimatePresence>
       </main>
 
-      <footer className="relative p-4 bg-white border-t border-gray-200">
+      <footer className="relative p-4 bg-card border-t">
         <div className="absolute right-4 -top-12">
           <button
             onClick={() => setShowPreferences(true)}
-            className="p-2 bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-100 
+            className="p-2 bg-background text-muted-foreground hover:text-foreground hover:bg-accent 
                      rounded-sm shadow-md transition-colors"
             aria-label="Settings"
           >

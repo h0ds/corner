@@ -164,14 +164,14 @@ export const Preferences: React.FC<PreferencesProps> = ({ isOpen, onClose }) => 
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="rounded-sm">
+      <DialogContent className="rounded-sm bg-background">
         <DialogHeader>
           <DialogTitle className="text-sm">Preferences</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           {renderApiKeyInput('anthropic', 'Anthropic API Key')}
-          <Separator className="my-4" />
+          <Separator className="my-4 dark:bg-border" />
           {renderApiKeyInput('perplexity', 'Perplexity API Key')}
 
           {error && (

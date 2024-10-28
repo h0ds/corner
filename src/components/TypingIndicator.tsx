@@ -7,7 +7,7 @@ export const TypingIndicator = () => {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 10 }}
       transition={{ duration: 0.2 }}
-      className="flex items-center gap-2 px-4 py-3 bg-white rounded-sm shadow-sm w-fit"
+      className="flex items-center gap-2 px-4 py-3 bg-card dark:bg-card/80 rounded-sm shadow-sm w-fit"
     >
       <motion.div
         className="flex gap-2"
@@ -24,7 +24,7 @@ export const TypingIndicator = () => {
         {[0, 1, 2].map((i) => (
           <motion.div
             key={i}
-            className="w-2 h-2 bg-blue-400 rounded-full"
+            className="w-2 h-2 bg-blue-400 dark:bg-blue-500 rounded-full"
             variants={{
               initial: { y: 0 },
               animate: {
