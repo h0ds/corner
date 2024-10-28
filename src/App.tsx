@@ -66,8 +66,8 @@ function App() {
         className="flex-1 overflow-y-auto p-6 space-y-6"
       >
         {messages.length === 0 ? (
-          <div className="text-center text-gray-500 mt-8">
-            Start a conversation
+          <div className="text-center text-gray-500 mt-8 text-sm">
+            Start a conversation with Claude
           </div>
         ) : (
           messages.map((message, index) => (
@@ -94,7 +94,7 @@ function App() {
           <button
             onClick={() => setShowPreferences(true)}
             className="p-2 bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-100 
-                     rounded-md transition-colors"
+                     rounded-sm shadow-md transition-colors"
             aria-label="Settings"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -26,7 +26,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled })
         onChange={(e) => setInput(e.target.value)}
         placeholder="Type your message..."
         disabled={disabled}
-        className="min-h-[44px] resize-none rounded-sm"
+        className="min-h-[35px] h-[35px] resize-none rounded-sm text-sm"
         onKeyDown={(e) => {
           if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -38,7 +38,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled })
         type="submit" 
         disabled={disabled || !input.trim()}
         size="icon"
-        className="rounded-sm"
+        className="rounded-sm h-[35px]"
       >
         <Send className="h-4 w-4" />
       </Button>

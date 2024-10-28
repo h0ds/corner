@@ -35,7 +35,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ role, content }) => {
           'bg-blue-600 text-white'}
       `}>
         <CardContent className="p-3">
-          <div className="whitespace-pre-wrap">
+          <div className="whitespace-pre-wrap text-sm">
             {role === 'error' ? `Error: ${content}` : content}
           </div>
         </CardContent>
