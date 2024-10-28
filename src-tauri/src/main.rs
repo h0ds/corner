@@ -7,7 +7,6 @@ use std::sync::Mutex;
 use dotenv::dotenv;
 use std::env;
 use reqwest;
-use std::path::PathBuf;
 
 #[derive(Serialize, Deserialize)]
 struct ChatMessage {
