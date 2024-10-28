@@ -7,7 +7,7 @@ use std::sync::Mutex;
 use dotenv::dotenv;
 use std::env;
 use reqwest;
-use serde_json;
+use std::path::PathBuf;
 
 #[derive(Serialize, Deserialize)]
 struct ChatMessage {
@@ -94,8 +94,14 @@ async fn send_message(
 }
 
 fn main() {
-    dotenv().ok(); // Load .env file
+    // Get the path to the project root (parent of src-tauri)
+    let current_dir = env::current_dir().expect("Failed to get current directory");
+    let root_dir = current_dir.parent().expect("Failed to get project root");
     
+    // Load .env from project root
+    dotenv::from_path(root_dir.join(".env"))
+        .expect("Failed to load .env file");
+
     let api_key = env::var("ANTHROPIC_API_KEY")
         .expect("ANTHROPIC_API_KEY must be set in environment");
 
