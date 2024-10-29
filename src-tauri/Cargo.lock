@@ -836,12 +836,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "futures"
+version = "0.3.31"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "65bc07b1a8bc7c85c5f2e110c476c7389b4554ba72af57d8445ea63a576b0876"
+dependencies = [
+ "futures-channel",
+ "futures-core",
+ "futures-executor",
+ "futures-io",
+ "futures-sink",
+ "futures-task",
+ "futures-util",
+]
+
+[[package]]
 name = "futures-channel"
 version = "0.3.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2dff15bf788c671c1934e366d07e30c1814a8ef514e1af724a602e8a2fbe1b10"
 dependencies = [
  "futures-core",
+ "futures-sink",
 ]
 
 [[package]]
@@ -896,6 +912,7 @@ version = "0.3.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9fa08315bb612088cc391249efdc3bc77536f16c91f6cf495e6fbe85b20a4a81"
 dependencies = [
+ "futures-channel",
  "futures-core",
  "futures-io",
  "futures-macro",
@@ -1680,6 +1697,7 @@ dependencies = [
  "tauri-build",
  "tauri-plugin-fs",
  "tauri-plugin-shell",
+ "tauri-plugin-upload",
  "tokio",
 ]
 
@@ -2685,6 +2703,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "20675572f6f24e9e76ef639bc5552774ed45f1c30e2951e1e99c59888861c539"
 
 [[package]]
+name = "read-progress-stream"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6435842fc2fea44b528719eb8c32203bbc1bb2f5b619fbe0c0a3d8350fd8d2a8"
+dependencies = [
+ "bytes",
+ "futures",
+ "pin-project-lite",
+]
+
+[[package]]
 name = "redox_syscall"
 version = "0.5.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3571,6 +3600,25 @@ dependencies = [
  "tauri-plugin",
  "thiserror",
  "tokio",
+]
+
+[[package]]
+name = "tauri-plugin-upload"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "116754130d3f95cf73552a0723376186a8f21607ac5ff350980af87a0eccba73"
+dependencies = [
+ "futures-util",
+ "log",
+ "read-progress-stream",
+ "reqwest 0.12.8",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-plugin",
+ "thiserror",
+ "tokio",
+ "tokio-util",
 ]
 
 [[package]]

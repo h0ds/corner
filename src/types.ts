@@ -2,18 +2,24 @@ export interface Message {
   role: 'user' | 'assistant' | 'error';
   content: string;
   modelId?: string;
-  file?: {
-    name: string;
-    content: string;
-  };
+  file?: FileAttachment;
+}
+
+export interface FileAttachment {
+  name: string;
+  content: string;
+  timestamp: number;
+  cacheId?: string;
 }
 
 export interface Thread {
   id: string;
   name: string;
   messages: Message[];
+  files: FileAttachment[];
   createdAt: number;
   updatedAt: number;
+  cachedFiles: string[];
 }
 
 export interface FileInfo {

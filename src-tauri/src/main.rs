@@ -1,17 +1,17 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use serde::{Deserialize, Serialize};
-use tauri::State;
-use std::sync::Mutex;
 use dotenv::dotenv;
-use std::env;
 use reqwest;
+use serde::{Deserialize, Serialize};
 use serde_json;
+use std::env;
 use std::fs;
 use std::path::PathBuf;
-use tauri::Manager;
+use std::sync::Mutex;
 use tauri::AppHandle;
+use tauri::Manager;
+use tauri::State;
 
 #[derive(Serialize, Deserialize)]
 struct ChatMessage {
@@ -75,12 +75,13 @@ async fn send_message(
     state: State<'_, ApiKeys>,
 ) -> Result<ApiResponse, String> {
     let client = reqwest::Client::new();
-    
-    let message_with_file = if let (Some(content), Some(name)) = (request.file_content.clone(), request.file_name.clone()) {
-        format!("{}\n\nAttached file '{}' content:\n{}", 
-            request.message,
-            name,
-            content
+
+    let message_with_file = if let (Some(content), Some(name)) =
+        (request.file_content.clone(), request.file_name.clone())
+    {
+        format!(
+            "{}\n\nAttached file '{}' content:\n{}",
+            request.message, name, content
         )
     } else {
         request.message.clone()
@@ -95,7 +96,7 @@ async fn send_message(
                 let state_key = state.anthropic.lock().unwrap();
                 match state_key.clone() {
                     Some(key) if !key.is_empty() => key,
-                    _ => env::var("ANTHROPIC_API_KEY").unwrap_or_default()
+                    _ => env::var("ANTHROPIC_API_KEY").unwrap_or_default(),
                 }
             };
 
@@ -116,8 +117,11 @@ async fn send_message(
                 "max_tokens": 1024,
                 "system": "You are a helpful AI assistant."
             });
-            
-            println!("Request body: {}", serde_json::to_string_pretty(&request_body).unwrap());
+
+            println!(
+                "Request body: {}",
+                serde_json::to_string_pretty(&request_body).unwrap()
+            );
 
             let response = client
                 .post("https://api.anthropic.com/v1/messages")
@@ -142,13 +146,19 @@ async fn send_message(
                 })?;
                 println!("Anthropic API success response body: {}", response_text);
 
-                let json: serde_json::Value = serde_json::from_str(&response_text).map_err(|e| {
-                    println!("Error parsing JSON response: {:?}", e);
-                    e.to_string()
-                })?;
+                let json: serde_json::Value =
+                    serde_json::from_str(&response_text).map_err(|e| {
+                        println!("Error parsing JSON response: {:?}", e);
+                        e.to_string()
+                    })?;
 
                 Ok(ApiResponse {
-                    content: Some(json["content"][0]["text"].as_str().unwrap_or_default().to_string()),
+                    content: Some(
+                        json["content"][0]["text"]
+                            .as_str()
+                            .unwrap_or_default()
+                            .to_string(),
+                    ),
                     error: None,
                 })
             } else {
@@ -157,13 +167,13 @@ async fn send_message(
                     e.to_string()
                 })?;
                 println!("Anthropic API error response body: {}", error_text);
-                
+
                 Ok(ApiResponse {
                     content: None,
                     error: Some(format!("API error (Status: {}): {}", status, error_text)),
                 })
             }
-        },
+        }
         "perplexity" => {
             let stored_keys = load_stored_keys(&app_handle)?;
             let api_key = if let Some(key) = stored_keys["perplexity"].as_str() {
@@ -172,7 +182,7 @@ async fn send_message(
                 let state_key = state.perplexity.lock().unwrap();
                 match state_key.clone() {
                     Some(key) if !key.is_empty() => key,
-                    _ => env::var("PERPLEXITY_API_KEY").unwrap_or_default()
+                    _ => env::var("PERPLEXITY_API_KEY").unwrap_or_default(),
                 }
             };
 
@@ -210,7 +220,10 @@ async fn send_message(
                 "frequency_penalty": 1
             });
 
-            println!("Request body: {}", serde_json::to_string_pretty(&request_body).unwrap());
+            println!(
+                "Request body: {}",
+                serde_json::to_string_pretty(&request_body).unwrap()
+            );
 
             let response = client
                 .post("https://api.perplexity.ai/chat/completions")
@@ -224,7 +237,12 @@ async fn send_message(
             if response.status().is_success() {
                 let json: serde_json::Value = response.json().await.map_err(|e| e.to_string())?;
                 Ok(ApiResponse {
-                    content: Some(json["choices"][0]["message"]["content"].as_str().unwrap_or_default().to_string()),
+                    content: Some(
+                        json["choices"][0]["message"]["content"]
+                            .as_str()
+                            .unwrap_or_default()
+                            .to_string(),
+                    ),
                     error: None,
                 })
             } else {
@@ -234,7 +252,7 @@ async fn send_message(
                     error: Some(format!("Perplexity API error: {}", error_text)),
                 })
             }
-        },
+        }
         _ => Ok(ApiResponse {
             content: None,
             error: Some("Invalid provider specified".to_string()),
@@ -246,7 +264,7 @@ async fn send_message(
 fn get_api_keys(app_handle: AppHandle) -> Result<serde_json::Value, String> {
     // Load from file storage first
     let stored_keys = load_stored_keys(&app_handle)?;
-    
+
     // Return the stored keys
     Ok(stored_keys)
 }
@@ -287,14 +305,17 @@ fn set_api_keys(
 }
 
 #[tauri::command]
-async fn verify_api_key(app_handle: AppHandle, request: VerifyRequest) -> Result<ApiResponse, String> {
+async fn verify_api_key(
+    app_handle: AppHandle,
+    request: VerifyRequest,
+) -> Result<ApiResponse, String> {
     let client = reqwest::Client::new();
-    
+
     let result = match request.provider.as_str() {
         "anthropic" => {
             println!("\n=== Anthropic API Key Verification ===");
             println!("Key prefix: {}...", &request.key[..10]);
-            
+
             let request_body = serde_json::json!({
                 "model": "claude-3-haiku-20240307",
                 "messages": [{
@@ -303,7 +324,7 @@ async fn verify_api_key(app_handle: AppHandle, request: VerifyRequest) -> Result
                 }],
                 "max_tokens": 1024
             });
-            
+
             println!("\nRequest Details:");
             println!("URL: https://api.anthropic.com/v1/messages");
             println!("Headers:");
@@ -334,10 +355,18 @@ async fn verify_api_key(app_handle: AppHandle, request: VerifyRequest) -> Result
                 })?;
 
             println!("\nResponse Details:");
-            println!("Status: {} ({})", response.status(), response.status().as_u16());
+            println!(
+                "Status: {} ({})",
+                response.status(),
+                response.status().as_u16()
+            );
             println!("Headers:");
             for (key, value) in response.headers().iter() {
-                println!("  {}: {}", key, value.to_str().unwrap_or("Unable to read header value"));
+                println!(
+                    "  {}: {}",
+                    key,
+                    value.to_str().unwrap_or("Unable to read header value")
+                );
             }
 
             let status = response.status();
@@ -361,7 +390,7 @@ async fn verify_api_key(app_handle: AppHandle, request: VerifyRequest) -> Result
                     404 => "Endpoint not found (Check API version)",
                     429 => "Rate limit exceeded",
                     500..=599 => "Anthropic server error",
-                    _ => "Unknown error"
+                    _ => "Unknown error",
                 };
 
                 return Ok(ApiResponse {
@@ -377,7 +406,7 @@ async fn verify_api_key(app_handle: AppHandle, request: VerifyRequest) -> Result
             }
 
             println!("\n=== End of Verification ===\n");
-            
+
             // Store the key if verification succeeds
             let mut keys = load_stored_keys(&app_handle)?;
             keys[request.provider.as_str()] = serde_json::Value::String(request.key.clone());
@@ -387,11 +416,11 @@ async fn verify_api_key(app_handle: AppHandle, request: VerifyRequest) -> Result
                 content: Some("API key is valid".to_string()),
                 error: None,
             })
-        },
+        }
         "perplexity" => {
             println!("\n=== Perplexity API Key Verification ===");
             println!("Key prefix: {}...", &request.key[..10]);
-            
+
             let request_body = serde_json::json!({
                 "model": "llama-3.1-sonar-small-128k-online",
                 "messages": [
@@ -417,7 +446,7 @@ async fn verify_api_key(app_handle: AppHandle, request: VerifyRequest) -> Result
                 "presence_penalty": 0,
                 "frequency_penalty": 1
             });
-            
+
             println!("\nRequest Details:");
             println!("URL: https://api.perplexity.ai/chat/completions");
             println!("Headers:");
@@ -446,10 +475,18 @@ async fn verify_api_key(app_handle: AppHandle, request: VerifyRequest) -> Result
                 })?;
 
             println!("\nResponse Details:");
-            println!("Status: {} ({})", response.status(), response.status().as_u16());
+            println!(
+                "Status: {} ({})",
+                response.status(),
+                response.status().as_u16()
+            );
             println!("Headers:");
             for (key, value) in response.headers().iter() {
-                println!("  {}: {}", key, value.to_str().unwrap_or("Unable to read header value"));
+                println!(
+                    "  {}: {}",
+                    key,
+                    value.to_str().unwrap_or("Unable to read header value")
+                );
             }
 
             let status = response.status();
@@ -458,10 +495,16 @@ async fn verify_api_key(app_handle: AppHandle, request: VerifyRequest) -> Result
             if !status.is_success() {
                 // Try to parse as JSON first
                 if let Ok(json) = serde_json::from_str::<serde_json::Value>(&response_text) {
-                    println!("\nError Response (JSON): {}", serde_json::to_string_pretty(&json).unwrap());
+                    println!(
+                        "\nError Response (JSON): {}",
+                        serde_json::to_string_pretty(&json).unwrap()
+                    );
                     return Ok(ApiResponse {
                         content: None,
-                        error: Some(format!("Perplexity API Error: {}", json["error"]["message"].as_str().unwrap_or("Unknown error"))),
+                        error: Some(format!(
+                            "Perplexity API Error: {}",
+                            json["error"]["message"].as_str().unwrap_or("Unknown error")
+                        )),
                     });
                 } else {
                     // If not JSON, clean up HTML response
@@ -470,19 +513,22 @@ async fn verify_api_key(app_handle: AppHandle, request: VerifyRequest) -> Result
                         403 => "API key doesn't have permission",
                         429 => "Rate limit exceeded",
                         500..=599 => "Server error",
-                        _ => "Unknown error"
+                        _ => "Unknown error",
                     };
                     println!("\nError Response (non-JSON): {}", response_text);
                     return Ok(ApiResponse {
                         content: None,
-                        error: Some(format!("Perplexity API Error: {} (Status {})", error_message, status)),
+                        error: Some(format!(
+                            "Perplexity API Error: {} (Status {})",
+                            error_message, status
+                        )),
                     });
                 }
             }
 
             println!("\nSuccess Response: {}", response_text);
             println!("\n=== End of Verification ===\n");
-            
+
             // Store the key if verification succeeds
             let mut keys = load_stored_keys(&app_handle)?;
             keys[request.provider.as_str()] = serde_json::Value::String(request.key.clone());
@@ -492,7 +538,7 @@ async fn verify_api_key(app_handle: AppHandle, request: VerifyRequest) -> Result
                 content: Some("API key is valid".to_string()),
                 error: None,
             })
-        },
+        }
         _ => Ok(ApiResponse {
             content: None,
             error: Some("Invalid provider specified".to_string()),
@@ -506,7 +552,7 @@ async fn verify_api_key(app_handle: AppHandle, request: VerifyRequest) -> Result
 async fn handle_file_drop(path: String) -> Result<String, String> {
     match fs::read_to_string(&path) {
         Ok(content) => Ok(content),
-        Err(e) => Err(format!("Failed to read file: {}", e))
+        Err(e) => Err(format!("Failed to read file: {}", e)),
     }
 }
 
@@ -516,10 +562,10 @@ fn get_config_path(app: &AppHandle) -> Result<PathBuf, String> {
         .path()
         .app_config_dir()
         .map_err(|_| "Failed to get config directory".to_string())?;
-    
+
     fs::create_dir_all(&app_dir)
         .map_err(|e| format!("Failed to create config directory: {}", e))?;
-    
+
     Ok(app_dir.join("api_keys.json"))
 }
 
@@ -528,8 +574,7 @@ fn load_stored_keys(app: &AppHandle) -> Result<serde_json::Value, String> {
     if config_path.exists() {
         let content = fs::read_to_string(&config_path)
             .map_err(|e| format!("Failed to read config file: {}", e))?;
-        serde_json::from_str(&content)
-            .map_err(|e| format!("Failed to parse config file: {}", e))
+        serde_json::from_str(&content).map_err(|e| format!("Failed to parse config file: {}", e))
     } else {
         Ok(serde_json::json!({
             "anthropic": null,
@@ -542,8 +587,7 @@ fn save_keys(app: &AppHandle, keys: &serde_json::Value) -> Result<(), String> {
     let config_path = get_config_path(app)?;
     let content = serde_json::to_string_pretty(keys)
         .map_err(|e| format!("Failed to serialize config: {}", e))?;
-    fs::write(&config_path, content)
-        .map_err(|e| format!("Failed to write config file: {}", e))
+    fs::write(&config_path, content).map_err(|e| format!("Failed to write config file: {}", e))
 }
 
 #[tauri::command]
@@ -553,10 +597,10 @@ fn get_stored_api_keys(app_handle: AppHandle) -> Result<serde_json::Value, Strin
 
 #[tauri::command]
 async fn store_api_key(app_handle: AppHandle, request: serde_json::Value) -> Result<(), String> {
-    let provider = request["provider"].as_str()
+    let provider = request["provider"]
+        .as_str()
         .ok_or("Missing provider".to_string())?;
-    let key = request["key"].as_str()
-        .ok_or("Missing key".to_string())?;
+    let key = request["key"].as_str().ok_or("Missing key".to_string())?;
 
     let mut keys = load_stored_keys(&app_handle)?;
     keys[provider] = serde_json::Value::String(key.to_string());
@@ -567,8 +611,9 @@ async fn store_api_key(app_handle: AppHandle, request: serde_json::Value) -> Res
 
 fn main() {
     dotenv().ok();
-    
+
     tauri::Builder::default()
+        .plugin(tauri_plugin_upload::init())
         .plugin(tauri_plugin_fs::init())
         .manage(ApiKeys {
             anthropic: Mutex::new(None),

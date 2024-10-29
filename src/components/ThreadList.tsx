@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MessageSquare, Plus, Trash2, Pencil, GripVertical } from 'lucide-react';
+import { MessageSquare, Plus, Trash2, Pencil, GripVertical, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Thread } from '@/types';
@@ -30,6 +30,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { FileViewer } from './FileViewer';
 
 interface ThreadListProps {
   threads: Thread[];
@@ -71,6 +72,8 @@ const ThreadItem = ({
   isOverlay?: boolean;
   dragHandleProps?: any;
 }) => {
+  const [showFiles, setShowFiles] = useState(false);
+
   return (
     <div
       className={cn(
@@ -113,15 +116,37 @@ const ThreadItem = ({
         </span>
       )}
       {activeThreadId === thread.id && !editingThreadId && !isOverlay && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onDeleteThread(thread.id);
-          }}
-          className="opacity-0 group-hover:opacity-100 hover:text-destructive transition-opacity"
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
+        <>
+          {thread.files && thread.files.length > 0 && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowFiles(true);
+              }}
+              className="opacity-0 group-hover:opacity-100 hover:text-accent-foreground transition-opacity"
+              title={`${thread.files.length} file${thread.files.length === 1 ? '' : 's'}`}
+            >
+              <FileText className="h-4 w-4" />
+            </button>
+          )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDeleteThread(thread.id);
+            }}
+            className="opacity-0 group-hover:opacity-100 hover:text-destructive transition-opacity"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+          {thread.files && (
+            <FileViewer
+              isOpen={showFiles}
+              onClose={() => setShowFiles(false)}
+              files={thread.files}
+              threadName={thread.name}
+            />
+          )}
+        </>
       )}
     </div>
   );

@@ -8,6 +8,9 @@
   "permissions": [
     "core:default",
     "shell:allow-open",
-    "shell:default"
+    "shell:default",
+    "upload:default",
+    "fs:default",
+    "fs:default"
   ]
 }

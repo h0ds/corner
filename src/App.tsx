@@ -28,7 +28,9 @@ import {
 } from "@/components/ui/tooltip";
 import { ThreadList } from './components/ThreadList';
 import { nanoid } from 'nanoid';
-import { Message, Thread } from '@/types';
+import { Message, Thread, FileAttachment } from '@/types';
+import { cn } from "@/lib/utils";
+import { initializeCache, cacheFile, CachedFile } from '@/lib/fileCache';
 
 interface ApiResponse {
   content?: string;
@@ -52,6 +54,11 @@ function App() {
   const { toast } = useToast();
   const [uploadedFile, setUploadedFile] = useState<FileInfo | null>(null);
   const [sidebarVisible, setSidebarVisible] = useState(true);
+
+  // Initialize cache on mount
+  useEffect(() => {
+    initializeCache().catch(console.error);
+  }, []);
 
   // Get active thread messages
   const messages = useMemo(() => {
@@ -77,6 +84,7 @@ function App() {
       id: nanoid(),
       name: 'New Thread',
       messages: [],
+      files: [],
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -135,7 +143,7 @@ function App() {
     onDrop,
     maxFiles: 1,
     noClick: true,
-    disabled: loading,
+    disabled: loading || !activeThreadId,
     accept: {
       'text/*': ['.txt', '.md'],
       'application/json': ['.json'],
@@ -179,7 +187,9 @@ function App() {
       console.log('Files rejected:', fileRejections);
       toast({
         variant: "destructive",
-        description: fileRejections[0]?.errors[0]?.message || "File type not supported",
+        description: !activeThreadId 
+          ? "Please create or select a thread first"
+          : fileRejections[0]?.errors[0]?.message || "File type not supported",
         duration: 2000,
       });
     },
@@ -232,32 +242,57 @@ function App() {
   const handleSendMessage = async (message: string, file?: File, fileContent?: string) => {
     setLoading(true);
     
+    let cachedFile: CachedFile | undefined;
+
     if (file && fileContent) {
-      console.log('Sending file to backend:', {
-        fileName: file.name,
-        fileSize: file.size,
-        contentPreview: fileContent.slice(0, 100) + '...',
-      });
+      try {
+        // Cache the file
+        cachedFile = await cacheFile(file, fileContent);
+        console.log('File cached:', cachedFile);
+      } catch (error) {
+        console.error('Failed to cache file:', error);
+        toast({
+          variant: "destructive",
+          description: "Failed to cache file",
+          duration: 2000,
+        });
+        setLoading(false);
+        return;
+      }
     }
 
     const userMessage: Message = { 
       role: 'user', 
       content: message || 'Uploaded file:',
-      ...(file && fileContent && {
+      ...(cachedFile && {
         file: {
-          name: file.name,
-          content: fileContent
+          name: cachedFile.name,
+          content: cachedFile.content,
+          timestamp: cachedFile.timestamp,
+          cacheId: cachedFile.id
         }
       })
     };
 
-    // Update thread with user message
+    // Update thread with user message and cached file reference
     if (activeThreadId) {
       setThreads(prev => prev.map(thread => {
         if (thread.id === activeThreadId) {
           return {
             ...thread,
             messages: [...thread.messages, userMessage],
+            files: cachedFile ? [
+              ...thread.files,
+              {
+                name: cachedFile.name,
+                content: cachedFile.content,
+                timestamp: cachedFile.timestamp,
+                cacheId: cachedFile.id
+              }
+            ] : thread.files,
+            cachedFiles: cachedFile ? 
+              [...(thread.cachedFiles || []), cachedFile.id] : 
+              thread.cachedFiles || [],
             updatedAt: Date.now(),
           };
         }
@@ -419,18 +454,12 @@ function App() {
       <div className="flex-1 flex flex-col">
         <div 
           {...getRootProps()}
-          className={`flex flex-col h-screen bg-background relative transition-all duration-200 ${
-            isDragActive ? 'ring-4 ring-primary ring-inset bg-primary/5' : ''
-          }`}
+          className={cn(
+            "flex flex-col h-screen bg-background relative transition-all duration-200",
+            isDragActive && activeThreadId && "ring-4 ring-primary ring-inset bg-primary/5",
+            isDragActive && !activeThreadId && "ring-4 ring-destructive ring-inset bg-destructive/5"
+          )}
         >
-          {/* {process.env.NODE_ENV === 'development' && (
-            <div className="fixed top-0 left-0 bg-black/50 text-white p-2 z-[9999] text-xs">
-              isDragActive: {isDragActive.toString()}<br />
-              uploadedFile: {uploadedFile ? uploadedFile.name : 'no'}<br />
-              loading: {loading.toString()}
-            </div>
-          )} */}
-          
           <input {...getInputProps()} />
 
           <AnimatePresence>
@@ -447,15 +476,29 @@ function App() {
                   animate={{ y: 0 }}
                   exit={{ y: 20 }}
                   transition={{ duration: 0.2, ease: "easeOut" }}
-                  className="p-8 rounded-lg border-4 border-dashed border-primary bg-primary/5 shadow-xl"
+                  className={cn(
+                    "p-8 rounded-lg border-4 border-dashed shadow-xl",
+                    activeThreadId 
+                      ? "border-primary bg-primary/5" 
+                      : "border-destructive bg-destructive/5"
+                  )}
                 >
-                  <div className="flex flex-col items-center gap-4 text-primary">
-                    <Upload className="h-12 w-12 animate-bounce" />
+                  <div className="flex flex-col items-center gap-4">
+                    <Upload className={cn(
+                      "h-12 w-12 animate-bounce",
+                      activeThreadId ? "text-primary" : "text-destructive"
+                    )} />
                     <div className="space-y-1 text-center">
-                      <p className="text-xl font-medium">Drop your file here</p>
-                      <p className="text-sm text-muted-foreground">
-                        Supports images, PDFs, and text files up to 10MB
+                      <p className="text-xl font-medium">
+                        {activeThreadId 
+                          ? "Drop your file here" 
+                          : "Please select a thread first"}
                       </p>
+                      {activeThreadId && (
+                        <p className="text-sm text-muted-foreground">
+                          Supports images, PDFs, and text files up to 10MB
+                        </p>
+                      )}
                     </div>
                   </div>
                 </motion.div>
