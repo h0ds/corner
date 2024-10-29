@@ -12,6 +12,13 @@ import { useToast } from "@/hooks/use-toast";
 import { useDropzone } from 'react-dropzone';
 import { getFileHandler } from '@/lib/fileHandlers';
 import { saveMessages, loadMessages, clearMessages } from '@/lib/storage';
+import { ModelIcon } from './components/ModelIcon';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface Message {
   role: 'user' | 'assistant' | 'error';
@@ -387,7 +394,30 @@ function App() {
         className="relative p-4 bg-card border-t border-border"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="absolute right-4 -top-12">
+        <div className="absolute right-4 -top-12 flex items-center gap-2">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="p-2 bg-background text-muted-foreground hover:text-foreground 
+                             hover:bg-accent rounded-sm shadow-sm transition-colors">
+                  <ModelIcon modelId={selectedModel} className="h-5 w-5" />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                {(() => {
+                  const model = AVAILABLE_MODELS.find(m => m.id === selectedModel);
+                  return model ? (
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-medium">{model.name}</span>
+                      <span className="text-muted-foreground">
+                        {model.provider === 'anthropic' ? 'Anthropic' : 'Perplexity'}
+                      </span>
+                    </div>
+                  ) : selectedModel;
+                })()}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           <button
             onClick={() => setShowPreferences(true)}
             className="p-2 bg-background text-muted-foreground hover:text-foreground 
