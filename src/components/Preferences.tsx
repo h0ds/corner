@@ -15,6 +15,7 @@ import { Loader2, CheckCircle2, XCircle, KeyRound, Palette, Bot } from "lucide-r
 import { ThemeToggle } from './ThemeToggle';
 import { ModelSelector } from './ModelSelector';
 import { cn } from '@/lib/utils';
+import { loadApiKeys } from '@/lib/apiKeys';
 
 interface PreferencesProps {
   isOpen: boolean;
@@ -52,16 +53,27 @@ export const Preferences: React.FC<PreferencesProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      invoke<ApiKeys>('get_api_keys').then((savedKeys) => {
-        setKeys(savedKeys);
-        // Don't verify on load - wait for changes
-      }).catch(err => {
-        setError('Failed to load API keys');
-        console.error(err);
-      });
-    } else {
-      setVerificationStatus({ anthropic: 'idle', perplexity: 'idle' });
-      setError(null);
+      invoke<{ anthropic: string | null; perplexity: string | null }>('get_api_keys')
+        .then((storedKeys) => {
+          console.log('Loaded stored keys:', {
+            anthropic: storedKeys.anthropic ? '***' : 'none',
+            perplexity: storedKeys.perplexity ? '***' : 'none'
+          });
+          
+          setKeys({
+            anthropic: storedKeys.anthropic || '',
+            perplexity: storedKeys.perplexity || ''
+          });
+
+          setVerificationStatus(prev => ({
+            anthropic: storedKeys.anthropic ? 'success' : prev.anthropic,
+            perplexity: storedKeys.perplexity ? 'success' : prev.perplexity
+          }));
+        })
+        .catch(err => {
+          console.error('Failed to load API keys:', err);
+          setError('Failed to load stored API keys');
+        });
     }
   }, [isOpen]);
 
@@ -75,22 +87,39 @@ export const Preferences: React.FC<PreferencesProps> = ({
     setError(null);
 
     try {
-      // Send only the key being verified
       const response = await invoke<{ error?: string }>('verify_api_key', { 
-        key,
-        provider: type
+        request: { 
+          key,
+          provider: type
+        }
       });
 
       if (response.error) {
         setVerificationStatus(prev => ({ ...prev, [type]: 'error' }));
-        setError(`Invalid ${type} API key`);
+        const formattedError = response.error
+          .split('\n')
+          .map(line => line.trim())
+          .filter(Boolean)
+          .join('\n');
+        setError(formattedError);
+        
+        console.error('API Key Verification Error:', {
+          provider: type,
+          error: response.error,
+          keyPrefix: key.slice(0, 10) + '...'
+        });
       } else {
         setVerificationStatus(prev => ({ ...prev, [type]: 'success' }));
       }
     } catch (err) {
       setVerificationStatus(prev => ({ ...prev, [type]: 'error' }));
-      setError(`Failed to verify ${type} API key`);
-      console.error(err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      setError(`Failed to verify ${type} API key: ${errorMessage}`);
+      console.error('API Key Verification Error:', {
+        provider: type,
+        error: err,
+        keyPrefix: key.slice(0, 10) + '...'
+      });
     }
   };
 
@@ -99,7 +128,6 @@ export const Preferences: React.FC<PreferencesProps> = ({
     setVerificationStatus(prev => ({ ...prev, [type]: 'idle' }));
     setError(null);
     
-    // Use a debounce to verify after typing stops
     const timeoutId = setTimeout(() => {
       verifyKey(type, value);
     }, 500);
@@ -112,9 +140,12 @@ export const Preferences: React.FC<PreferencesProps> = ({
     setError(null);
     
     try {
-      // Only verify keys that have been changed and have a value
+      await invoke('set_api_keys', { 
+        anthropic: keys.anthropic || null,
+        perplexity: keys.perplexity || null,
+      });
+
       const verifyPromises: Promise<void>[] = [];
-      
       Object.entries(keys).forEach(([type, value]) => {
         if (value && verificationStatus[type as keyof ApiKeys] === 'idle') {
           verifyPromises.push(verifyKey(type as keyof ApiKeys, value));
@@ -123,12 +154,7 @@ export const Preferences: React.FC<PreferencesProps> = ({
 
       await Promise.all(verifyPromises);
       
-      // Check if any verifications failed
       if (!Object.values(verificationStatus).some(status => status === 'error')) {
-        await invoke('set_api_keys', { 
-          anthropic: keys.anthropic || null,
-          perplexity: keys.perplexity || null
-        });
         onClose();
       }
     } catch (err) {
@@ -174,6 +200,11 @@ export const Preferences: React.FC<PreferencesProps> = ({
         <p className="text-sm text-green-600 dark:text-green-400">
           API key verified successfully
         </p>
+      )}
+      {verificationStatus[type] === 'error' && error && (
+        <div className="text-sm text-red-600 dark:text-red-400 whitespace-pre-wrap font-mono">
+          {error}
+        </div>
       )}
     </div>
   );

@@ -1,24 +1,31 @@
 import React from 'react';
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
-import { Bot, User, AlertCircle, Settings } from "lucide-react";
+import { User, AlertCircle, Settings } from "lucide-react";
 import { motion } from "framer-motion";
 import { useTheme } from "next-themes";
+import { ModelIcon } from './ModelIcon';
 
 interface ChatMessageProps {
   role: 'user' | 'assistant' | 'error';
   content: string;
   onErrorClick?: () => void;
+  modelId?: string;
 }
 
-export const ChatMessage: React.FC<ChatMessageProps> = ({ role, content, onErrorClick }) => {
+export const ChatMessage: React.FC<ChatMessageProps> = ({ 
+  role, 
+  content, 
+  onErrorClick,
+  modelId 
+}) => {
   const isError = role === 'error';
   const { theme } = useTheme();
   const isMonochrome = theme === 'black';
   
   const getBackgroundColor = () => {
     if (isMonochrome) {
-      return role === 'assistant' ? 'bg-black' : 
+      return role === 'assistant' ? 'bg-black border border-white/20' : 
              isError ? 'bg-black' : 
              'bg-white';
     }
@@ -40,7 +47,8 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ role, content, onError
 
   const getAvatarColor = () => {
     if (isMonochrome) {
-      return 'bg-black dark:bg-white';
+      return role === 'assistant' ? 'bg-black border border-white/20' : 
+             'bg-black dark:bg-white';
     }
     return role === 'assistant' ? 'bg-blue-100 dark:bg-blue-900' : 
            isError ? 'bg-red-100 dark:bg-red-900' : 
@@ -49,7 +57,8 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ role, content, onError
 
   const getIconColor = () => {
     if (isMonochrome) {
-      return 'text-white dark:text-black';
+      return role === 'assistant' ? 'text-white' : 
+             'text-white dark:text-black';
     }
     return role === 'assistant' ? 'text-blue-600 dark:text-blue-400' : 
            isError ? 'text-red-600 dark:text-red-400' : 
@@ -66,7 +75,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ role, content, onError
       <Avatar className={`rounded-sm ${getAvatarColor()}`}>
         <AvatarFallback className="rounded-sm">
           {role === 'assistant' ? (
-            <Bot className={`h-4 w-4 ${getIconColor()}`} />
+            <ModelIcon modelId={modelId || ''} className={`h-4 w-4 ${getIconColor()}`} />
           ) : isError ? (
             <AlertCircle className={`h-4 w-4 ${getIconColor()}`} />
           ) : (

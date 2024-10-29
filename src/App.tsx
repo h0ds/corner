@@ -10,6 +10,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Settings, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useDropzone } from 'react-dropzone';
+import { getFileHandler } from '@/lib/fileHandlers';
+import { saveMessages, loadMessages, clearMessages } from '@/lib/storage';
 
 interface Message {
   role: 'user' | 'assistant' | 'error';
@@ -32,13 +34,17 @@ interface FileInfo {
 }
 
 function App() {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>(() => loadMessages());
   const [loading, setLoading] = useState(false);
   const [showPreferences, setShowPreferences] = useState(false);
   const [selectedModel, setSelectedModel] = useState(AVAILABLE_MODELS[0].id);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const [uploadedFile, setUploadedFile] = useState<FileInfo | null>(null);
+
+  useEffect(() => {
+    saveMessages(messages);
+  }, [messages]);
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     console.log('onDrop called', acceptedFiles);
@@ -62,21 +68,10 @@ function App() {
       });
       
       try {
-        const content = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            const result = e.target?.result;
-            if (typeof result === 'string') {
-              resolve(result);
-            } else {
-              reject(new Error('Failed to read file as text'));
-            }
-          };
-          reader.onerror = () => reject(reader.error);
-          reader.readAsText(file);
-        });
+        const handler = getFileHandler(file);
+        const content = await handler(file);
 
-        console.log('File content read successfully, length:', content.length);
+        console.log('File content read successfully, type:', file.type);
         handleSendMessage("", file, content);
       } catch (error) {
         console.error('File read error:', error);
@@ -103,6 +98,35 @@ function App() {
       'text/html': ['.html', '.htm'],
       'text/css': ['.css'],
       'text/yaml': ['.yml', '.yaml'],
+      'image/*': [
+        '.png', 
+        '.jpg', 
+        '.jpeg', 
+        '.gif', 
+        '.webp', 
+        '.svg', 
+        '.bmp'
+      ],
+      'application/pdf': ['.pdf'],
+      'application/msword': ['.doc'],
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      'application/vnd.ms-excel': ['.xls'],
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+      'application/vnd.ms-powerpoint': ['.ppt'],
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation': ['.pptx'],
+      'text/x-python': ['.py'],
+      'text/x-java': ['.java'],
+      'text/x-c': ['.c', '.cpp', '.h'],
+      'text/x-ruby': ['.rb'],
+      'text/x-php': ['.php'],
+      'text/x-go': ['.go'],
+      'text/x-rust': ['.rs'],
+      'application/xml': ['.xml'],
+      'application/x-yaml': ['.yaml', '.yml'],
+      'application/x-toml': ['.toml'],
+      'application/x-sh': ['.sh'],
+      'application/x-bat': ['.bat'],
+      'application/x-powershell': ['.ps1']
     },
     onDropRejected: (fileRejections) => {
       console.log('Files rejected:', fileRejections);
@@ -111,9 +135,6 @@ function App() {
         description: fileRejections[0]?.errors[0]?.message || "File type not supported",
         duration: 2000,
       });
-    },
-    onError: (error) => {
-      console.error('Dropzone error:', error);
     },
   });
 
@@ -133,6 +154,7 @@ function App() {
         e.preventDefault();
         if (messages.length > 0) {
           setMessages([]);
+          clearMessages();
           toast({
             description: "Chat history cleared",
             duration: 2000,
@@ -219,8 +241,8 @@ function App() {
   return (
     <div 
       {...getRootProps()}
-      className={`flex flex-col h-screen bg-background relative ${
-        isDragActive ? 'ring-2 ring-primary ring-inset' : ''
+      className={`flex flex-col h-screen bg-background relative transition-all duration-200 ${
+        isDragActive ? 'ring-4 ring-primary ring-inset bg-primary/5' : ''
       }`}
     >
       {process.env.NODE_ENV === 'development' && (
@@ -236,20 +258,92 @@ function App() {
       <AnimatePresence>
         {isDragActive && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
             className="absolute inset-0 z-[9999] bg-background/95 backdrop-blur-sm flex items-center justify-center"
           >
-            <div className="p-8 rounded-lg border-2 border-dashed border-primary">
-              <div className="flex items-center gap-3 text-primary">
-                <Upload className="h-6 w-6" />
-                <p className="text-lg font-medium">Drop your file here</p>
+            <motion.div
+              initial={{ y: 20 }}
+              animate={{ y: 0 }}
+              exit={{ y: 20 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="p-8 rounded-lg border-4 border-dashed border-primary bg-primary/5 shadow-xl"
+            >
+              <div className="flex flex-col items-center gap-4 text-primary">
+                <Upload className="h-12 w-12 animate-bounce" />
+                <div className="space-y-1 text-center">
+                  <p className="text-xl font-medium">Drop your file here</p>
+                  <p className="text-sm text-muted-foreground">
+                    Supports images, PDFs, and text files up to 10MB
+                  </p>
+                </div>
               </div>
-            </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {uploadedFile && (
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 20 }}
+          className="mx-4 mb-4 p-4 border-2 border-dashed rounded-lg bg-secondary shadow-sm"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-primary/10 rounded-md">
+                <svg
+                  className="w-8 h-8 text-primary"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
+                </svg>
+              </div>
+              <div>
+                <p className="font-medium">{uploadedFile.name}</p>
+                <p className="text-sm text-muted-foreground">
+                  {(uploadedFile.size / 1024).toFixed(2)} KB • {uploadedFile.type}
+                </p>
+              </div>
+            </div>
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setUploadedFile(null);
+              }}
+              className="p-2 hover:bg-destructive/10 rounded-full transition-colors"
+            >
+              <svg
+                className="w-5 h-5 text-destructive"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </motion.button>
+          </div>
+        </motion.div>
+      )}
 
       <main 
         ref={chatContainerRef}
@@ -268,6 +362,7 @@ function App() {
                   role={message.role}
                   content={message.content}
                   onErrorClick={() => setShowPreferences(true)}
+                  modelId={message.role === 'assistant' ? selectedModel : undefined}
                 />
                 {message.file && (
                   <FilePreview
@@ -300,56 +395,6 @@ function App() {
             <Settings className="h-5 w-5" />
           </button>
         </div>
-        {uploadedFile && (
-          <div className="mx-4 mb-4 p-4 border-2 border-dashed rounded-lg bg-secondary">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <svg
-                  className="w-8 h-8 text-primary"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                  />
-                </svg>
-                <div>
-                  <p className="font-medium">{uploadedFile.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {(uploadedFile.size / 1024).toFixed(2)} KB
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setUploadedFile(null);
-                }}
-                className="p-1 hover:bg-destructive/10 rounded"
-              >
-                <svg
-                  className="w-5 h-5 text-destructive"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-          </div>
-        )}
         <ChatInput
           onSendMessage={handleSendMessage}
           disabled={loading}
