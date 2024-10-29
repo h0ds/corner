@@ -22,6 +22,7 @@ interface PreferencesProps {
   onClose: () => void;
   selectedModel: string;
   onModelChange: (model: string) => void;
+  initialTab?: PreferenceTab;
 }
 
 type VerificationStatus = 'idle' | 'verifying' | 'success' | 'error';
@@ -37,12 +38,13 @@ export const Preferences: React.FC<PreferencesProps> = ({
   isOpen, 
   onClose,
   selectedModel,
-  onModelChange
+  onModelChange,
+  initialTab = 'api-keys'
 }) => {
   const [keys, setKeys] = useState<ApiKeys>({ anthropic: '', perplexity: '' });
   const [isSaving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<PreferenceTab>('api-keys');
+  const [activeTab, setActiveTab] = useState<PreferenceTab>(initialTab);
   const [verificationStatus, setVerificationStatus] = useState<{
     anthropic: VerificationStatus;
     perplexity: VerificationStatus;
@@ -76,6 +78,12 @@ export const Preferences: React.FC<PreferencesProps> = ({
         });
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab(initialTab);
+    }
+  }, [isOpen, initialTab]);
 
   const verifyKey = async (type: keyof ApiKeys, key: string) => {
     if (!key.trim()) {

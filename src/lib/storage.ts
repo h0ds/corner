@@ -1,32 +1,71 @@
-import { Message } from '@/types';
+import { Message, Thread } from '@/types';
 
-const STORAGE_KEY = 'lex-chat-history';
+const THREADS_KEY = 'lex-threads';
+const ACTIVE_THREAD_KEY = 'lex-active-thread';
 
-export function saveMessages(messages: Message[]): void {
+export function saveThread(thread: Thread): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+    const threads = loadThreads();
+    const index = threads.findIndex(t => t.id === thread.id);
+    
+    if (index >= 0) {
+      threads[index] = thread;
+    } else {
+      threads.push(thread);
+    }
+    
+    localStorage.setItem(THREADS_KEY, JSON.stringify(threads));
   } catch (error) {
-    console.error('Failed to save messages to localStorage:', error);
+    console.error('Failed to save thread:', error);
   }
 }
 
-export function loadMessages(): Message[] {
+export function loadThreads(): Thread[] {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = localStorage.getItem(THREADS_KEY);
     if (!stored) return [];
-    
-    const messages = JSON.parse(stored) as Message[];
-    return messages;
+    return JSON.parse(stored);
   } catch (error) {
-    console.error('Failed to load messages from localStorage:', error);
+    console.error('Failed to load threads:', error);
     return [];
   }
 }
 
-export function clearMessages(): void {
+export function deleteThread(threadId: string): void {
   try {
-    localStorage.removeItem(STORAGE_KEY);
+    const threads = loadThreads().filter(t => t.id !== threadId);
+    localStorage.setItem(THREADS_KEY, JSON.stringify(threads));
   } catch (error) {
-    console.error('Failed to clear messages from localStorage:', error);
+    console.error('Failed to delete thread:', error);
+  }
+}
+
+export function saveActiveThreadId(threadId: string | null): void {
+  try {
+    if (threadId) {
+      localStorage.setItem(ACTIVE_THREAD_KEY, threadId);
+    } else {
+      localStorage.removeItem(ACTIVE_THREAD_KEY);
+    }
+  } catch (error) {
+    console.error('Failed to save active thread:', error);
+  }
+}
+
+export function loadActiveThreadId(): string | null {
+  try {
+    return localStorage.getItem(ACTIVE_THREAD_KEY);
+  } catch (error) {
+    console.error('Failed to load active thread:', error);
+    return null;
+  }
+}
+
+export function clearThreads(): void {
+  try {
+    localStorage.removeItem(THREADS_KEY);
+    localStorage.removeItem(ACTIVE_THREAD_KEY);
+  } catch (error) {
+    console.error('Failed to clear threads:', error);
   }
 } 

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { ChatMessage } from "./components/ChatMessage";
 import { ChatInput } from "./components/ChatInput";
@@ -11,7 +11,14 @@ import { Settings, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useDropzone } from 'react-dropzone';
 import { getFileHandler } from '@/lib/fileHandlers';
-import { saveMessages, loadMessages, clearMessages } from '@/lib/storage';
+import { 
+  saveThread, 
+  loadThreads, 
+  deleteThread, 
+  saveActiveThreadId, 
+  loadActiveThreadId, 
+  clearThreads 
+} from '@/lib/storage';
 import { ModelIcon } from './components/ModelIcon';
 import {
   Tooltip,
@@ -19,16 +26,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-
-interface Message {
-  role: 'user' | 'assistant' | 'error';
-  content: string;
-  modelId?: string;
-  file?: {
-    name: string;
-    content: string;
-  };
-}
+import { ThreadList } from './components/ThreadList';
+import { nanoid } from 'nanoid';
+import { Message, Thread } from '@/types';
 
 interface ApiResponse {
   content?: string;
@@ -42,17 +42,55 @@ interface FileInfo {
 }
 
 function App() {
-  const [messages, setMessages] = useState<Message[]>(() => loadMessages());
+  const [threads, setThreads] = useState<Thread[]>(() => loadThreads());
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(() => loadActiveThreadId());
   const [loading, setLoading] = useState(false);
   const [showPreferences, setShowPreferences] = useState(false);
+  const [preferenceTab, setPreferenceTab] = useState<'api-keys' | 'appearance' | 'models'>('api-keys');
   const [selectedModel, setSelectedModel] = useState(AVAILABLE_MODELS[0].id);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const [uploadedFile, setUploadedFile] = useState<FileInfo | null>(null);
 
+  // Get active thread messages
+  const messages = useMemo(() => {
+    const activeThread = threads.find(t => t.id === activeThreadId);
+    return activeThread?.messages || [];
+  }, [threads, activeThreadId]);
+
+  // Update thread storage when threads change
   useEffect(() => {
-    saveMessages(messages);
-  }, [messages]);
+    const activeThread = threads.find(t => t.id === activeThreadId);
+    if (activeThread) {
+      saveThread(activeThread);
+    }
+  }, [threads, activeThreadId]);
+
+  // Save active thread ID when it changes
+  useEffect(() => {
+    saveActiveThreadId(activeThreadId);
+  }, [activeThreadId]);
+
+  const handleNewThread = () => {
+    const newThread: Thread = {
+      id: nanoid(),
+      name: 'New Thread',
+      messages: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    setThreads(prev => [...prev, newThread]);
+    setActiveThreadId(newThread.id);
+  };
+
+  const handleDeleteThread = (threadId: string) => {
+    setThreads(prev => prev.filter(t => t.id !== threadId));
+    deleteThread(threadId);
+    if (activeThreadId === threadId) {
+      const remainingThreads = threads.filter(t => t.id !== threadId);
+      setActiveThreadId(remainingThreads[0]?.id || null);
+    }
+  };
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     console.log('onDrop called', acceptedFiles);
@@ -161,8 +199,19 @@ function App() {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         if (messages.length > 0) {
-          setMessages([]);
-          clearMessages();
+          // Clear current thread
+          if (activeThreadId) {
+            setThreads(prev => prev.map(thread => {
+              if (thread.id === activeThreadId) {
+                return {
+                  ...thread,
+                  messages: [],
+                  updatedAt: Date.now(),
+                };
+              }
+              return thread;
+            }));
+          }
           toast({
             description: "Chat history cleared",
             duration: 2000,
@@ -173,7 +222,7 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [messages, toast]);
+  }, [messages, toast, activeThreadId]);
 
   const handleSendMessage = async (message: string, file?: File, fileContent?: string) => {
     setLoading(true);
@@ -245,200 +294,265 @@ function App() {
     } finally {
       setLoading(false);
     }
+
+    // Update thread with new message
+    if (activeThreadId) {
+      setThreads(prev => prev.map(thread => {
+        if (thread.id === activeThreadId) {
+          return {
+            ...thread,
+            messages: [...thread.messages, userMessage],
+            updatedAt: Date.now(),
+          };
+        }
+        return thread;
+      }));
+    }
+
+    // Update thread with AI response
+    if (activeThreadId) {
+      setThreads(prev => prev.map(thread => {
+        if (thread.id === activeThreadId) {
+          return {
+            ...thread,
+            messages: [...thread.messages, assistantMessage],
+            updatedAt: Date.now(),
+          };
+        }
+        return thread;
+      }));
+    }
+  };
+
+  const handleRenameThread = (threadId: string, newName: string) => {
+    setThreads(prev => prev.map(thread => {
+      if (thread.id === threadId) {
+        return {
+          ...thread,
+          name: newName,
+          updatedAt: Date.now(),
+        };
+      }
+      return thread;
+    }));
   };
 
   return (
-    <div 
-      {...getRootProps()}
-      className={`flex flex-col h-screen bg-background relative transition-all duration-200 ${
-        isDragActive ? 'ring-4 ring-primary ring-inset bg-primary/5' : ''
-      }`}
-    >
-      {/* {process.env.NODE_ENV === 'development' && (
-        <div className="fixed top-0 left-0 bg-black/50 text-white p-2 z-[9999] text-xs">
-          isDragActive: {isDragActive.toString()}<br />
-          uploadedFile: {uploadedFile ? uploadedFile.name : 'no'}<br />
-          loading: {loading.toString()}
-        </div>
-      )} */}
+    <div className="flex h-screen bg-background">
+      <ThreadList
+        threads={threads}
+        activeThreadId={activeThreadId}
+        onThreadSelect={setActiveThreadId}
+        onNewThread={handleNewThread}
+        onDeleteThread={handleDeleteThread}
+        onRenameThread={handleRenameThread}
+      />
       
-      <input {...getInputProps()} />
+      {/* Existing chat UI wrapped in a div */}
+      <div className="flex-1 flex flex-col">
+        <div 
+          {...getRootProps()}
+          className={`flex flex-col h-screen bg-background relative transition-all duration-200 ${
+            isDragActive ? 'ring-4 ring-primary ring-inset bg-primary/5' : ''
+          }`}
+        >
+          {/* {process.env.NODE_ENV === 'development' && (
+            <div className="fixed top-0 left-0 bg-black/50 text-white p-2 z-[9999] text-xs">
+              isDragActive: {isDragActive.toString()}<br />
+              uploadedFile: {uploadedFile ? uploadedFile.name : 'no'}<br />
+              loading: {loading.toString()}
+            </div>
+          )} */}
+          
+          <input {...getInputProps()} />
 
-      <AnimatePresence>
-        {isDragActive && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-            className="absolute inset-0 z-[9999] bg-background/95 backdrop-blur-sm flex items-center justify-center"
-          >
-            <motion.div
-              initial={{ y: 20 }}
-              animate={{ y: 0 }}
-              exit={{ y: 20 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
-              className="p-8 rounded-lg border-4 border-dashed border-primary bg-primary/5 shadow-xl"
+          <AnimatePresence>
+            {isDragActive && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className="absolute inset-0 z-[9999] bg-background/95 backdrop-blur-sm flex items-center justify-center"
+              >
+                <motion.div
+                  initial={{ y: 20 }}
+                  animate={{ y: 0 }}
+                  exit={{ y: 20 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  className="p-8 rounded-lg border-4 border-dashed border-primary bg-primary/5 shadow-xl"
+                >
+                  <div className="flex flex-col items-center gap-4 text-primary">
+                    <Upload className="h-12 w-12 animate-bounce" />
+                    <div className="space-y-1 text-center">
+                      <p className="text-xl font-medium">Drop your file here</p>
+                      <p className="text-sm text-muted-foreground">
+                        Supports images, PDFs, and text files up to 10MB
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {uploadedFile && (
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="mx-4 mb-4 p-4 border-2 border-dashed rounded-lg bg-secondary shadow-sm"
             >
-              <div className="flex flex-col items-center gap-4 text-primary">
-                <Upload className="h-12 w-12 animate-bounce" />
-                <div className="space-y-1 text-center">
-                  <p className="text-xl font-medium">Drop your file here</p>
-                  <p className="text-sm text-muted-foreground">
-                    Supports images, PDFs, and text files up to 10MB
-                  </p>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-primary/10 rounded-md">
+                    <svg
+                      className="w-8 h-8 text-primary"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-medium">{uploadedFile.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {(uploadedFile.size / 1024).toFixed(2)} KB • {uploadedFile.type}
+                    </p>
+                  </div>
                 </div>
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setUploadedFile(null);
+                  }}
+                  className="p-2 hover:bg-destructive/10 rounded-full transition-colors"
+                >
+                  <svg
+                    className="w-5 h-5 text-destructive"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </motion.button>
               </div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {uploadedFile && (
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 20 }}
-          className="mx-4 mb-4 p-4 border-2 border-dashed rounded-lg bg-secondary shadow-sm"
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-primary/10 rounded-md">
-                <svg
-                  className="w-8 h-8 text-primary"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                  />
-                </svg>
-              </div>
-              <div>
-                <p className="font-medium">{uploadedFile.name}</p>
-                <p className="text-sm text-muted-foreground">
-                  {(uploadedFile.size / 1024).toFixed(2)} KB • {uploadedFile.type}
-                </p>
-              </div>
-            </div>
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={(e) => {
-                e.stopPropagation();
-                setUploadedFile(null);
-              }}
-              className="p-2 hover:bg-destructive/10 rounded-full transition-colors"
-            >
-              <svg
-                className="w-5 h-5 text-destructive"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </motion.button>
-          </div>
-        </motion.div>
-      )}
-
-      <main 
-        ref={chatContainerRef}
-        className="flex-1 overflow-y-auto p-6 space-y-6"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <AnimatePresence>
-          {messages.length === 0 ? (
-            <div className="text-center text-muted-foreground mt-8 text-sm">
-              Start a conversation or drop a file (⌘/Ctrl + K to clear history)
-            </div>
-          ) : (
-            messages.map((message, index) => (
-              <div key={index} className="space-y-2">
-                <ChatMessage
-                  role={message.role}
-                  content={message.content}
-                  onErrorClick={() => setShowPreferences(true)}
-                  modelId={message.modelId}
-                />
-                {message.file && (
-                  <FilePreview
-                    fileName={message.file.name}
-                    content={message.file.content}
-                  />
-                )}
-              </div>
-            ))
           )}
-          {loading && (
-            <div className="flex justify-start">
-              <TypingIndicator />
-            </div>
-          )}
-        </AnimatePresence>
-      </main>
 
-      <footer 
-        className="relative p-4 bg-card border-t border-border"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="absolute right-4 -top-12 flex items-center gap-2">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="p-2 bg-background text-muted-foreground hover:text-foreground 
-                             hover:bg-accent rounded-sm shadow-sm transition-colors">
-                  <ModelIcon modelId={selectedModel} className="h-5 w-5" />
-                </div>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="text-xs">
-                {(() => {
-                  const model = AVAILABLE_MODELS.find(m => m.id === selectedModel);
-                  return model ? (
-                    <div className="flex flex-col gap-0.5">
-                      <span className="font-medium">{model.name}</span>
-                      <span className="text-muted-foreground">
-                        {model.provider === 'anthropic' ? 'Anthropic' : 'Perplexity'}
-                      </span>
-                    </div>
-                  ) : selectedModel;
-                })()}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          <button
-            onClick={() => setShowPreferences(true)}
-            className="p-2 bg-background text-muted-foreground hover:text-foreground 
-                     hover:bg-accent rounded-sm shadow-sm transition-colors"
-            aria-label="Settings"
+          <main 
+            ref={chatContainerRef}
+            className="flex-1 overflow-y-auto p-6 space-y-6"
+            onClick={(e) => e.stopPropagation()}
           >
-            <Settings className="h-5 w-5" />
-          </button>
-        </div>
-        <ChatInput
-          onSendMessage={handleSendMessage}
-          disabled={loading}
-        />
-      </footer>
+            <AnimatePresence>
+              {messages.length === 0 ? (
+                <div className="text-center text-muted-foreground mt-8 text-sm">
+                  Start a conversation or drop a file (⌘/Ctrl + K to clear history)
+                </div>
+              ) : (
+                messages.map((message, index) => (
+                  <div key={index} className="space-y-2">
+                    <ChatMessage
+                      role={message.role}
+                      content={message.content}
+                      onErrorClick={() => setShowPreferences(true)}
+                      modelId={message.modelId}
+                    />
+                    {message.file && (
+                      <FilePreview
+                        fileName={message.file.name}
+                        content={message.file.content}
+                      />
+                    )}
+                  </div>
+                ))
+              )}
+              {loading && (
+                <div className="flex justify-start">
+                  <TypingIndicator />
+                </div>
+              )}
+            </AnimatePresence>
+          </main>
 
-      <Preferences
-        isOpen={showPreferences}
-        onClose={() => setShowPreferences(false)}
-        selectedModel={selectedModel}
-        onModelChange={setSelectedModel}
-      />
+          <footer 
+            className="relative p-4 bg-card border-t border-border"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="absolute right-4 -top-12 flex items-center gap-2">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div 
+                      onClick={() => {
+                        setPreferenceTab('models');
+                        setShowPreferences(true);
+                      }}
+                      className="p-2 bg-background text-muted-foreground hover:text-foreground 
+                               hover:bg-accent rounded-sm shadow-sm transition-colors cursor-pointer"
+                    >
+                      <ModelIcon modelId={selectedModel} className="h-5 w-5" />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs">
+                    {(() => {
+                      const model = AVAILABLE_MODELS.find(m => m.id === selectedModel);
+                      return model ? (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-medium">{model.name}</span>
+                          <span className="text-muted-foreground">
+                            {model.provider === 'anthropic' ? 'Anthropic' : 'Perplexity'}
+                          </span>
+                        </div>
+                      ) : selectedModel;
+                    })()}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <button
+                onClick={() => {
+                  setPreferenceTab('api-keys');
+                  setShowPreferences(true);
+                }}
+                className="p-2 bg-background text-muted-foreground hover:text-foreground 
+                         hover:bg-accent rounded-sm shadow-sm transition-colors"
+                aria-label="Settings"
+              >
+                <Settings className="h-5 w-5" />
+              </button>
+            </div>
+            <ChatInput
+              onSendMessage={handleSendMessage}
+              disabled={loading}
+            />
+          </footer>
+
+          <Preferences
+            isOpen={showPreferences}
+            onClose={() => setShowPreferences(false)}
+            selectedModel={selectedModel}
+            onModelChange={setSelectedModel}
+            initialTab={preferenceTab}
+          />
+        </div>
+      </div>
     </div>
   );
 }
