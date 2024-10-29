@@ -18,15 +18,18 @@ export const AVAILABLE_MODELS: Model[] = [
   { id: 'claude-3-sonnet-20240229', name: 'Claude 3 Sonnet', provider: 'anthropic' },
   { id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku', provider: 'anthropic' },
   
-  // Perplexity Models
-  { id: 'llama-3.1-sonar-small-128k-online', name: 'Sonar Small', provider: 'perplexity' },
-  { id: 'llama-3.1-sonar-medium-128k-online', name: 'Sonar Medium', provider: 'perplexity' },
-  { id: 'llama-3.1-sonar-large-128k-online', name: 'Sonar Large', provider: 'perplexity' },
-  { id: 'mixtral-8x7b-instruct', name: 'Mixtral 8x7B', provider: 'perplexity' },
-  { id: 'mistral-7b-instruct', name: 'Mistral 7B', provider: 'perplexity' },
-  { id: 'codellama-34b-instruct', name: 'CodeLlama 34B', provider: 'perplexity' },
-  { id: 'pplx-7b-online', name: 'PPLX 7B', provider: 'perplexity' },
-  { id: 'pplx-70b-online', name: 'PPLX 70B', provider: 'perplexity' },
+  // Perplexity Models - Sonar Series
+  { id: 'llama-3.1-sonar-small-128k-online', name: 'Sonar Small (8B)', provider: 'perplexity' },
+  { id: 'llama-3.1-sonar-large-128k-online', name: 'Sonar Large (70B)', provider: 'perplexity' },
+  { id: 'llama-3.1-sonar-huge-128k-online', name: 'Sonar Huge (405B)', provider: 'perplexity' },
+  
+  // Perplexity Models - Chat Series
+  { id: 'llama-3.1-sonar-small-128k-chat', name: 'Sonar Small Chat (8B)', provider: 'perplexity' },
+  { id: 'llama-3.1-sonar-large-128k-chat', name: 'Sonar Large Chat (70B)', provider: 'perplexity' },
+  
+  // Perplexity Models - Open Source
+  { id: 'llama-3.1-8b-instruct', name: 'Llama 3.1 8B', provider: 'perplexity' },
+  { id: 'llama-3.1-70b-instruct', name: 'Llama 3.1 70B', provider: 'perplexity' },
 ];
 
 interface ModelSelectorProps {
@@ -40,9 +43,17 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   onModelChange,
   disabled
 }) => {
-  // Group models by provider
+  // Group models by provider and series
   const anthropicModels = AVAILABLE_MODELS.filter(m => m.provider === 'anthropic');
-  const perplexityModels = AVAILABLE_MODELS.filter(m => m.provider === 'perplexity');
+  const perplexitySonarModels = AVAILABLE_MODELS.filter(m => 
+    m.provider === 'perplexity' && m.id.includes('sonar') && m.id.includes('online')
+  );
+  const perplexityChatModels = AVAILABLE_MODELS.filter(m => 
+    m.provider === 'perplexity' && m.id.includes('chat')
+  );
+  const perplexityOpenSourceModels = AVAILABLE_MODELS.filter(m => 
+    m.provider === 'perplexity' && m.id.includes('instruct')
+  );
 
   return (
     <Select
@@ -66,10 +77,37 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
             {model.name}
           </SelectItem>
         ))}
+        
         <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground mt-2">
-          Perplexity
+          Perplexity Sonar
         </div>
-        {perplexityModels.map((model) => (
+        {perplexitySonarModels.map((model) => (
+          <SelectItem
+            key={model.id}
+            value={model.id}
+            className="text-sm"
+          >
+            {model.name}
+          </SelectItem>
+        ))}
+
+        <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground mt-2">
+          Perplexity Chat
+        </div>
+        {perplexityChatModels.map((model) => (
+          <SelectItem
+            key={model.id}
+            value={model.id}
+            className="text-sm"
+          >
+            {model.name}
+          </SelectItem>
+        ))}
+
+        <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground mt-2">
+          Perplexity Open Source
+        </div>
+        {perplexityOpenSourceModels.map((model) => (
           <SelectItem
             key={model.id}
             value={model.id}
