@@ -1,18 +1,23 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { ChatMessage } from "./components/ChatMessage";
 import { ChatInput } from "./components/ChatInput";
 import { Preferences } from "./components/Preferences";
 import { ModelSelector, AVAILABLE_MODELS } from "./components/ModelSelector";
 import { TypingIndicator } from "./components/TypingIndicator";
-import { ThemeToggle } from "./components/ThemeToggle";
-import { AnimatePresence } from "framer-motion";
-import { Settings } from "lucide-react";
-import { useToast } from "./hooks/use-toast";
+import { FilePreview } from "./components/FilePreview";
+import { AnimatePresence, motion } from "framer-motion";
+import { Settings, Upload } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { useDropzone } from 'react-dropzone';
 
 interface Message {
   role: 'user' | 'assistant' | 'error';
   content: string;
+  file?: {
+    name: string;
+    content: string;
+  };
 }
 
 interface ApiResponse {
@@ -28,6 +33,35 @@ function App() {
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
+    if (acceptedFiles.length > 0) {
+      const file = acceptedFiles[0];
+      try {
+        const content = await file.text();
+        handleSendMessage("", file, content);
+      } catch (error) {
+        toast({
+          variant: "destructive",
+          description: "Failed to read file content",
+          duration: 2000,
+        });
+      }
+    }
+  }, []);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    maxFiles: 1,
+    noClick: true,
+    disabled: loading,
+    accept: {
+      'text/plain': ['.txt'],
+      'application/pdf': ['.pdf'],
+      'application/json': ['.json'],
+      'text/markdown': ['.md'],
+    }
+  });
+
   useEffect(() => {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
@@ -36,7 +70,6 @@ function App() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Check for Meta (Command/Windows) or Control + K
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         if (messages.length > 0) {
@@ -53,22 +86,32 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [messages, toast]);
 
-  const handleSendMessage = async (message: string) => {
+  const handleSendMessage = async (message: string, file?: File, fileContent?: string) => {
     setLoading(true);
     
-    const userMessage: Message = { role: 'user', content: message };
+    const userMessage: Message = { 
+      role: 'user', 
+      content: message || 'Uploaded file:',
+      ...(file && fileContent && {
+        file: {
+          name: file.name,
+          content: fileContent
+        }
+      })
+    };
     setMessages(prev => [...prev, userMessage]);
 
     try {
       const model = AVAILABLE_MODELS.find(m => m.id === selectedModel);
       if (!model) throw new Error('Invalid model selected');
 
-      // Send parameters as a single request object
       const response = await invoke<ApiResponse>('send_message', { 
         request: {
-          message,
+          message: message || `Analyze this ${file?.name}:`,
           model: selectedModel,
-          provider: model.provider
+          provider: model.provider,
+          file_content: fileContent,
+          file_name: file?.name
         }
       });
       
@@ -97,7 +140,28 @@ function App() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-background">
+    <div 
+      {...getRootProps()}
+      className="flex flex-col h-screen bg-background relative"
+    >
+      <AnimatePresence>
+        {isDragActive && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-50 bg-background/95 backdrop-blur-sm border-2 border-dashed border-primary/50 rounded-sm pointer-events-none"
+          >
+            <div className="flex h-full items-center justify-center gap-3 text-muted-foreground">
+              <Upload className="h-6 w-6" />
+              <span className="text-lg">Drop your file to start a conversation</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <input {...getInputProps()} />
+      
       <main 
         ref={chatContainerRef}
         className="flex-1 overflow-y-auto p-6 space-y-6"
@@ -105,16 +169,23 @@ function App() {
         <AnimatePresence>
           {messages.length === 0 ? (
             <div className="text-center text-muted-foreground mt-8 text-sm">
-              Start a conversation (⌘/Ctrl + K to clear history)
+              Start a conversation or drop a file (⌘/Ctrl + K to clear history)
             </div>
           ) : (
             messages.map((message, index) => (
-              <ChatMessage
-                key={index}
-                role={message.role}
-                content={message.content}
-                onErrorClick={() => setShowPreferences(true)}
-              />
+              <div key={index} className="space-y-2">
+                <ChatMessage
+                  role={message.role}
+                  content={message.content}
+                  onErrorClick={() => setShowPreferences(true)}
+                />
+                {message.file && (
+                  <FilePreview
+                    fileName={message.file.name}
+                    content={message.file.content}
+                  />
+                )}
+              </div>
             ))
           )}
           {loading && (

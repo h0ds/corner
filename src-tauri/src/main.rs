@@ -8,6 +8,7 @@ use dotenv::dotenv;
 use std::env;
 use reqwest;
 use serde_json;
+use std::fs;
 
 #[derive(Serialize, Deserialize)]
 struct ChatMessage {
@@ -60,6 +61,8 @@ struct SendMessageRequest {
     message: String,
     model: String,
     provider: String,
+    file_content: Option<String>,  // Base64 encoded file content
+    file_name: Option<String>,
 }
 
 #[tauri::command]
@@ -69,6 +72,17 @@ async fn send_message(
 ) -> Result<ApiResponse, String> {
     let client = reqwest::Client::new();
     
+    // Prepare the message content
+    let message_with_file = if let (Some(content), Some(name)) = (request.file_content, request.file_name) {
+        format!("{}\n\nAttached file '{}' content:\n{}", 
+            request.message,
+            name,
+            content
+        )
+    } else {
+        request.message
+    };
+
     match request.provider.as_str() {
         "anthropic" => {
             let api_key = {
@@ -94,7 +108,7 @@ async fn send_message(
                     "model": request.model,
                     "messages": [{
                         "role": "user",
-                        "content": request.message
+                        "content": message_with_file
                     }],
                     "max_tokens": 1024
                 }))
@@ -139,7 +153,7 @@ async fn send_message(
                     "model": request.model,
                     "messages": [{
                         "role": "user",
-                        "content": request.message
+                        "content": message_with_file
                     }],
                     "max_tokens": 1024
                 }))
