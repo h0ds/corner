@@ -5,6 +5,13 @@ import { User, AlertCircle, Settings } from "lucide-react";
 import { motion } from "framer-motion";
 import { useTheme } from "next-themes";
 import { ModelIcon } from './ModelIcon';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { AVAILABLE_MODELS } from './ModelSelector';
 
 interface ChatMessageProps {
   role: 'user' | 'assistant' | 'error';
@@ -23,6 +30,16 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   const { theme } = useTheme();
   const isMonochrome = theme === 'black';
   
+  const getModelInfo = () => {
+    if (!modelId) return null;
+    const model = AVAILABLE_MODELS.find(m => m.id === modelId);
+    if (!model) return null;
+    return {
+      name: model.name,
+      provider: model.provider === 'anthropic' ? 'Anthropic' : 'Perplexity'
+    };
+  };
+
   const getBackgroundColor = () => {
     if (isMonochrome) {
       return role === 'assistant' ? 'bg-black border border-white/20' : 
@@ -72,17 +89,36 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
       transition={{ duration: 0.3, ease: "easeOut" }}
       className={`flex gap-4 max-w-[80%] ${role === 'user' ? 'ml-auto flex-row-reverse' : ''}`}
     >
-      <Avatar className={`rounded-sm ${getAvatarColor()}`}>
-        <AvatarFallback className="rounded-sm">
-          {role === 'assistant' ? (
-            <ModelIcon modelId={modelId || ''} className={`h-4 w-4 ${getIconColor()}`} />
-          ) : isError ? (
-            <AlertCircle className={`h-4 w-4 ${getIconColor()}`} />
-          ) : (
-            <User className={`h-4 w-4 ${getIconColor()}`} />
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Avatar className={`rounded-sm ${getAvatarColor()}`}>
+              <AvatarFallback className="rounded-sm">
+                {role === 'assistant' ? (
+                  <ModelIcon modelId={modelId || ''} className={`h-4 w-4 ${getIconColor()}`} />
+                ) : isError ? (
+                  <AlertCircle className={`h-4 w-4 ${getIconColor()}`} />
+                ) : (
+                  <User className={`h-4 w-4 ${getIconColor()}`} />
+                )}
+              </AvatarFallback>
+            </Avatar>
+          </TooltipTrigger>
+          {role === 'assistant' && modelId && (
+            <TooltipContent side="top" className="text-xs">
+              {(() => {
+                const info = getModelInfo();
+                return info ? (
+                  <div className="flex flex-col gap-0.5">
+                    <span className="font-medium">{info.name}</span>
+                    <span className="text-muted-foreground">{info.provider}</span>
+                  </div>
+                ) : modelId;
+              })()}
+            </TooltipContent>
           )}
-        </AvatarFallback>
-      </Avatar>
+        </Tooltip>
+      </TooltipProvider>
       
       <motion.div
         initial={{ scale: 0.95 }}

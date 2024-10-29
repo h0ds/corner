@@ -16,6 +16,7 @@ import { saveMessages, loadMessages, clearMessages } from '@/lib/storage';
 interface Message {
   role: 'user' | 'assistant' | 'error';
   content: string;
+  modelId?: string;
   file?: {
     name: string;
     content: string;
@@ -224,6 +225,7 @@ function App() {
         const assistantMessage: Message = {
           role: 'assistant',
           content: response.content,
+          modelId: selectedModel,
         };
         setMessages(prev => [...prev, assistantMessage]);
       }
@@ -245,13 +247,13 @@ function App() {
         isDragActive ? 'ring-4 ring-primary ring-inset bg-primary/5' : ''
       }`}
     >
-      {process.env.NODE_ENV === 'development' && (
+      {/* {process.env.NODE_ENV === 'development' && (
         <div className="fixed top-0 left-0 bg-black/50 text-white p-2 z-[9999] text-xs">
           isDragActive: {isDragActive.toString()}<br />
           uploadedFile: {uploadedFile ? uploadedFile.name : 'no'}<br />
           loading: {loading.toString()}
         </div>
-      )}
+      )} */}
       
       <input {...getInputProps()} />
 
@@ -362,7 +364,7 @@ function App() {
                   role={message.role}
                   content={message.content}
                   onErrorClick={() => setShowPreferences(true)}
-                  modelId={message.role === 'assistant' ? selectedModel : undefined}
+                  modelId={message.modelId}
                 />
                 {message.file && (
                   <FilePreview

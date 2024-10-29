@@ -71,6 +71,7 @@ struct SendMessageRequest {
 #[tauri::command]
 async fn send_message(
     request: SendMessageRequest,
+    app_handle: AppHandle,
     state: State<'_, ApiKeys>,
 ) -> Result<ApiResponse, String> {
     let client = reqwest::Client::new();
@@ -87,7 +88,10 @@ async fn send_message(
 
     match request.provider.as_str() {
         "anthropic" => {
-            let api_key = {
+            let stored_keys = load_stored_keys(&app_handle)?;
+            let api_key = if let Some(key) = stored_keys["anthropic"].as_str() {
+                key.to_string()
+            } else {
                 let state_key = state.anthropic.lock().unwrap();
                 match state_key.clone() {
                     Some(key) if !key.is_empty() => key,
@@ -161,7 +165,10 @@ async fn send_message(
             }
         },
         "perplexity" => {
-            let api_key = {
+            let stored_keys = load_stored_keys(&app_handle)?;
+            let api_key = if let Some(key) = stored_keys["perplexity"].as_str() {
+                key.to_string()
+            } else {
                 let state_key = state.perplexity.lock().unwrap();
                 match state_key.clone() {
                     Some(key) if !key.is_empty() => key,
