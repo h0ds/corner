@@ -2,8 +2,10 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import { ThemeProvider } from "./components/theme-provider";
+
 import './assets/fonts.css'
 import './styles.css'
+import { Toaster } from "./components/ui/toaster";
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
@@ -15,6 +17,7 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
       themes={['light', 'dark', 'black']}
     >
       <App />
+      <Toaster />
     </ThemeProvider>
   </React.StrictMode>,
 );

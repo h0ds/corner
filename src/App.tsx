@@ -8,6 +8,7 @@ import { TypingIndicator } from "./components/TypingIndicator";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { AnimatePresence } from "framer-motion";
 import { Settings } from "lucide-react";
+import { useToast } from "./hooks/use-toast";
 
 interface Message {
   role: 'user' | 'assistant' | 'error';
@@ -25,12 +26,32 @@ function App() {
   const [showPreferences, setShowPreferences] = useState(false);
   const [selectedModel, setSelectedModel] = useState(AVAILABLE_MODELS[0].id);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
   }, [messages]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check for Meta (Command/Windows) or Control + K
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        if (messages.length > 0) {
+          setMessages([]);
+          toast({
+            description: "Chat history cleared",
+            duration: 2000,
+          });
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [messages, toast]);
 
   const handleSendMessage = async (message: string) => {
     setLoading(true);
@@ -84,7 +105,7 @@ function App() {
         <AnimatePresence>
           {messages.length === 0 ? (
             <div className="text-center text-muted-foreground mt-8 text-sm">
-              Start a conversation
+              Start a conversation (⌘/Ctrl + K to clear history)
             </div>
           ) : (
             messages.map((message, index) => (
