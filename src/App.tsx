@@ -245,7 +245,20 @@ function App() {
         }
       })
     };
-    setMessages(prev => [...prev, userMessage]);
+
+    // Update thread with user message
+    if (activeThreadId) {
+      setThreads(prev => prev.map(thread => {
+        if (thread.id === activeThreadId) {
+          return {
+            ...thread,
+            messages: [...thread.messages, userMessage],
+            updatedAt: Date.now(),
+          };
+        }
+        return thread;
+      }));
+    }
 
     try {
       const model = AVAILABLE_MODELS.find(m => m.id === selectedModel);
@@ -276,51 +289,59 @@ function App() {
           role: 'error',
           content: response.error,
         };
-        setMessages(prev => [...prev, errorMessage]);
+        // Update thread with error message
+        if (activeThreadId) {
+          setThreads(prev => prev.map(thread => {
+            if (thread.id === activeThreadId) {
+              return {
+                ...thread,
+                messages: [...thread.messages, errorMessage],
+                updatedAt: Date.now(),
+              };
+            }
+            return thread;
+          }));
+        }
       } else if (response.content) {
         const assistantMessage: Message = {
           role: 'assistant',
           content: response.content,
           modelId: selectedModel,
         };
-        setMessages(prev => [...prev, assistantMessage]);
+        // Update thread with assistant message
+        if (activeThreadId) {
+          setThreads(prev => prev.map(thread => {
+            if (thread.id === activeThreadId) {
+              return {
+                ...thread,
+                messages: [...thread.messages, assistantMessage],
+                updatedAt: Date.now(),
+              };
+            }
+            return thread;
+          }));
+        }
       }
     } catch (error) {
       const errorMessage: Message = {
         role: 'error',
         content: `Application error: ${error}`,
       };
-      setMessages(prev => [...prev, errorMessage]);
+      // Update thread with error message
+      if (activeThreadId) {
+        setThreads(prev => prev.map(thread => {
+          if (thread.id === activeThreadId) {
+            return {
+              ...thread,
+              messages: [...thread.messages, errorMessage],
+              updatedAt: Date.now(),
+            };
+          }
+          return thread;
+        }));
+      }
     } finally {
       setLoading(false);
-    }
-
-    // Update thread with new message
-    if (activeThreadId) {
-      setThreads(prev => prev.map(thread => {
-        if (thread.id === activeThreadId) {
-          return {
-            ...thread,
-            messages: [...thread.messages, userMessage],
-            updatedAt: Date.now(),
-          };
-        }
-        return thread;
-      }));
-    }
-
-    // Update thread with AI response
-    if (activeThreadId) {
-      setThreads(prev => prev.map(thread => {
-        if (thread.id === activeThreadId) {
-          return {
-            ...thread,
-            messages: [...thread.messages, assistantMessage],
-            updatedAt: Date.now(),
-          };
-        }
-        return thread;
-      }));
     }
   };
 
