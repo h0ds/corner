@@ -65,7 +65,12 @@ const ThreadItem = ({
   onDeleteThread,
   isDragging = false,
   isOverlay = false,
-}: SortableThreadItemProps & { isDragging?: boolean; isOverlay?: boolean }) => {
+  dragHandleProps = {},
+}: SortableThreadItemProps & {
+  isDragging?: boolean;
+  isOverlay?: boolean;
+  dragHandleProps?: any;
+}) => {
   return (
     <div
       className={cn(
@@ -77,23 +82,31 @@ const ThreadItem = ({
       )}
       onClick={() => !isOverlay && onThreadSelect(thread.id)}
     >
-      <div className="touch-none cursor-grab opacity-0 group-hover:opacity-100 transition-opacity">
+      <div 
+        {...dragHandleProps}
+        className="touch-none cursor-grab opacity-0 group-hover:opacity-100 transition-opacity"
+      >
         <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground" />
       </div>
       <MessageSquare className="h-4 w-4 shrink-0" />
       {editingThreadId === thread.id ? (
-        <Input
-          value={editingName}
-          onChange={(e) => onEditingNameChange(e.target.value)}
-          onBlur={onFinishRename}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') onFinishRename();
-            if (e.key === 'Escape') onFinishRename();
-          }}
-          className="h-6 text-sm py-0"
-          autoFocus
+        <div 
+          className="flex-1" 
           onClick={(e) => e.stopPropagation()}
-        />
+        >
+          <Input
+            value={editingName}
+            onChange={(e) => onEditingNameChange(e.target.value)}
+            onBlur={onFinishRename}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') onFinishRename();
+              if (e.key === 'Escape') onFinishRename();
+              e.stopPropagation();
+            }}
+            className="h-6 text-sm py-0"
+            autoFocus
+          />
+        </div>
       ) : (
         <span className="text-sm truncate flex-1">
           {thread.name || 'New Thread'}
@@ -132,7 +145,10 @@ const SortableThreadItem = ({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: thread.id });
+  } = useSortable({ 
+    id: thread.id,
+    disabled: editingThreadId === thread.id
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -148,8 +164,6 @@ const SortableThreadItem = ({
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
-          {...attributes}
-          {...listeners}
         >
           <ThreadItem
             thread={thread}
@@ -162,6 +176,7 @@ const SortableThreadItem = ({
             onThreadSelect={onThreadSelect}
             onDeleteThread={onDeleteThread}
             isDragging={isDragging}
+            dragHandleProps={{ ...attributes, ...listeners }}
           />
         </motion.div>
       </ContextMenuTrigger>
@@ -246,8 +261,8 @@ export const ThreadList: React.FC<ThreadListProps> = ({
   const activeThread = activeId ? threads.find(t => t.id === activeId) : null;
 
   return (
-    <div className="w-[250px] border-r border-border bg-card flex flex-col h-full">
-      <div className="p-2 border-b border-border">
+    <div className="absolute inset-0 border-r border-border bg-card flex flex-col">
+      <div className="p-2 border-b border-border mt-12">
         <button
           onClick={onNewThread}
           className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-sm

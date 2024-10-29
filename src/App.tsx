@@ -7,7 +7,7 @@ import { ModelSelector, AVAILABLE_MODELS } from "./components/ModelSelector";
 import { TypingIndicator } from "./components/TypingIndicator";
 import { FilePreview } from "./components/FilePreview";
 import { AnimatePresence, motion } from "framer-motion";
-import { Settings, Upload } from "lucide-react";
+import { Settings, Upload, PanelLeftClose, PanelLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useDropzone } from 'react-dropzone';
 import { getFileHandler } from '@/lib/fileHandlers';
@@ -51,6 +51,7 @@ function App() {
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const [uploadedFile, setUploadedFile] = useState<FileInfo | null>(null);
+  const [sidebarVisible, setSidebarVisible] = useState(true);
 
   // Get active thread messages
   const messages = useMemo(() => {
@@ -199,7 +200,6 @@ function App() {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         if (messages.length > 0) {
-          // Clear current thread
           if (activeThreadId) {
             setThreads(prev => prev.map(thread => {
               if (thread.id === activeThreadId) {
@@ -218,11 +218,16 @@ function App() {
           });
         }
       }
+      
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault();
+        setSidebarVisible(prev => !prev);
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [messages, toast, activeThreadId]);
+  }, [messages, toast, activeThreadId, sidebarVisible]);
 
   const handleSendMessage = async (message: string, file?: File, fileContent?: string) => {
     setLoading(true);
@@ -364,17 +369,53 @@ function App() {
 
   return (
     <div className="flex h-screen bg-background">
-      <ThreadList
-        threads={threads}
-        activeThreadId={activeThreadId}
-        onThreadSelect={setActiveThreadId}
-        onNewThread={handleNewThread}
-        onDeleteThread={handleDeleteThread}
-        onRenameThread={handleRenameThread}
-        onReorderThreads={handleReorderThreads}
-      />
+      {/* Sidebar with animation */}
+      <motion.div
+        initial={false}
+        animate={{
+          width: sidebarVisible ? '250px' : '0px',
+          opacity: sidebarVisible ? 1 : 0,
+        }}
+        transition={{ duration: 0.2 }}
+        className="relative"
+      >
+        {sidebarVisible && (
+          <ThreadList
+            threads={threads}
+            activeThreadId={activeThreadId}
+            onThreadSelect={setActiveThreadId}
+            onNewThread={handleNewThread}
+            onDeleteThread={handleDeleteThread}
+            onRenameThread={handleRenameThread}
+            onReorderThreads={handleReorderThreads}
+          />
+        )}
+      </motion.div>
+
+      {/* Toggle button with keyboard shortcut tooltip */}
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => setSidebarVisible(!sidebarVisible)}
+              className="absolute left-2 top-2 z-50 p-2 bg-background hover:bg-accent 
+                        rounded-sm transition-colors border border-border shadow-sm"
+            >
+              {sidebarVisible ? (
+                <PanelLeftClose className="h-4 w-4" />
+              ) : (
+                <PanelLeft className="h-4 w-4" />
+              )}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right" className="text-xs">
+            Toggle Sidebar
+            <span className="ml-2 text-muted-foreground">⌘S</span>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
       
-      {/* Existing chat UI wrapped in a div */}
+      {/* Main content */}
       <div className="flex-1 flex flex-col">
         <div 
           {...getRootProps()}

@@ -136,7 +136,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         >
           <CardContent className="p-3">
             <div className="flex items-start gap-2">
-              <div className={`whitespace-pre-wrap text-sm flex-1 ${getTextColor()}`}>
+              <div className={`whitespace-pre-wrap text-sm flex-1 selectable-text ${getTextColor()}`}>
                 {isError ? `Error: ${content}` : content}
               </div>
               {isError && (
