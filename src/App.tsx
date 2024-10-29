@@ -358,6 +358,10 @@ function App() {
     }));
   };
 
+  const handleReorderThreads = (newThreads: Thread[]) => {
+    setThreads(newThreads);
+  };
+
   return (
     <div className="flex h-screen bg-background">
       <ThreadList
@@ -367,6 +371,7 @@ function App() {
         onNewThread={handleNewThread}
         onDeleteThread={handleDeleteThread}
         onRenameThread={handleRenameThread}
+        onReorderThreads={handleReorderThreads}
       />
       
       {/* Existing chat UI wrapped in a div */}
