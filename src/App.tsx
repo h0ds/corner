@@ -7,6 +7,7 @@ import { ModelSelector, AVAILABLE_MODELS } from "./components/ModelSelector";
 import { TypingIndicator } from "./components/TypingIndicator";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { AnimatePresence } from "framer-motion";
+import { Settings } from "lucide-react";
 
 interface Message {
   role: 'user' | 'assistant' | 'error';
@@ -80,19 +81,10 @@ function App() {
         ref={chatContainerRef}
         className="flex-1 overflow-y-auto p-6 space-y-6"
       >
-        <div className="flex justify-between items-center">
-          <ThemeToggle />
-          <ModelSelector
-            selectedModel={selectedModel}
-            onModelChange={setSelectedModel}
-            disabled={loading}
-          />
-        </div>
-
         <AnimatePresence>
           {messages.length === 0 ? (
             <div className="text-center text-muted-foreground mt-8 text-sm">
-              Start a conversation with Claude
+              Start a conversation
             </div>
           ) : (
             messages.map((message, index) => (
@@ -112,18 +104,15 @@ function App() {
         </AnimatePresence>
       </main>
 
-      <footer className="relative p-4 bg-card border-t">
+      <footer className="relative p-4 bg-card border-t border-border">
         <div className="absolute right-4 -top-12">
           <button
             onClick={() => setShowPreferences(true)}
-            className="p-2 bg-background text-muted-foreground hover:text-foreground hover:bg-accent 
-                     rounded-sm shadow-md transition-colors"
+            className="p-2 bg-background text-muted-foreground hover:text-foreground 
+                     hover:bg-accent rounded-sm shadow-sm transition-colors"
             aria-label="Settings"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
+            <Settings className="h-5 w-5" />
           </button>
         </div>
         <ChatInput
@@ -135,6 +124,8 @@ function App() {
       <Preferences
         isOpen={showPreferences}
         onClose={() => setShowPreferences(false)}
+        selectedModel={selectedModel}
+        onModelChange={setSelectedModel}
       />
     </div>
   );

@@ -11,12 +11,16 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, CheckCircle2, XCircle } from "lucide-react";
-import { Separator } from "@/components/ui/separator";
+import { Loader2, CheckCircle2, XCircle, KeyRound, Palette, Bot } from "lucide-react";
+import { ThemeToggle } from './ThemeToggle';
+import { ModelSelector } from './ModelSelector';
+import { cn } from '@/lib/utils';
 
 interface PreferencesProps {
   isOpen: boolean;
   onClose: () => void;
+  selectedModel: string;
+  onModelChange: (model: string) => void;
 }
 
 type VerificationStatus = 'idle' | 'verifying' | 'success' | 'error';
@@ -26,10 +30,18 @@ interface ApiKeys {
   perplexity: string;
 }
 
-export const Preferences: React.FC<PreferencesProps> = ({ isOpen, onClose }) => {
+type PreferenceTab = 'api-keys' | 'appearance' | 'models';
+
+export const Preferences: React.FC<PreferencesProps> = ({ 
+  isOpen, 
+  onClose,
+  selectedModel,
+  onModelChange
+}) => {
   const [keys, setKeys] = useState<ApiKeys>({ anthropic: '', perplexity: '' });
   const [isSaving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<PreferenceTab>('api-keys');
   const [verificationStatus, setVerificationStatus] = useState<{
     anthropic: VerificationStatus;
     perplexity: VerificationStatus;
@@ -142,64 +154,136 @@ export const Preferences: React.FC<PreferencesProps> = ({ isOpen, onClose }) => 
 
   const renderApiKeyInput = (type: keyof ApiKeys, label: string) => (
     <div className="space-y-2">
-      <Label htmlFor={`${type}Key`} className="text-sm">{label}</Label>
+      <Label htmlFor={`${type}Key`} className="text-sm text-foreground">
+        {label}
+      </Label>
       <div className="relative">
         <Input
           id={`${type}Key`}
           type="password"
           value={keys[type]}
           onChange={(e) => handleKeyChange(type, e.target.value)}
-          placeholder={`Enter your ${type == "anthropic" ? "Anthropic" : "Perplexity"} API key`}
-          className="rounded-sm text-sm pr-8"
+          placeholder={`Enter your ${type} API key`}
+          className="rounded-sm text-sm pr-8 bg-background"
         />
         <div className="absolute right-2 top-1/2 -translate-y-1/2">
           {getVerificationIcon(verificationStatus[type])}
         </div>
       </div>
       {verificationStatus[type] === 'success' && (
-        <p className="text-sm text-green-600">API key verified successfully</p>
+        <p className="text-sm text-green-600 dark:text-green-400">
+          API key verified successfully
+        </p>
       )}
     </div>
   );
 
+  const tabs: { id: PreferenceTab; label: string; icon: React.ReactNode }[] = [
+    { id: 'api-keys', label: 'APIs', icon: <KeyRound className="h-4 w-4" /> },
+    { id: 'appearance', label: 'Appearance', icon: <Palette className="h-4 w-4" /> },
+    { id: 'models', label: 'Models', icon: <Bot className="h-4 w-4" /> },
+  ];
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'api-keys':
+        return (
+          <div className="space-y-4">
+            {renderApiKeyInput('anthropic', 'Anthropic API Key')}
+            <div className="my-4" />
+            {renderApiKeyInput('perplexity', 'Perplexity API Key')}
+          </div>
+        );
+      case 'appearance':
+        return (
+          <div className="space-y-4">
+            <div>
+              <Label className="text-sm mb-2 block">Theme</Label>
+              <ThemeToggle />
+            </div>
+          </div>
+        );
+      case 'models':
+        return (
+          <div className="space-y-4">
+            <div>
+              <Label className="text-sm mb-2 block">Foundation Model</Label>
+              <ModelSelector
+                selectedModel={selectedModel}
+                onModelChange={onModelChange}
+                disabled={false}
+              />
+            </div>
+          </div>
+        );
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="rounded-sm bg-background">
-        <DialogHeader>
-          <DialogTitle className="text-sm">Preferences</DialogTitle>
-        </DialogHeader>
+      <DialogContent className="rounded-sm bg-background border-border sm:max-w-[700px] p-0 gap-0">
+        <div className="flex h-[500px]">
+          {/* Sidebar */}
+          <div className="w-[200px] border-r border-border p-2 space-y-1">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={cn(
+                  "flex items-center gap-2 w-full px-3 py-2 text-sm rounded-sm",
+                  "hover:bg-accent hover:text-accent-foreground transition-colors",
+                  activeTab === tab.id ? "bg-accent text-accent-foreground" : "text-muted-foreground"
+                )}
+              >
+                {tab.icon}
+                {tab.label}
+              </button>
+            ))}
+          </div>
 
-        <div className="space-y-4 py-4">
-          {renderApiKeyInput('anthropic', 'Anthropic API Key')}
-          <Separator className="my-4 dark:bg-border" />
-          {renderApiKeyInput('perplexity', 'Perplexity API Key')}
+          {/* Content */}
+          <div className="flex-1 p-6">
+            <DialogHeader>
+              <DialogTitle className="text-sm font-medium">
+                {tabs.find(t => t.id === activeTab)?.label}
+              </DialogTitle>
+            </DialogHeader>
 
-          {error && (
-            <Alert variant="destructive" className="rounded-sm">
-              <AlertDescription className="text-sm">{error}</AlertDescription>
-            </Alert>
-          )}
+            <div className="mt-4">
+              {renderContent()}
+            </div>
+
+            {error && (
+              <Alert variant="destructive" className="rounded-sm mt-4">
+                <AlertDescription className="text-sm">
+                  {error}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {activeTab === 'api-keys' && (
+              <DialogFooter className="gap-2 mt-6">
+                <Button 
+                  variant="outline" 
+                  onClick={onClose}
+                  className="rounded-sm text-sm"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleSave} 
+                  disabled={isSaving || 
+                    (!keys.anthropic && !keys.perplexity) || 
+                    verificationStatus.anthropic === 'verifying' || 
+                    verificationStatus.perplexity === 'verifying'}
+                  className="rounded-sm text-sm"
+                >
+                  {isSaving ? 'Saving...' : 'Save'}
+                </Button>
+              </DialogFooter>
+            )}
+          </div>
         </div>
-
-        <DialogFooter>
-          <Button 
-            variant="outline" 
-            onClick={onClose}
-            className="rounded-sm text-sm"
-          >
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleSave} 
-            disabled={isSaving || 
-              (!keys.anthropic && !keys.perplexity) || 
-              verificationStatus.anthropic === 'verifying' || 
-              verificationStatus.perplexity === 'verifying'}
-            className="rounded-sm text-sm"
-          >
-            {isSaving ? 'Saving...' : 'Save'}
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

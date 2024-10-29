@@ -7,7 +7,13 @@ import './styles.css'
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+    <ThemeProvider 
+      attribute="class" 
+      defaultTheme="light" 
+      enableSystem 
+      storageKey="ui-theme"
+      themes={['light', 'dark', 'black']}
+    >
       <App />
     </ThemeProvider>
   </React.StrictMode>,
