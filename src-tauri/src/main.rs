@@ -61,7 +61,7 @@ struct SendMessageRequest {
     message: String,
     model: String,
     provider: String,
-    file_content: Option<String>,  // Base64 encoded file content
+    file_content: Option<String>,
     file_name: Option<String>,
 }
 
@@ -272,13 +272,19 @@ async fn verify_api_key(request: VerifyRequest) -> Result<ApiResponse, String> {
     })
 }
 
+#[tauri::command]
+async fn handle_file_drop(path: String) -> Result<String, String> {
+    match fs::read_to_string(&path) {
+        Ok(content) => Ok(content),
+        Err(e) => Err(format!("Failed to read file: {}", e))
+    }
+}
+
 fn main() {
     dotenv().ok();
     
-    let anthropic_key = env::var("ANTHROPIC_API_KEY").ok();
-    let perplexity_key = env::var("PERPLEXITY_API_KEY").ok();
-
     tauri::Builder::default()
+        .plugin(tauri_plugin_fs::init())
         .manage(ApiKeys {
             anthropic: Mutex::new(None),
             perplexity: Mutex::new(None),
@@ -287,7 +293,8 @@ fn main() {
             send_message,
             get_api_keys,
             set_api_keys,
-            verify_api_key
+            verify_api_key,
+            handle_file_drop
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
