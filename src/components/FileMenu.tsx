@@ -48,7 +48,7 @@ export const FileMenu: React.FC<FileMenuProps> = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Files</DialogTitle>
+          <DialogTitle>Upload Files</DialogTitle>
         </DialogHeader>
 
         {/* Drop zone */}
@@ -86,7 +86,7 @@ export const FileMenu: React.FC<FileMenuProps> = ({
                       {file.name}
                     </span>
                   </div>
-                  <Button
+                  {/* <Button
                     variant="ghost"
                     size="icon"
                     className="h-6 w-6"
@@ -95,7 +95,7 @@ export const FileMenu: React.FC<FileMenuProps> = ({
                     }}
                   >
                     <X className="h-4 w-4" />
-                  </Button>
+                  </Button> */}
                 </div>
               ))}
             </div>

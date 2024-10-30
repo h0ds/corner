@@ -13,6 +13,10 @@ use tauri::AppHandle;
 use tauri::Manager;
 use tauri::State;
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION};
+use std::path::Path;
+use base64::engine::general_purpose::STANDARD;
+use base64::Engine;
+use percent_encoding;
 
 #[derive(Serialize, Deserialize)]
 struct ChatMessage {
@@ -730,9 +734,104 @@ async fn verify_api_key(
 
 #[tauri::command]
 async fn handle_file_drop(path: String) -> Result<String, String> {
-    match fs::read_to_string(&path) {
-        Ok(content) => Ok(content),
-        Err(e) => Err(format!("Failed to read file: {}", e)),
+    println!("Received file path: {}", path);
+    
+    // Clean the path
+    let clean_path = if path.starts_with("file://") {
+        path.strip_prefix("file://").unwrap_or(&path)
+    } else {
+        &path
+    };
+    
+    // URL decode the path
+    let decoded_path = percent_encoding::percent_decode_str(clean_path)
+        .decode_utf8()
+        .map_err(|e| format!("Failed to decode path: {}", e))?;
+    
+    println!("Cleaned and decoded path: {}", decoded_path);
+    
+    // Create Path from cleaned string
+    let path = Path::new(decoded_path.as_ref());
+    
+    // If the path doesn't exist, try to find it in common directories
+    let file_path = if !path.exists() {
+        let file_name = path.file_name()
+            .and_then(|n| n.to_str())
+            .ok_or_else(|| "Invalid file name".to_string())?;
+            
+        get_real_path(decoded_path.to_string(), Some(file_name.to_string()))?
+    } else {
+        decoded_path.to_string()
+    };
+    
+    println!("Final path to read: {}", file_path);
+
+    // Check if the file is a PDF by extension
+    let is_pdf = file_path.to_lowercase().ends_with(".pdf");
+    
+    if is_pdf {
+        println!("Handling PDF file");
+        // For PDFs, read as binary and convert to base64
+        match fs::read(&file_path) {
+            Ok(bytes) => {
+                println!("Successfully read PDF file as binary");
+                Ok(format!("data:application/pdf;base64,{}", 
+                    STANDARD.encode(&bytes)))
+            },
+            Err(e) => {
+                println!("Failed to read PDF file: {:?}", e);
+                Err(format!("Failed to read PDF file: {}", e))
+            }
+        }
+    } else {
+        // For non-PDF files, try text first, then fallback to binary
+        match fs::read_to_string(&file_path) {
+            Ok(content) => {
+                println!("Successfully read file as text");
+                Ok(content)
+            },
+            Err(e) => {
+                println!("Error reading as text: {:?}", e);
+                // Try reading as binary
+                match fs::read(&file_path) {
+                    Ok(bytes) => {
+                        match String::from_utf8(bytes.clone()) {
+                            Ok(content) => {
+                                println!("Successfully converted binary to UTF-8");
+                                Ok(content)
+                            },
+                            Err(_) => {
+                                println!("Converting binary to base64");
+                                // Determine MIME type based on file extension
+                                let mime_type = match Path::new(&file_path)
+                                    .extension()
+                                    .and_then(|ext| ext.to_str())
+                                    .map(|ext| ext.to_lowercase())
+                                {
+                                    Some(ext) => match ext.as_str() {
+                                        "png" => "image/png",
+                                        "jpg" | "jpeg" => "image/jpeg",
+                                        "gif" => "image/gif",
+                                        "webp" => "image/webp",
+                                        "svg" => "image/svg+xml",
+                                        "pdf" => "application/pdf",
+                                        _ => "application/octet-stream",
+                                    },
+                                    None => "application/octet-stream",
+                                };
+                                Ok(format!("data:{};base64,{}", 
+                                    mime_type,
+                                    STANDARD.encode(&bytes)))
+                            }
+                        }
+                    },
+                    Err(e) => {
+                        println!("Failed to read file as binary: {:?}", e);
+                        Err(format!("Failed to read file: {}", e))
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -790,6 +889,112 @@ async fn store_api_key(app_handle: AppHandle, request: serde_json::Value) -> Res
     Ok(())
 }
 
+#[tauri::command]
+fn get_real_path(path: String, file_name: Option<String>) -> Result<String, String> {
+    println!("Attempting to resolve path: {}", path);
+    println!("File name: {:?}", file_name);
+    
+    // Try to get the current working directory
+    let cwd = env::current_dir()
+        .map_err(|e| format!("Failed to get current directory: {}", e))?;
+    println!("Current working directory: {:?}", cwd);
+    
+    // Try different locations to find the file
+    let possible_paths = vec![
+        // Try the exact path first
+        Path::new(&path).to_path_buf(),
+        // Try in current directory
+        cwd.join(&path),
+        // Try in Downloads directory
+        dirs::download_dir().unwrap_or_default().join(file_name.as_ref().unwrap_or(&path)),
+        // Try in Documents directory
+        dirs::document_dir().unwrap_or_default().join(file_name.as_ref().unwrap_or(&path)),
+        // Try in Desktop directory
+        dirs::desktop_dir().unwrap_or_default().join(file_name.as_ref().unwrap_or(&path)),
+    ];
+    
+    // Try each path
+    for try_path in possible_paths {
+        println!("Trying path: {:?}", try_path);
+        if try_path.exists() {
+            println!("Found file at: {:?}", try_path);
+            return try_path
+                .to_str()
+                .ok_or_else(|| "Failed to convert path to string".to_string())
+                .map(String::from);
+        }
+    }
+    
+    Err(format!("Could not find file in any expected location: {}", path))
+}
+
+#[tauri::command]
+async fn init_cache_dir() -> Result<(), String> {
+    let cache_dir = get_cache_dir()?;
+    fs::create_dir_all(&cache_dir)
+        .map_err(|e| format!("Failed to create cache directory: {}", e))?;
+    println!("Cache directory initialized at: {:?}", cache_dir);
+    Ok(())
+}
+
+#[tauri::command]
+async fn cache_file(
+    file_id: String,
+    file_name: String,
+    content: String,
+    metadata: String
+) -> Result<(), String> {
+    let cache_dir = get_cache_dir()?;
+    
+    // Create metadata file path
+    let meta_path = cache_dir.join(format!("{}.meta.json", file_id));
+    println!("Writing metadata to: {:?}", meta_path);
+    
+    // Write metadata
+    fs::write(&meta_path, metadata)
+        .map_err(|e| format!("Failed to write metadata: {}", e))?;
+    
+    // Create content file path
+    let content_path = cache_dir.join(format!("{}.content", file_id));
+    println!("Writing content to: {:?}", content_path);
+    
+    // Write content
+    fs::write(&content_path, content)
+        .map_err(|e| format!("Failed to write content: {}", e))?;
+    
+    println!("File cached successfully: {}", file_id);
+    Ok(())
+}
+
+#[tauri::command]
+async fn load_cached_file(file_id: String) -> Result<serde_json::Value, String> {
+    let cache_dir = get_cache_dir()?;
+    
+    // Read metadata
+    let meta_path = cache_dir.join(format!("{}.meta.json", file_id));
+    let metadata = fs::read_to_string(&meta_path)
+        .map_err(|e| format!("Failed to read metadata: {}", e))?;
+    
+    // Read content
+    let content_path = cache_dir.join(format!("{}.content", file_id));
+    let content = fs::read_to_string(&content_path)
+        .map_err(|e| format!("Failed to read content: {}", e))?;
+    
+    Ok(serde_json::json!({
+        "metadata": metadata,
+        "content": content
+    }))
+}
+
+fn get_cache_dir() -> Result<PathBuf, String> {
+    let app_cache = dirs::cache_dir()
+        .ok_or_else(|| "Failed to get cache directory".to_string())?
+        .join("lex")
+        .join("cache");
+    
+    Ok(app_cache)
+}
+
 fn main() {
     dotenv().ok();
 
@@ -809,7 +1014,11 @@ fn main() {
             verify_api_key,
             handle_file_drop,
             get_stored_api_keys,
-            store_api_key
+            store_api_key,
+            get_real_path,
+            init_cache_dir,
+            cache_file,
+            load_cached_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

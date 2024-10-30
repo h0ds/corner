@@ -11,46 +11,35 @@
     "shell:default",
     "upload:default",
     {
-      "identifier": "fs:allow-app-write",
+      "identifier": "fs:allow-read",
       "allow": [
-        {
-          "path": "$APPDATA/**"
-        },
-        {
-          "path": "$APPCONFIG/**"
-        },
-        {
-          "path": "$APPCACHE/**"
-        }
+        "**",
+        "$DOCUMENT/**",
+        "$DESKTOP/**",
+        "$DOWNLOAD/**",
+        "$HOME/**"
       ]
     },
     {
-      "identifier": "fs:allow-app-read",
+      "identifier": "fs:allow-write",
       "allow": [
-        {
-          "path": "$APPDATA/**"
-        },
-        {
-          "path": "$APPCONFIG/**"
-        },
-        {
-          "path": "$APPCACHE/**"
-        }
+        "$APPDATA/**",
+        "$APPCONFIG/**",
+        "$APPCACHE/**",
+        "$LOCALDATA/**",
+        "cache/**"
       ]
     },
     {
-      "identifier": "fs:allow-create",
+      "identifier": "fs:scope",
       "allow": [
-        {
-          "path": "$APPDATA/**"
-        },
-        {
-          "path": "$APPCONFIG/**"
-        },
-        {
-          "path": "$APPCACHE/**"
-        }
+        "**",
+        "$DOCUMENT/**",
+        "$DESKTOP/**",
+        "$DOWNLOAD/**",
+        "$HOME/**"
       ]
-    }
+    },
+    "fs:default"
   ]
 }

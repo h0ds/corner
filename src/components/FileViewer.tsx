@@ -6,9 +6,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { FileAttachment } from '@/types';
-import { FileText, Download, ExternalLink, Image, FileType } from 'lucide-react';
+import { FileText, Download, ExternalLink, Image } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { isImageFile, isPdfFile } from '@/lib/fileHandlers';
 
 interface FileViewerProps {
   isOpen: boolean;
@@ -25,14 +24,8 @@ export const FileViewer: React.FC<FileViewerProps> = ({
 }) => {
   const sortedFiles = [...files].sort((a, b) => b.timestamp - a.timestamp);
 
-  const getFileIcon = (fileName: string) => {
-    if (isImageFile({ name: fileName, type: fileName.split('.').pop() || '' } as File)) {
-      return <Image className="h-4 w-4 text-primary" />;
-    }
-    if (isPdfFile({ name: fileName, type: fileName.split('.').pop() || '' } as File)) {
-      return <FileType className="h-4 w-4 text-primary" />;
-    }
-    return <FileText className="h-4 w-4 text-primary" />;
+  const isImage = (fileName: string) => {
+    return fileName.match(/\.(jpg|jpeg|png|gif|webp|svg|bmp)$/i);
   };
 
   return (
@@ -56,7 +49,11 @@ export const FileViewer: React.FC<FileViewerProps> = ({
                   className="flex items-center gap-3 p-3 rounded-sm hover:bg-accent group"
                 >
                   <div className="p-2 bg-primary/10 rounded-sm">
-                    {getFileIcon(file.name)}
+                    {isImage(file.name) ? (
+                      <Image className="h-4 w-4 text-primary" />
+                    ) : (
+                      <FileText className="h-4 w-4 text-primary" />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
@@ -73,7 +70,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({
                       onClick={() => {
                         const win = window.open('', '_blank');
                         if (win) {
-                          if (isImageFile({ name: file.name, type: file.name.split('.').pop() || '' } as File)) {
+                          if (isImage(file.name)) {
                             win.document.write(`
                               <html>
                                 <head>
@@ -99,8 +96,6 @@ export const FileViewer: React.FC<FileViewerProps> = ({
                                 </body>
                               </html>
                             `);
-                          } else if (isPdfFile({ name: file.name, type: file.name.split('.').pop() || '' } as File)) {
-                            win.location.href = file.content;
                           } else {
                             win.document.write(`
                               <html>
@@ -128,8 +123,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({
                     </button>
                     <button
                       onClick={() => {
-                        const blob = isImageFile({ name: file.name, type: file.name.split('.').pop() || '' } as File) || 
-                                   isPdfFile({ name: file.name, type: file.name.split('.').pop() || '' } as File)
+                        const blob = isImage(file.name)
                           ? fetch(file.content).then(r => r.blob())
                           : Promise.resolve(new Blob([file.content], { type: 'text/plain' }));
                         

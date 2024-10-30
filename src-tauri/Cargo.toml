@@ -27,6 +27,9 @@ dotenv = "0.15"
 tauri-plugin-fs = "2"
 tauri-plugin-shell = "2"
 tauri-plugin-upload = "2"
+base64 = "0.21"
+percent-encoding = "2.3.1"
+dirs = "5.0"
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]

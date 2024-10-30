@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { resolveResource } from '@tauri-apps/api/path';
+import { convertFileSrc } from '@tauri-apps/api/tauri';
 import { ChatMessage } from "./components/ChatMessage";
 import { ChatInput } from "./components/ChatInput";
 import { Preferences } from "./components/Preferences";
@@ -109,7 +111,7 @@ function App() {
   };
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
-    console.log('onDrop called', acceptedFiles);
+    console.log('onDrop called with files:', acceptedFiles);
     if (acceptedFiles.length > 0) {
       const file = acceptedFiles[0];
       console.log('Processing file:', file);
@@ -130,28 +132,58 @@ function App() {
       });
       
       try {
-        // Read file content
         let content: string;
         const nativeFile = file as any;
         
         if (nativeFile.path) {
-          // If it's a native file with a path, use Tauri's readTextFile
-          console.log('Reading native file:', nativeFile.path);
-          content = await invoke('handle_file_drop', { path: nativeFile.path });
+          console.log('Original native file path:', nativeFile.path);
+          
+          // Get the full system path
+          let fullPath = nativeFile.path;
+          
+          // For macOS, handle the path differently
+          if (process.platform === 'darwin') {
+            // Remove the file:// prefix if it exists
+            fullPath = fullPath.replace(/^file:\/\//, '');
+            
+            // Decode any URL encoded characters
+            fullPath = decodeURIComponent(fullPath);
+            
+            // If the path doesn't start with /, add it
+            if (!fullPath.startsWith('/')) {
+              fullPath = `/${fullPath}`;
+            }
+            
+            // If the path contains the file name without directory, try to get the directory
+            if (!fullPath.includes('/')) {
+              try {
+                const realPath = await invoke('get_real_path', { 
+                  path: fullPath,
+                  fileName: file.name 
+                });
+                if (realPath) {
+                  fullPath = realPath as string;
+                }
+              } catch (e) {
+                console.error('Failed to resolve real path:', e);
+              }
+            }
+          }
+          
+          console.log('Attempting to read file from path:', fullPath);
+          content = await invoke('handle_file_drop', { path: fullPath });
         } else {
-          // For web file drops, use the browser's FileReader
-          console.log('Reading web file');
-          const handler = getFileHandler(file);
-          content = await handler(file);
+          console.log('Web file - no native path available');
+          content = await getFileHandler(file);
         }
 
-        console.log('File content read successfully, type:', file.type);
+        console.log('File content read successfully');
         handleSendMessage("", file, content);
       } catch (error) {
         console.error('File read error:', error);
         toast({
           variant: "destructive",
-          description: "Failed to read file content",
+          description: `Failed to read file: ${error}`,
           duration: 2000,
         });
       }
@@ -212,14 +244,40 @@ function App() {
         if (item.kind === 'file') {
           const file = item.getAsFile();
           if (file) {
-            const entry = item.webkitGetAsEntry?.();
-            if (entry?.isFile) {
-              const nativePath = (entry as any).fullPath;
+            // Try different methods to get the full path
+            let fullPath: string | undefined;
+            
+            // Method 1: Check for native path property
+            if ('path' in file) {
+              fullPath = (file as any).path;
+            }
+            
+            // Method 2: Try webkitGetAsEntry
+            if (!fullPath) {
+              const entry = item.webkitGetAsEntry?.();
+              if (entry?.isFile && entry.fullPath) {
+                fullPath = entry.fullPath;
+              }
+            }
+            
+            // Method 3: Try dataTransfer.files
+            if (!fullPath && event.dataTransfer?.files?.[i]) {
+              const dtFile = event.dataTransfer.files[i];
+              if ('path' in dtFile) {
+                fullPath = (dtFile as any).path;
+              }
+            }
+
+            if (fullPath) {
+              console.log('Found file path:', fullPath);
               Object.defineProperty(file, 'path', {
-                value: nativePath,
+                value: fullPath,
                 writable: false
               });
+            } else {
+              console.log('No path found for file:', file.name);
             }
+            
             files.push(file);
           }
         }
@@ -256,7 +314,17 @@ function App() {
         const clearHistoryShortcut = shortcuts.find(s => s.id === 'clear-history');
         const toggleSidebarShortcut = shortcuts.find(s => s.id === 'toggle-sidebar');
 
-        if (clearHistoryShortcut && matchesShortcut(e, clearHistoryShortcut)) {
+        // Create a wrapper object that matches the expected type
+        const eventWrapper = {
+          key: e.key,
+          metaKey: e.metaKey,
+          ctrlKey: e.ctrlKey,
+          altKey: e.altKey,
+          shiftKey: e.shiftKey,
+          preventDefault: () => e.preventDefault()
+        } as unknown as React.KeyboardEvent<Element>;
+
+        if (clearHistoryShortcut && matchesShortcut(eventWrapper, clearHistoryShortcut)) {
           e.preventDefault();
           if (messages.length > 0 && activeThreadId) {
             setThreads(prev => prev.map(thread => {
@@ -276,7 +344,7 @@ function App() {
           }
         }
         
-        if (toggleSidebarShortcut && matchesShortcut(e, toggleSidebarShortcut)) {
+        if (toggleSidebarShortcut && matchesShortcut(eventWrapper, toggleSidebarShortcut)) {
           e.preventDefault();
           setSidebarVisible(prev => !prev);
         }
@@ -296,9 +364,43 @@ function App() {
 
     if (file && fileContent) {
       try {
+        console.log('Attempting to cache file:', {
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          contentLength: fileContent.length,
+          isBase64: fileContent.startsWith('data:')
+        });
+        
         // Cache the file
         cachedFile = await cacheFile(file, fileContent);
-        console.log('File cached:', cachedFile);
+        console.log('File cached successfully:', cachedFile);
+
+        // If this is just a file upload (no message), update thread and return
+        if (!message && activeThreadId) {
+          setThreads(prev => prev.map(thread => {
+            if (thread.id === activeThreadId) {
+              return {
+                ...thread,
+                files: [
+                  ...(thread.files || []),
+                  {
+                    name: cachedFile!.name,
+                    content: cachedFile!.content,
+                    timestamp: cachedFile!.timestamp,
+                    cacheId: cachedFile!.id
+                  }
+                ],
+                cachedFiles: [...(thread.cachedFiles || []), cachedFile!.id],
+                updatedAt: Date.now(),
+              };
+            }
+            return thread;
+          }));
+          setLoading(false);
+          setUploadedFile(null);
+          return;
+        }
       } catch (error) {
         console.error('Failed to cache file:', error);
         toast({
@@ -307,132 +409,13 @@ function App() {
           duration: 2000,
         });
         setLoading(false);
+        setUploadedFile(null);
         return;
       }
     }
 
-    const userMessage: Message = { 
-      role: 'user', 
-      content: message || 'Uploaded file:',
-      ...(cachedFile && {
-        file: {
-          name: cachedFile.name,
-          content: cachedFile.content,
-          timestamp: cachedFile.timestamp,
-          cacheId: cachedFile.id
-        }
-      })
-    };
-
-    // Update thread with user message and cached file reference
-    if (activeThreadId) {
-      setThreads(prev => prev.map(thread => {
-        if (thread.id === activeThreadId) {
-          return {
-            ...thread,
-            messages: [...thread.messages, userMessage],
-            files: cachedFile ? [
-              ...thread.files,
-              {
-                name: cachedFile.name,
-                content: cachedFile.content,
-                timestamp: cachedFile.timestamp,
-                cacheId: cachedFile.id
-              }
-            ] : thread.files,
-            cachedFiles: cachedFile ? 
-              [...(thread.cachedFiles || []), cachedFile.id] : 
-              thread.cachedFiles || [],
-            updatedAt: Date.now(),
-          };
-        }
-        return thread;
-      }));
-    }
-
-    try {
-      const model = AVAILABLE_MODELS.find(m => m.id === selectedModel);
-      if (!model) throw new Error('Invalid model selected');
-
-      console.log('Invoking backend with:', {
-        message: message || `Analyze this ${file?.name}:`,
-        model: selectedModel,
-        provider: model.provider,
-        hasFileContent: !!fileContent,
-        fileName: file?.name
-      });
-
-      const response = await invoke<ApiResponse>('send_message', { 
-        request: {
-          message: message || `Analyze this ${file?.name}:`,
-          model: selectedModel,
-          provider: model.provider,
-          file_content: fileContent,
-          file_name: file?.name
-        }
-      });
-      
-      console.log('Backend response:', response);
-
-      if (response.error) {
-        const errorMessage: Message = {
-          role: 'error',
-          content: response.error,
-        };
-        // Update thread with error message
-        if (activeThreadId) {
-          setThreads(prev => prev.map(thread => {
-            if (thread.id === activeThreadId) {
-              return {
-                ...thread,
-                messages: [...thread.messages, errorMessage],
-                updatedAt: Date.now(),
-              };
-            }
-            return thread;
-          }));
-        }
-      } else if (response.content) {
-        const assistantMessage: Message = {
-          role: 'assistant',
-          content: response.content,
-          modelId: selectedModel,
-        };
-        // Update thread with assistant message
-        if (activeThreadId) {
-          setThreads(prev => prev.map(thread => {
-            if (thread.id === activeThreadId) {
-              return {
-                ...thread,
-                messages: [...thread.messages, assistantMessage],
-                updatedAt: Date.now(),
-              };
-            }
-            return thread;
-          }));
-        }
-      }
-    } catch (error) {
-      const errorMessage: Message = {
-        role: 'error',
-        content: `Application error: ${error}`,
-      };
-      // Update thread with error message
-      if (activeThreadId) {
-        setThreads(prev => prev.map(thread => {
-          if (thread.id === activeThreadId) {
-            return {
-              ...thread,
-              messages: [...thread.messages, errorMessage],
-              updatedAt: Date.now(),
-            };
-          }
-          return thread;
-        }));
-      }
-    } finally {
-      setLoading(false);
-    }
+    setLoading(false);
+    setUploadedFile(null);
   };
 
   const handleRenameThread = (threadId: string, newName: string) => {
@@ -457,7 +440,7 @@ function App() {
     return threads.find(t => t.id === activeThreadId);
   }, [threads, activeThreadId]);
 
-  // Move handleFileUpload inside App component to access state and functions
+  // Fix handleFileUpload function
   const handleFileUpload = async (file: File) => {
     try {
       let content: string;
@@ -466,8 +449,8 @@ function App() {
       if (nativeFile.path) {
         content = await invoke('handle_file_drop', { path: nativeFile.path });
       } else {
-        const handler = getFileHandler(file);
-        content = await handler;
+        // Fix: getFileHandler returns a Promise<string> directly
+        content = await getFileHandler(file);
       }
 
       if (activeThreadId) {
