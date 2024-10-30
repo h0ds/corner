@@ -246,35 +246,39 @@ function App() {
   }, [messages]);
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const shortcuts = loadShortcuts();
-      
-      const clearHistoryShortcut = shortcuts.find(s => s.id === 'clear-history');
-      const toggleSidebarShortcut = shortcuts.find(s => s.id === 'toggle-sidebar');
+    const handleKeyDown = async (e: KeyboardEvent) => {
+      try {
+        const shortcuts = await loadShortcuts();
+        
+        const clearHistoryShortcut = shortcuts.find(s => s.id === 'clear-history');
+        const toggleSidebarShortcut = shortcuts.find(s => s.id === 'toggle-sidebar');
 
-      if (clearHistoryShortcut && matchesShortcut(e, clearHistoryShortcut)) {
-        e.preventDefault();
-        if (messages.length > 0 && activeThreadId) {
-          setThreads(prev => prev.map(thread => {
-            if (thread.id === activeThreadId) {
-              return {
-                ...thread,
-                messages: [],
-                updatedAt: Date.now(),
-              };
-            }
-            return thread;
-          }));
-          toast({
-            description: "Chat history cleared",
-            duration: 2000,
-          });
+        if (clearHistoryShortcut && matchesShortcut(e as unknown as KeyboardEvent<Element>, clearHistoryShortcut)) {
+          e.preventDefault();
+          if (messages.length > 0 && activeThreadId) {
+            setThreads(prev => prev.map(thread => {
+              if (thread.id === activeThreadId) {
+                return {
+                  ...thread,
+                  messages: [],
+                  updatedAt: Date.now(),
+                };
+              }
+              return thread;
+            }));
+            toast({
+              description: "Chat history cleared",
+              duration: 2000,
+            });
+          }
         }
-      }
-      
-      if (toggleSidebarShortcut && matchesShortcut(e, toggleSidebarShortcut)) {
-        e.preventDefault();
-        setSidebarVisible(prev => !prev);
+        
+        if (toggleSidebarShortcut && matchesShortcut(e as unknown as KeyboardEvent<Element>, toggleSidebarShortcut)) {
+          e.preventDefault();
+          setSidebarVisible(prev => !prev);
+        }
+      } catch (error) {
+        console.error('Error handling keyboard shortcut:', error);
       }
     };
 

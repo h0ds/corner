@@ -289,9 +289,9 @@ export const Preferences: React.FC<PreferencesProps> = ({
                 <span className="text-sm">{shortcut.description}</span>
                 <div className="flex items-center gap-2">
                   {editingShortcutId === shortcut.id ? (
-                    <div className="px-2 py-1 text-xs bg-background rounded-sm border border-primary animate-pulse">
-                      Press keys, then Enter to confirm...
-                      <span className="ml-2 text-muted-foreground">(Esc to cancel)</span>
+                    <div className="px-2 py-1 text-xs bg-background rounded-sm border border-primary animate-pulse min-w-[200px] text-center">
+                      {shortcuts.find(s => s.id === shortcut.id)?.currentKey || 'Press keys...'}
+                      <span className="ml-2 text-muted-foreground">(Enter to save, Esc to cancel)</span>
                     </div>
                   ) : (
                     <Button
@@ -337,12 +337,14 @@ export const Preferences: React.FC<PreferencesProps> = ({
   const handleShortcutChange = (shortcut: KeyboardShortcut) => {
     setRecordingShortcut(true);
     setEditingShortcutId(shortcut.id);
-    let currentKeys: string[] = [];
+    let currentCombination: string[] = [];
 
-    const handleKeyDown = async (e: KeyboardEvent) => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Stop event propagation and prevent default
       e.stopPropagation();
       e.preventDefault();
 
+      // Handle Escape to cancel
       if (e.key === 'Escape') {
         setEditingShortcutId(null);
         setRecordingShortcut(false);
@@ -350,26 +352,34 @@ export const Preferences: React.FC<PreferencesProps> = ({
         return;
       }
 
-      if (['Meta', 'Control', 'Alt', 'Shift'].includes(e.key)) {
-        return;
-      }
-
+      // Build the key combination
       const modifiers = [];
       if (e.metaKey) modifiers.push('⌘');
       if (e.ctrlKey) modifiers.push('Ctrl');
       if (e.altKey) modifiers.push('Alt');
       if (e.shiftKey) modifiers.push('Shift');
 
-      const key = e.key.length === 1 ? e.key.toUpperCase() : e.key;
-      currentKeys = [...modifiers, key];
+      // Get the main key, excluding modifier keys
+      let mainKey = e.key;
+      if (!['Meta', 'Control', 'Alt', 'Shift', 'Enter'].includes(mainKey)) {
+        mainKey = e.key.length === 1 ? e.key.toUpperCase() : e.key;
+        currentCombination = [...modifiers, mainKey];
 
-      if (e.key === 'Enter' && currentKeys.length > 1) {
-        const newShortcut = currentKeys.slice(0, -1).join(' + ');
+        // Show the current combination being recorded
+        const updatedShortcuts = shortcuts.map(s => 
+          s.id === shortcut.id ? { ...s, currentKey: currentCombination.join(' + ') } : s
+        );
+        setShortcuts(updatedShortcuts);
+      }
+
+      // Handle Enter to save
+      if (e.key === 'Enter' && currentCombination.length > 0) {
+        const newShortcut = currentCombination.join(' + ');
         const updatedShortcuts = shortcuts.map(s => 
           s.id === shortcut.id ? { ...s, currentKey: newShortcut } : s
         );
         setShortcuts(updatedShortcuts);
-        await saveShortcuts(updatedShortcuts);
+        saveShortcuts(updatedShortcuts);
         setEditingShortcutId(null);
         setRecordingShortcut(false);
         window.removeEventListener('keydown', handleKeyDown);
