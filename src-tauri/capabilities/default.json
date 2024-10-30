@@ -10,7 +10,47 @@
     "shell:allow-open",
     "shell:default",
     "upload:default",
-    "fs:default",
-    "fs:default"
+    {
+      "identifier": "fs:allow-app-write",
+      "allow": [
+        {
+          "path": "$APPDATA/**"
+        },
+        {
+          "path": "$APPCONFIG/**"
+        },
+        {
+          "path": "$APPCACHE/**"
+        }
+      ]
+    },
+    {
+      "identifier": "fs:allow-app-read",
+      "allow": [
+        {
+          "path": "$APPDATA/**"
+        },
+        {
+          "path": "$APPCONFIG/**"
+        },
+        {
+          "path": "$APPCACHE/**"
+        }
+      ]
+    },
+    {
+      "identifier": "fs:allow-create",
+      "allow": [
+        {
+          "path": "$APPDATA/**"
+        },
+        {
+          "path": "$APPCONFIG/**"
+        },
+        {
+          "path": "$APPCACHE/**"
+        }
+      ]
+    }
   ]
 }

@@ -613,8 +613,9 @@ fn main() {
     dotenv().ok();
 
     tauri::Builder::default()
-        .plugin(tauri_plugin_upload::init())
         .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_upload::init())
         .manage(ApiKeys {
             anthropic: Mutex::new(None),
             perplexity: Mutex::new(None),

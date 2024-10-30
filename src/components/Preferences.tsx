@@ -11,11 +11,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, CheckCircle2, XCircle, KeyRound, Palette, Bot } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, KeyRound, Palette, Bot, Keyboard, RotateCcw } from "lucide-react";
 import { ThemeToggle } from './ThemeToggle';
 import { ModelSelector } from './ModelSelector';
 import { cn } from '@/lib/utils';
 import { loadApiKeys } from '@/lib/apiKeys';
+import { KeyboardShortcut, DEFAULT_SHORTCUTS, loadShortcuts, saveShortcuts, resetShortcuts } from '@/lib/shortcuts';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 
 interface PreferencesProps {
   isOpen: boolean;
@@ -32,7 +34,7 @@ interface ApiKeys {
   perplexity: string;
 }
 
-type PreferenceTab = 'api-keys' | 'appearance' | 'models';
+type PreferenceTab = 'api-keys' | 'appearance' | 'models' | 'shortcuts';
 
 export const Preferences: React.FC<PreferencesProps> = ({ 
   isOpen, 
@@ -52,6 +54,9 @@ export const Preferences: React.FC<PreferencesProps> = ({
     anthropic: 'idle',
     perplexity: 'idle'
   });
+  const [shortcuts, setShortcuts] = useState<KeyboardShortcut[]>([]);
+  const [editingShortcutId, setEditingShortcutId] = useState<string | null>(null);
+  const [recordingShortcut, setRecordingShortcut] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -80,10 +85,14 @@ export const Preferences: React.FC<PreferencesProps> = ({
   }, [isOpen]);
 
   useEffect(() => {
-    if (isOpen) {
-      setActiveTab(initialTab);
+    if (isOpen && activeTab === 'shortcuts') {
+      const loadShortcutsData = async () => {
+        const shortcuts = await loadShortcuts();
+        setShortcuts(shortcuts);
+      };
+      loadShortcutsData();
     }
-  }, [isOpen, initialTab]);
+  }, [isOpen, activeTab]);
 
   const verifyKey = async (type: keyof ApiKeys, key: string) => {
     if (!key.trim()) {
@@ -221,6 +230,7 @@ export const Preferences: React.FC<PreferencesProps> = ({
     { id: 'api-keys', label: 'APIs', icon: <KeyRound className="h-4 w-4" /> },
     { id: 'appearance', label: 'Appearance', icon: <Palette className="h-4 w-4" /> },
     { id: 'models', label: 'Models', icon: <Bot className="h-4 w-4" /> },
+    { id: 'shortcuts', label: 'Shortcuts', icon: <Keyboard className="h-4 w-4" /> },
   ];
 
   const renderContent = () => {
@@ -255,11 +265,129 @@ export const Preferences: React.FC<PreferencesProps> = ({
             </div>
           </div>
         );
+      case 'shortcuts':
+        return (
+          <div className="space-y-4">
+            <div className="flex justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const reset = resetShortcuts();
+                  setShortcuts(reset);
+                }}
+                className="text-xs"
+              >
+                Reset to Defaults
+              </Button>
+            </div>
+            {shortcuts.map((shortcut) => (
+              <div
+                key={shortcut.id}
+                className="flex items-center justify-between p-3 rounded-sm bg-muted"
+              >
+                <span className="text-sm">{shortcut.description}</span>
+                <div className="flex items-center gap-2">
+                  {editingShortcutId === shortcut.id ? (
+                    <div className="px-2 py-1 text-xs bg-background rounded-sm border border-primary animate-pulse">
+                      Press keys, then Enter to confirm...
+                      <span className="ml-2 text-muted-foreground">(Esc to cancel)</span>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleShortcutChange(shortcut)}
+                      className="text-xs h-7 px-2"
+                    >
+                      {shortcut.currentKey}
+                    </Button>
+                  )}
+                  {shortcut.currentKey !== shortcut.defaultKey && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              const updated = shortcuts.map(s =>
+                                s.id === shortcut.id ? { ...s, currentKey: s.defaultKey } : s
+                              );
+                              setShortcuts(updated);
+                              saveShortcuts(updated);
+                            }}
+                            className="h-7 w-7 p-0"
+                          >
+                            <RotateCcw className="h-3 w-3" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Reset to default</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        );
     }
   };
 
+  const handleShortcutChange = (shortcut: KeyboardShortcut) => {
+    setRecordingShortcut(true);
+    setEditingShortcutId(shortcut.id);
+    let currentKeys: string[] = [];
+
+    const handleKeyDown = async (e: KeyboardEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
+
+      if (e.key === 'Escape') {
+        setEditingShortcutId(null);
+        setRecordingShortcut(false);
+        window.removeEventListener('keydown', handleKeyDown);
+        return;
+      }
+
+      if (['Meta', 'Control', 'Alt', 'Shift'].includes(e.key)) {
+        return;
+      }
+
+      const modifiers = [];
+      if (e.metaKey) modifiers.push('⌘');
+      if (e.ctrlKey) modifiers.push('Ctrl');
+      if (e.altKey) modifiers.push('Alt');
+      if (e.shiftKey) modifiers.push('Shift');
+
+      const key = e.key.length === 1 ? e.key.toUpperCase() : e.key;
+      currentKeys = [...modifiers, key];
+
+      if (e.key === 'Enter' && currentKeys.length > 1) {
+        const newShortcut = currentKeys.slice(0, -1).join(' + ');
+        const updatedShortcuts = shortcuts.map(s => 
+          s.id === shortcut.id ? { ...s, currentKey: newShortcut } : s
+        );
+        setShortcuts(updatedShortcuts);
+        await saveShortcuts(updatedShortcuts);
+        setEditingShortcutId(null);
+        setRecordingShortcut(false);
+        window.removeEventListener('keydown', handleKeyDown);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog 
+      open={isOpen} 
+      onOpenChange={(open) => {
+        if (!editingShortcutId) {
+          onClose();
+        }
+      }}
+    >
       <DialogContent className="rounded-sm bg-background border-border sm:max-w-[700px] p-0 gap-0">
         <div className="flex h-[500px]">
           {/* Sidebar */}

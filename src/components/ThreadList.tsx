@@ -81,7 +81,7 @@ const ThreadItem = ({
         "hover:bg-accent hover:text-accent-foreground transition-colors",
         activeThreadId === thread.id && "bg-accent text-accent-foreground",
         isDragging && "opacity-50",
-        isOverlay && "bg-background border border-border shadow-lg"
+        isOverlay && "bg-background border border-border shadow-lg scale-105 rotate-2"
       )}
       onClick={() => !isOverlay && onThreadSelect(thread.id)}
     >
@@ -177,7 +177,8 @@ const SortableThreadItem = ({
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
+    transition: transition || undefined,
+    zIndex: isDragging ? 999 : undefined,
   };
 
   return (
@@ -189,6 +190,10 @@ const SortableThreadItem = ({
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
+          className={cn(
+            "relative",
+            isDragging && "z-50"
+          )}
         >
           <ThreadItem
             thread={thread}
@@ -203,6 +208,9 @@ const SortableThreadItem = ({
             isDragging={isDragging}
             dragHandleProps={{ ...attributes, ...listeners }}
           />
+          {isDragging && (
+            <div className="absolute inset-0 bg-primary/10 border-2 border-primary rounded-sm pointer-events-none" />
+          )}
         </motion.div>
       </ContextMenuTrigger>
       <ContextMenuContent>
@@ -305,12 +313,13 @@ export const ThreadList: React.FC<ThreadListProps> = ({
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
           onDragCancel={handleDragCancel}
+          modifiers={[]}
         >
           <SortableContext
             items={threads.map(t => t.id)}
             strategy={verticalListSortingStrategy}
           >
-            <AnimatePresence>
+            <AnimatePresence mode="popLayout">
               {threads.map((thread) => (
                 <SortableThreadItem
                   key={thread.id}
@@ -328,7 +337,10 @@ export const ThreadList: React.FC<ThreadListProps> = ({
             </AnimatePresence>
           </SortableContext>
 
-          <DragOverlay>
+          <DragOverlay dropAnimation={{
+            duration: 200,
+            easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
+          }}>
             {activeThread ? (
               <ThreadItem
                 thread={activeThread}

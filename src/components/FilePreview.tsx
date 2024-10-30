@@ -1,5 +1,6 @@
-import { FileText, FileIcon, Download } from 'lucide-react';
-import { Button } from './ui/button';
+import React from 'react';
+import { Card } from './ui/card';
+import { isImageFile, isPdfFile } from '@/lib/fileHandlers';
 
 interface FilePreviewProps {
   fileName: string;
@@ -7,42 +8,35 @@ interface FilePreviewProps {
 }
 
 export const FilePreview: React.FC<FilePreviewProps> = ({ fileName, content }) => {
-  const getFileIcon = () => {
-    const extension = fileName.split('.').pop()?.toLowerCase();
-    switch (extension) {
-      case 'txt':
-      case 'md':
-        return <FileText className="h-4 w-4" />;
-      default:
-        return <FileIcon className="h-4 w-4" />;
-    }
-  };
+  const isImage = isImageFile({ name: fileName, type: fileName.split('.').pop() || '' } as File);
+  const isPdf = isPdfFile({ name: fileName, type: fileName.split('.').pop() || '' } as File);
 
   return (
-    <div className="flex flex-col gap-2 p-3 bg-accent/50 rounded-sm">
-      <div className="flex items-center gap-2 text-sm">
-        {getFileIcon()}
-        <span className="font-medium">{fileName}</span>
-        <Button 
-          variant="ghost" 
-          size="icon"
-          className="h-6 w-6 ml-auto"
-          onClick={() => {
-            const blob = new Blob([content], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = fileName;
-            a.click();
-            URL.revokeObjectURL(url);
-          }}
-        >
-          <Download className="h-4 w-4" />
-        </Button>
+    <Card className="p-4 bg-muted/50 rounded-sm">
+      <div className="text-sm font-medium mb-2">
+        {fileName}
       </div>
-      <div className="text-sm whitespace-pre-wrap max-h-[200px] overflow-y-auto bg-background p-2 rounded-sm">
-        {content}
-      </div>
-    </div>
+      {isImage ? (
+        <div className="max-w-2xl">
+          <img 
+            src={content} 
+            alt={fileName}
+            className="rounded-sm max-h-[300px] object-contain"
+          />
+        </div>
+      ) : isPdf ? (
+        <div className="max-w-2xl h-[500px]">
+          <iframe
+            src={content}
+            title={fileName}
+            className="w-full h-full rounded-sm"
+          />
+        </div>
+      ) : (
+        <pre className="text-sm whitespace-pre-wrap overflow-auto max-h-[300px]">
+          {content}
+        </pre>
+      )}
+    </Card>
   );
 }; 

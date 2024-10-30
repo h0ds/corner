@@ -19,7 +19,7 @@ export interface Thread {
   files: FileAttachment[];
   createdAt: number;
   updatedAt: number;
-  cachedFiles: string[];
+  cachedFiles?: string[];
 }
 
 export interface FileInfo {

@@ -7,7 +7,7 @@ import { ModelSelector, AVAILABLE_MODELS } from "./components/ModelSelector";
 import { TypingIndicator } from "./components/TypingIndicator";
 import { FilePreview } from "./components/FilePreview";
 import { AnimatePresence, motion } from "framer-motion";
-import { Settings, Upload, PanelLeftClose, PanelLeft } from "lucide-react";
+import { Settings, Upload, PanelLeftClose, PanelLeft, Keyboard } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useDropzone } from 'react-dropzone';
 import { getFileHandler } from '@/lib/fileHandlers';
@@ -31,6 +31,8 @@ import { nanoid } from 'nanoid';
 import { Message, Thread, FileAttachment } from '@/types';
 import { cn } from "@/lib/utils";
 import { initializeCache, cacheFile, CachedFile } from '@/lib/fileCache';
+import { readTextFile } from '@tauri-apps/plugin-fs';
+import { KeyboardShortcut, loadShortcuts, matchesShortcut } from '@/lib/shortcuts';
 
 interface ApiResponse {
   content?: string;
@@ -48,7 +50,7 @@ function App() {
   const [activeThreadId, setActiveThreadId] = useState<string | null>(() => loadActiveThreadId());
   const [loading, setLoading] = useState(false);
   const [showPreferences, setShowPreferences] = useState(false);
-  const [preferenceTab, setPreferenceTab] = useState<'api-keys' | 'appearance' | 'models'>('api-keys');
+  const [preferenceTab, setPreferenceTab] = useState<PreferenceTab>('api-keys');
   const [selectedModel, setSelectedModel] = useState(AVAILABLE_MODELS[0].id);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -87,6 +89,7 @@ function App() {
       files: [],
       createdAt: Date.now(),
       updatedAt: Date.now(),
+      cachedFiles: []
     };
     setThreads(prev => [...prev, newThread]);
     setActiveThreadId(newThread.id);
@@ -123,8 +126,20 @@ function App() {
       });
       
       try {
-        const handler = getFileHandler(file);
-        const content = await handler(file);
+        // Read file content
+        let content: string;
+        const nativeFile = file as any;
+        
+        if (nativeFile.path) {
+          // If it's a native file with a path, use Tauri's readTextFile
+          console.log('Reading native file:', nativeFile.path);
+          content = await invoke('handle_file_drop', { path: nativeFile.path });
+        } else {
+          // For web file drops, use the browser's FileReader
+          console.log('Reading web file');
+          const handler = getFileHandler(file);
+          content = await handler(file);
+        }
 
         console.log('File content read successfully, type:', file.type);
         handleSendMessage("", file, content);
@@ -183,6 +198,31 @@ function App() {
       'application/x-bat': ['.bat'],
       'application/x-powershell': ['.ps1']
     },
+    getFilesFromEvent: async (event) => {
+      const items = event.dataTransfer?.items;
+      if (!items) return [];
+
+      const files: File[] = [];
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.kind === 'file') {
+          const file = item.getAsFile();
+          if (file) {
+            // For native files, the path is available in the webkitGetAsEntry
+            const entry = item.webkitGetAsEntry?.();
+            if (entry?.isFile) {
+              const nativePath = (entry as any).fullPath;
+              Object.defineProperty(file, 'path', {
+                value: nativePath,
+                writable: false
+              });
+            }
+            files.push(file);
+          }
+        }
+      }
+      return files;
+    },
     onDropRejected: (fileRejections) => {
       console.log('Files rejected:', fileRejections);
       toast({
@@ -207,21 +247,24 @@ function App() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      const shortcuts = loadShortcuts();
+      
+      const clearHistoryShortcut = shortcuts.find(s => s.id === 'clear-history');
+      const toggleSidebarShortcut = shortcuts.find(s => s.id === 'toggle-sidebar');
+
+      if (clearHistoryShortcut && matchesShortcut(e, clearHistoryShortcut)) {
         e.preventDefault();
-        if (messages.length > 0) {
-          if (activeThreadId) {
-            setThreads(prev => prev.map(thread => {
-              if (thread.id === activeThreadId) {
-                return {
-                  ...thread,
-                  messages: [],
-                  updatedAt: Date.now(),
-                };
-              }
-              return thread;
-            }));
-          }
+        if (messages.length > 0 && activeThreadId) {
+          setThreads(prev => prev.map(thread => {
+            if (thread.id === activeThreadId) {
+              return {
+                ...thread,
+                messages: [],
+                updatedAt: Date.now(),
+              };
+            }
+            return thread;
+          }));
           toast({
             description: "Chat history cleared",
             duration: 2000,
@@ -229,7 +272,7 @@ function App() {
         }
       }
       
-      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+      if (toggleSidebarShortcut && matchesShortcut(e, toggleSidebarShortcut)) {
         e.preventDefault();
         setSidebarVisible(prev => !prev);
       }
@@ -237,7 +280,7 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [messages, toast, activeThreadId, sidebarVisible]);
+  }, [messages, toast, activeThreadId]);
 
   const handleSendMessage = async (message: string, file?: File, fileContent?: string) => {
     setLoading(true);
@@ -427,28 +470,53 @@ function App() {
         )}
       </motion.div>
 
-      {/* Toggle button with keyboard shortcut tooltip */}
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={() => setSidebarVisible(!sidebarVisible)}
-              className="absolute left-2 top-2 z-50 p-2 bg-background hover:bg-accent 
-                        rounded-sm transition-colors border border-border shadow-sm"
-            >
-              {sidebarVisible ? (
-                <PanelLeftClose className="h-4 w-4" />
-              ) : (
-                <PanelLeft className="h-4 w-4" />
-              )}
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="right" className="text-xs">
-            Toggle Sidebar
-            <span className="ml-2 text-muted-foreground">⌘S</span>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      {/* Toggle button with keyboard shortcut tooltip and Shortcuts */}
+      <div className="absolute left-2 top-2 z-50 flex items-center gap-2">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setSidebarVisible(!sidebarVisible)}
+                className="p-2 bg-background hover:bg-accent 
+                          rounded-sm transition-colors border border-border shadow-sm"
+              >
+                {sidebarVisible ? (
+                  <PanelLeftClose className="h-4 w-4" />
+                ) : (
+                  <PanelLeft className="h-4 w-4" />
+                )}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="text-xs">
+              Toggle Sidebar
+              <span className="ml-2 text-muted-foreground">⌘S</span>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+
+        {/* Only show keyboard shortcuts button when sidebar is visible */}
+        {sidebarVisible && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => {
+                    setPreferenceTab('shortcuts');
+                    setShowPreferences(true);
+                  }}
+                  className="p-2 bg-background hover:bg-accent 
+                            rounded-sm transition-colors border border-border shadow-sm"
+                >
+                  <Keyboard className="h-4 w-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="text-xs">
+                Keyboard Shortcuts
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+      </div>
       
       {/* Main content */}
       <div className="flex-1 flex flex-col">
