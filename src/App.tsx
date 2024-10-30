@@ -46,6 +46,7 @@ interface FileInfo {
   name: string;
   size: number;
   type: string;
+  content?: string;
 }
 
 // Add type definition at the top
@@ -172,9 +173,22 @@ function App() {
           
           console.log('Attempting to read file from path:', fullPath);
           content = await invoke('handle_file_drop', { path: fullPath });
+          
+          setUploadedFile({
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            content
+          });
         } else {
           console.log('Web file - no native path available');
           content = await getFileHandler(file);
+          setUploadedFile({
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            content
+          });
         }
 
         console.log('File content read successfully');
@@ -559,65 +573,38 @@ function App() {
             )}
           </AnimatePresence>
 
-          {uploadedFile && (
+          {/* {(uploadedFile?.content || activeThread?.files.length > 0) && (
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
-              className="mx-4 mb-4 p-4 border-2 border-dashed rounded-lg bg-secondary shadow-sm"
+              className="mx-4 mb-4 space-y-4"
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-primary/10 rounded-md">
-                    <svg
-                      className="w-8 h-8 text-primary"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                      />
-                    </svg>
+              {uploadedFile?.content && (
+                <FilePreview
+                  fileName={uploadedFile.name}
+                  content={uploadedFile.content}
+                  onClear={() => setUploadedFile(null)}
+                  defaultExpanded={true}
+                />
+              )}
+              {activeThread?.files.length > 0 && (
+                <div className="space-y-2">
+                  <div className="text-sm font-medium text-muted-foreground px-1">
+                    Added files:
                   </div>
-                  <div>
-                    <p className="font-medium">{uploadedFile.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {(uploadedFile.size / 1024).toFixed(2)} KB • {uploadedFile.type}
-                    </p>
-                  </div>
-                </div>
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setUploadedFile(null);
-                  }}
-                  className="p-2 hover:bg-destructive/10 rounded-full transition-colors"
-                >
-                  <svg
-                    className="w-5 h-5 text-destructive"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
+                  {activeThread.files.map((file, index) => (
+                    <FilePreview
+                      key={index}
+                      fileName={file.name}
+                      content={file.content}
+                      defaultExpanded={false}
                     />
-                  </svg>
-                </motion.button>
-              </div>
+                  ))}
+                </div>
+              )}
             </motion.div>
-          )}
+          )} */}
 
           <main 
             ref={chatContainerRef}
