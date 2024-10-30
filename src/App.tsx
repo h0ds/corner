@@ -46,6 +46,9 @@ interface FileInfo {
   type: string;
 }
 
+// Add type definition at the top
+type PreferenceTab = 'api-keys' | 'appearance' | 'models' | 'shortcuts';
+
 function App() {
   const [threads, setThreads] = useState<Thread[]>(() => loadThreads());
   const [activeThreadId, setActiveThreadId] = useState<string | null>(() => loadActiveThreadId());
@@ -199,7 +202,7 @@ function App() {
       'application/x-bat': ['.bat'],
       'application/x-powershell': ['.ps1']
     },
-    getFilesFromEvent: async (event) => {
+    getFilesFromEvent: async (event: any) => {
       const items = event.dataTransfer?.items;
       if (!items) return [];
 
@@ -209,7 +212,6 @@ function App() {
         if (item.kind === 'file') {
           const file = item.getAsFile();
           if (file) {
-            // For native files, the path is available in the webkitGetAsEntry
             const entry = item.webkitGetAsEntry?.();
             if (entry?.isFile) {
               const nativePath = (entry as any).fullPath;
@@ -254,7 +256,7 @@ function App() {
         const clearHistoryShortcut = shortcuts.find(s => s.id === 'clear-history');
         const toggleSidebarShortcut = shortcuts.find(s => s.id === 'toggle-sidebar');
 
-        if (clearHistoryShortcut && matchesShortcut(e as unknown as KeyboardEvent<Element>, clearHistoryShortcut)) {
+        if (clearHistoryShortcut && matchesShortcut(e, clearHistoryShortcut)) {
           e.preventDefault();
           if (messages.length > 0 && activeThreadId) {
             setThreads(prev => prev.map(thread => {
@@ -274,7 +276,7 @@ function App() {
           }
         }
         
-        if (toggleSidebarShortcut && matchesShortcut(e as unknown as KeyboardEvent<Element>, toggleSidebarShortcut)) {
+        if (toggleSidebarShortcut && matchesShortcut(e, toggleSidebarShortcut)) {
           e.preventDefault();
           setSidebarVisible(prev => !prev);
         }
@@ -450,6 +452,37 @@ function App() {
     setThreads(newThreads);
   };
 
+  // Get active thread
+  const activeThread = useMemo(() => {
+    return threads.find(t => t.id === activeThreadId);
+  }, [threads, activeThreadId]);
+
+  // Move handleFileUpload inside App component to access state and functions
+  const handleFileUpload = async (file: File) => {
+    try {
+      let content: string;
+      const nativeFile = file as any;
+      
+      if (nativeFile.path) {
+        content = await invoke('handle_file_drop', { path: nativeFile.path });
+      } else {
+        const handler = getFileHandler(file);
+        content = await handler;
+      }
+
+      if (activeThreadId) {
+        handleSendMessage("", file, content);
+      }
+    } catch (error) {
+      console.error('File read error:', error);
+      toast({
+        variant: "destructive",
+        description: "Failed to read file content",
+        duration: 2000,
+      });
+    }
+  };
+
   return (
     <div className="flex h-screen bg-background">
       {/* Sidebar with animation */}
@@ -483,6 +516,8 @@ function App() {
           setPreferenceTab('shortcuts');
           setShowPreferences(true);
         }}
+        files={activeThread?.files || []}
+        onFileSelect={handleFileUpload}
       />
       
       {/* Main content */}
