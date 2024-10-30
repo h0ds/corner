@@ -52,6 +52,7 @@ interface SortableThreadItemProps {
   onEditingNameChange: (value: string) => void;
   onThreadSelect: (threadId: string) => void;
   onDeleteThread: (threadId: string) => void;
+  dropTarget?: { id: string; position: 'before' | 'after' } | null;
 }
 
 const ThreadItem = ({
@@ -91,7 +92,7 @@ const ThreadItem = ({
       >
         <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground" />
       </div>
-      <MessageSquare className="h-4 w-4 shrink-0" />
+      {/* <MessageSquare className="h-4 w-4 shrink-0" /> */}
       {editingThreadId === thread.id ? (
         <div 
           className="flex-1" 
@@ -162,6 +163,7 @@ const SortableThreadItem = ({
   onEditingNameChange,
   onThreadSelect,
   onDeleteThread,
+  dropTarget,
 }: SortableThreadItemProps) => {
   const {
     attributes,
@@ -195,6 +197,9 @@ const SortableThreadItem = ({
             isDragging && "z-50"
           )}
         >
+          {dropTarget?.id === thread.id && dropTarget.position === 'before' && (
+            <div className="absolute -top-px left-0 right-0 h-0.5 bg-primary rounded-full" />
+          )}
           <ThreadItem
             thread={thread}
             activeThreadId={activeThreadId}
@@ -208,6 +213,9 @@ const SortableThreadItem = ({
             isDragging={isDragging}
             dragHandleProps={{ ...attributes, ...listeners }}
           />
+          {dropTarget?.id === thread.id && dropTarget.position === 'after' && (
+            <div className="absolute -bottom-px left-0 right-0 h-0.5 bg-primary rounded-full" />
+          )}
           {isDragging && (
             <div className="absolute inset-0 bg-primary/10 border-2 border-primary rounded-sm pointer-events-none" />
           )}
@@ -245,6 +253,7 @@ export const ThreadList: React.FC<ThreadListProps> = ({
   const [editingThreadId, setEditingThreadId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [dropTarget, setDropTarget] = useState<{ id: string; position: 'before' | 'after' } | null>(null);
 
   const handleStartRename = (thread: Thread) => {
     setEditingThreadId(thread.id);
@@ -274,6 +283,24 @@ export const ThreadList: React.FC<ThreadListProps> = ({
     setActiveId(event.active.id as string);
   };
 
+  const handleDragOver = (event: DragOverEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) {
+      setDropTarget(null);
+      return;
+    }
+
+    // Get the bounding rectangles of the dragged and target items
+    const activeRect = (active.rect.current as any).translated;
+    const overRect = over.rect;
+
+    // Determine if we're in the upper or lower half of the target
+    const threshold = overRect.top + (overRect.height / 2);
+    const position = activeRect.top < threshold ? 'before' : 'after';
+
+    setDropTarget({ id: over.id as string, position });
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
@@ -289,6 +316,7 @@ export const ThreadList: React.FC<ThreadListProps> = ({
 
   const handleDragCancel = () => {
     setActiveId(null);
+    setDropTarget(null);
   };
 
   const activeThread = activeId ? threads.find(t => t.id === activeId) : null;
@@ -311,6 +339,7 @@ export const ThreadList: React.FC<ThreadListProps> = ({
           sensors={sensors}
           collisionDetection={closestCenter}
           onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
           onDragCancel={handleDragCancel}
           modifiers={[]}
@@ -332,6 +361,7 @@ export const ThreadList: React.FC<ThreadListProps> = ({
                   onEditingNameChange={setEditingName}
                   onThreadSelect={onThreadSelect}
                   onDeleteThread={onDeleteThread}
+                  dropTarget={dropTarget}
                 />
               ))}
             </AnimatePresence>

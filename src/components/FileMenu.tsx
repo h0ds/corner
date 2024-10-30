@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { FileText, Upload, X, Eye } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { FileText, Upload, X, Eye, Trash2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -10,22 +10,57 @@ import { Button } from './ui/button';
 import { useDropzone } from 'react-dropzone';
 import { FileAttachment } from '@/types';
 import { FilePreview } from './FilePreview';
+import { invoke } from '@tauri-apps/api/core';
+import { useToast } from '@/hooks/use-toast';
 
 interface FileMenuProps {
   isOpen: boolean;
   onClose: () => void;
   files: FileAttachment[];
   onFileSelect: (file: File) => void;
+  onFileDelete?: (fileId: string) => void;
 }
 
 export const FileMenu: React.FC<FileMenuProps> = ({
   isOpen,
   onClose,
   files,
-  onFileSelect
+  onFileSelect,
+  onFileDelete
 }) => {
   const [previewFile, setPreviewFile] = useState<FileAttachment | null>(null);
+  const [deletingFile, setDeletingFile] = useState<string | null>(null);
+  const { toast } = useToast();
   
+  useEffect(() => {
+    if (isOpen) {
+      setPreviewFile(null);
+    }
+  }, [isOpen]);
+  
+  const handleDeleteFile = async (file: FileAttachment) => {
+    if (!file.cacheId) return;
+    
+    try {
+      setDeletingFile(file.cacheId);
+      await invoke('delete_cached_file', { fileId: file.cacheId });
+      onFileDelete?.(file.cacheId);
+      toast({
+        description: "File deleted successfully",
+        duration: 2000,
+      });
+    } catch (error) {
+      console.error('Failed to delete file:', error);
+      toast({
+        variant: "destructive",
+        description: "Failed to delete file",
+        duration: 2000,
+      });
+    } finally {
+      setDeletingFile(null);
+    }
+  };
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: (acceptedFiles) => {
       if (acceptedFiles.length > 0) {
@@ -58,9 +93,9 @@ export const FileMenu: React.FC<FileMenuProps> = ({
                   onClick={() => setPreviewFile(null)}
                   className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  ←
+                  ← Back
                 </button>
-                <span>{previewFile.name}</span>
+                <span className="text-sm font-medium">{previewFile.name}</span>
               </div>
             ) : (
               "Upload Files"
@@ -124,6 +159,19 @@ export const FileMenu: React.FC<FileMenuProps> = ({
                           title="Preview file"
                         >
                           <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteFile(file);
+                          }}
+                          disabled={deletingFile === file.cacheId}
+                          title="Delete file"
+                        >
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>

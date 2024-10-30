@@ -986,6 +986,28 @@ async fn load_cached_file(file_id: String) -> Result<serde_json::Value, String> 
     }))
 }
 
+#[tauri::command]
+async fn delete_cached_file(file_id: String) -> Result<(), String> {
+    let cache_dir = get_cache_dir()?;
+    
+    // Delete metadata file
+    let meta_path = cache_dir.join(format!("{}.meta.json", file_id));
+    if meta_path.exists() {
+        fs::remove_file(&meta_path)
+            .map_err(|e| format!("Failed to delete metadata file: {}", e))?;
+    }
+    
+    // Delete content file
+    let content_path = cache_dir.join(format!("{}.content", file_id));
+    if content_path.exists() {
+        fs::remove_file(&content_path)
+            .map_err(|e| format!("Failed to delete content file: {}", e))?;
+    }
+    
+    println!("Successfully deleted cached file: {}", file_id);
+    Ok(())
+}
+
 fn get_cache_dir() -> Result<PathBuf, String> {
     let app_cache = dirs::cache_dir()
         .ok_or_else(|| "Failed to get cache directory".to_string())?
@@ -1018,7 +1040,8 @@ fn main() {
             get_real_path,
             init_cache_dir,
             cache_file,
-            load_cached_file
+            load_cached_file,
+            delete_cached_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -15,6 +15,7 @@ interface FeaturesProps {
   onOpenShortcuts: () => void;
   files: FileAttachment[];
   onFileSelect: (file: File) => void;
+  onFileDelete?: (fileId: string) => void;
 }
 
 export const Features: React.FC<FeaturesProps> = ({
@@ -23,6 +24,7 @@ export const Features: React.FC<FeaturesProps> = ({
   onOpenShortcuts,
   files,
   onFileSelect,
+  onFileDelete,
 }) => {
   const [showFileMenu, setShowFileMenu] = useState(false);
 
@@ -96,6 +98,7 @@ export const Features: React.FC<FeaturesProps> = ({
         onClose={() => setShowFileMenu(false)}
         files={files}
         onFileSelect={onFileSelect}
+        onFileDelete={onFileDelete}
       />
     </>
   );

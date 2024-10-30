@@ -19,7 +19,9 @@ import {
   deleteThread, 
   saveActiveThreadId, 
   loadActiveThreadId, 
-  clearThreads 
+  clearThreads,
+  saveSelectedModel,
+  loadSelectedModel
 } from '@/lib/storage';
 import { ModelIcon } from './components/ModelIcon';
 import {
@@ -36,6 +38,7 @@ import { initializeCache, cacheFile, CachedFile } from '@/lib/fileCache';
 import { readTextFile } from '@tauri-apps/plugin-fs';
 import { KeyboardShortcut, loadShortcuts, matchesShortcut } from '@/lib/shortcuts';
 import { Features } from './components/Features';
+import { ResizeObserver } from './components/ResizeObserver';
 
 interface ApiResponse {
   content?: string;
@@ -58,11 +61,17 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [showPreferences, setShowPreferences] = useState(false);
   const [preferenceTab, setPreferenceTab] = useState<PreferenceTab>('api-keys');
-  const [selectedModel, setSelectedModel] = useState(AVAILABLE_MODELS[0].id);
+  const [selectedModel, setSelectedModel] = useState(() => {
+    const savedModel = loadSelectedModel();
+    return savedModel || AVAILABLE_MODELS[0].id;
+  });
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const [uploadedFile, setUploadedFile] = useState<FileInfo | null>(null);
   const [sidebarVisible, setSidebarVisible] = useState(true);
+  const [sidebarWidth, setSidebarWidth] = useState(250);
+  const [shortcuts, setShortcuts] = useState<KeyboardShortcut[]>([]);
+  const [manuallyHidden, setManuallyHidden] = useState(false);
 
   // Initialize cache on mount
   useEffect(() => {
@@ -87,6 +96,14 @@ function App() {
   useEffect(() => {
     saveActiveThreadId(activeThreadId);
   }, [activeThreadId]);
+
+  useEffect(() => {
+    loadShortcuts().then(setShortcuts);
+  }, []);
+
+  const clearHistoryShortcut = useMemo(() => {
+    return shortcuts.find(s => s.id === 'clear-history')?.currentKey || '⌘/Ctrl + K';
+  }, [shortcuts]);
 
   const handleNewThread = () => {
     const newThread: Thread = {
@@ -139,57 +156,33 @@ function App() {
         if (nativeFile.path) {
           console.log('Original native file path:', nativeFile.path);
           
-          // Get the full system path
+          // For macOS, try to get the real path again if needed
           let fullPath = nativeFile.path;
-          
-          // For macOS, handle the path differently
-          if (process.platform === 'darwin') {
-            // Remove the file:// prefix if it exists
-            fullPath = fullPath.replace(/^file:\/\//, '');
-            
-            // Decode any URL encoded characters
-            fullPath = decodeURIComponent(fullPath);
-            
-            // If the path doesn't start with /, add it
-            if (!fullPath.startsWith('/')) {
-              fullPath = `/${fullPath}`;
-            }
-            
-            // If the path contains the file name without directory, try to get the directory
-            if (!fullPath.includes('/')) {
-              try {
-                const realPath = await invoke('get_real_path', { 
-                  path: fullPath,
-                  fileName: file.name 
-                });
-                if (realPath) {
-                  fullPath = realPath as string;
-                }
-              } catch (e) {
-                console.error('Failed to resolve real path:', e);
-              }
+          if (process.platform === 'darwin' && !fullPath.includes('/')) {
+            try {
+              fullPath = await invoke('get_real_path', {
+                path: file.name,
+                fileName: file.name
+              }) as string;
+              console.log('Got real path from backend:', fullPath);
+            } catch (error) {
+              console.error('Failed to get real path:', error);
             }
           }
           
           console.log('Attempting to read file from path:', fullPath);
           content = await invoke('handle_file_drop', { path: fullPath });
-          
-          setUploadedFile({
-            name: file.name,
-            size: file.size,
-            type: file.type,
-            content
-          });
         } else {
           console.log('Web file - no native path available');
           content = await getFileHandler(file);
-          setUploadedFile({
-            name: file.name,
-            size: file.size,
-            type: file.type,
-            content
-          });
         }
+
+        setUploadedFile({
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          content
+        });
 
         console.log('File content read successfully');
         handleSendMessage("", file, content);
@@ -249,53 +242,55 @@ function App() {
       'application/x-powershell': ['.ps1']
     },
     getFilesFromEvent: async (event: any) => {
-      const items = event.dataTransfer?.items;
-      if (!items) return [];
+      console.log('getFilesFromEvent called with:', event);
+      
+      // Handle both drop and input change events
+      const items = event.dataTransfer?.items || event.target?.files;
+      if (!items) {
+        console.log('No items found in event');
+        return [];
+      }
 
       const files: File[] = [];
       for (let i = 0; i < items.length; i++) {
-        const item = items[i];
-        if (item.kind === 'file') {
-          const file = item.getAsFile();
-          if (file) {
-            // Try different methods to get the full path
-            let fullPath: string | undefined;
-            
-            // Method 1: Check for native path property
-            if ('path' in file) {
-              fullPath = (file as any).path;
-            }
-            
-            // Method 2: Try webkitGetAsEntry
-            if (!fullPath) {
-              const entry = item.webkitGetAsEntry?.();
-              if (entry?.isFile && entry.fullPath) {
-                fullPath = entry.fullPath;
-              }
-            }
-            
-            // Method 3: Try dataTransfer.files
-            if (!fullPath && event.dataTransfer?.files?.[i]) {
-              const dtFile = event.dataTransfer.files[i];
-              if ('path' in dtFile) {
-                fullPath = (dtFile as any).path;
-              }
-            }
+        let file: File | null = null;
+        
+        if (items[i] instanceof File) {
+          // Handle direct file objects
+          file = items[i];
+        } else if (items[i].kind === 'file') {
+          // Handle DataTransferItem
+          file = items[i].getAsFile();
+        }
 
-            if (fullPath) {
-              console.log('Found file path:', fullPath);
-              Object.defineProperty(file, 'path', {
-                value: fullPath,
-                writable: false
+        if (file) {
+          console.log('Processing file:', file.name);
+          
+          // For macOS, try to get the real path
+          if (process.platform === 'darwin') {
+            try {
+              const nativePath = await invoke('get_real_path', {
+                path: file.name,
+                fileName: file.name
               });
-            } else {
-              console.log('No path found for file:', file.name);
+              console.log('Got native path:', nativePath);
+              
+              if (nativePath) {
+                Object.defineProperty(file, 'path', {
+                  value: nativePath,
+                  writable: false
+                });
+              }
+            } catch (error) {
+              console.error('Failed to get native path:', error);
             }
-            
-            files.push(file);
           }
+          
+          files.push(file);
         }
       }
+
+      console.log('Returning files:', files);
       return files;
     },
     onDropRejected: (fileRejections) => {
@@ -308,10 +303,30 @@ function App() {
         duration: 2000,
       });
     },
+    onError: (error) => {
+      console.error('Dropzone error:', error);
+      toast({
+        variant: "destructive",
+        description: "Failed to process file",
+        duration: 2000,
+      });
+    }
   });
 
   const dropzoneProps = getRootProps({
     onClick: (e) => e.stopPropagation(),
+    onDragEnter: (e) => {
+      console.log('Drag enter:', e);
+    },
+    onDragOver: (e) => {
+      console.log('Drag over:', e);
+    },
+    onDragLeave: (e) => {
+      console.log('Drag leave:', e);
+    },
+    onDrop: (e) => {
+      console.log('Drop:', e);
+    }
   });
 
   useEffect(() => {
@@ -322,54 +337,29 @@ function App() {
 
   useEffect(() => {
     const handleKeyDown = async (e: KeyboardEvent) => {
-      try {
-        const shortcuts = await loadShortcuts();
-        
-        const clearHistoryShortcut = shortcuts.find(s => s.id === 'clear-history');
-        const toggleSidebarShortcut = shortcuts.find(s => s.id === 'toggle-sidebar');
+      // Load current shortcuts
+      const currentShortcuts = await loadShortcuts();
+      
+      // Find clear history shortcut
+      const clearHistoryShortcut = currentShortcuts.find(s => s.id === 'clear-history');
+      const toggleSidebarShortcut = currentShortcuts.find(s => s.id === 'toggle-sidebar');
 
-        // Create a wrapper object that matches the expected type
-        const eventWrapper = {
-          key: e.key,
-          metaKey: e.metaKey,
-          ctrlKey: e.ctrlKey,
-          altKey: e.altKey,
-          shiftKey: e.shiftKey,
-          preventDefault: () => e.preventDefault()
-        } as unknown as React.KeyboardEvent<Element>;
+      if (clearHistoryShortcut && matchesShortcut(e, clearHistoryShortcut)) {
+        e.preventDefault();
+        clearThreads();
+        setThreads([]);
+        setActiveThreadId(null);
+      }
 
-        if (clearHistoryShortcut && matchesShortcut(eventWrapper, clearHistoryShortcut)) {
-          e.preventDefault();
-          if (messages.length > 0 && activeThreadId) {
-            setThreads(prev => prev.map(thread => {
-              if (thread.id === activeThreadId) {
-                return {
-                  ...thread,
-                  messages: [],
-                  updatedAt: Date.now(),
-                };
-              }
-              return thread;
-            }));
-            toast({
-              description: "Chat history cleared",
-              duration: 2000,
-            });
-          }
-        }
-        
-        if (toggleSidebarShortcut && matchesShortcut(eventWrapper, toggleSidebarShortcut)) {
-          e.preventDefault();
-          setSidebarVisible(prev => !prev);
-        }
-      } catch (error) {
-        console.error('Error handling keyboard shortcut:', error);
+      if (toggleSidebarShortcut && matchesShortcut(e, toggleSidebarShortcut)) {
+        e.preventDefault();
+        setSidebarVisible(!sidebarVisible);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [messages, toast, activeThreadId]);
+  }, [sidebarVisible]);
 
   const handleSendMessage = async (message: string, file?: File, fileContent?: string) => {
     setLoading(true);
@@ -428,6 +418,94 @@ function App() {
       }
     }
 
+    // Handle message sending
+    if (message && activeThreadId) {
+      const userMessage: Message = { 
+        role: 'user', 
+        content: message,
+        ...(cachedFile && {
+          file: {
+            name: cachedFile.name,
+            content: cachedFile.content,
+            timestamp: cachedFile.timestamp,
+            cacheId: cachedFile.id
+          }
+        })
+      };
+
+      // Update thread with user message
+      setThreads(prev => prev.map(thread => {
+        if (thread.id === activeThreadId) {
+          return {
+            ...thread,
+            messages: [...thread.messages, userMessage],
+            updatedAt: Date.now(),
+          };
+        }
+        return thread;
+      }));
+
+      try {
+        const model = AVAILABLE_MODELS.find(m => m.id === selectedModel);
+        if (!model) throw new Error('Invalid model selected');
+
+        console.log('Sending message:', {
+          message,
+          model: selectedModel,
+          provider: model.provider,
+          hasFileContent: !!fileContent,
+          fileName: file?.name
+        });
+
+        const response = await invoke<ApiResponse>('send_message', {
+          request: {
+            message,
+            model: selectedModel,
+            provider: model.provider,
+            file_content: fileContent,
+            file_name: file?.name
+          }
+        });
+
+        if (response.error) {
+          // Add error message to thread
+          setThreads(prev => prev.map(thread => {
+            if (thread.id === activeThreadId) {
+              return {
+                ...thread,
+                messages: [...thread.messages, { role: 'error', content: response.error! }],
+                updatedAt: Date.now(),
+              };
+            }
+            return thread;
+          }));
+        } else if (response.content) {
+          // Add assistant message to thread
+          setThreads(prev => prev.map(thread => {
+            if (thread.id === activeThreadId) {
+              return {
+                ...thread,
+                messages: [...thread.messages, { 
+                  role: 'assistant', 
+                  content: response.content!,
+                  modelId: selectedModel
+                }],
+                updatedAt: Date.now(),
+              };
+            }
+            return thread;
+          }));
+        }
+      } catch (error) {
+        console.error('Failed to send message:', error);
+        toast({
+          variant: "destructive",
+          description: "Failed to send message",
+          duration: 2000,
+        });
+      }
+    }
+
     setLoading(false);
     setUploadedFile(null);
   };
@@ -480,49 +558,121 @@ function App() {
     }
   };
 
+  const handleFileDelete = async (fileId: string) => {
+    if (activeThreadId) {
+      setThreads(prev => prev.map(thread => {
+        if (thread.id === activeThreadId) {
+          return {
+            ...thread,
+            files: thread.files.filter(f => f.cacheId !== fileId),
+            cachedFiles: thread.cachedFiles.filter(id => id !== fileId),
+            updatedAt: Date.now(),
+          };
+        }
+        return thread;
+      }));
+    }
+  };
+
+  const handleSidebarToggle = () => {
+    const newVisibility = !sidebarVisible;
+    setSidebarVisible(newVisibility);
+    // Only set manuallyHidden when hiding the sidebar
+    if (!newVisibility) {
+      setManuallyHidden(true);
+    }
+  };
+
+  useEffect(() => {
+    // Function to handle window resize
+    const handleResize = () => {
+      const windowWidth = window.innerWidth;
+      
+      if (windowWidth < 700) {
+        // Always hide when window is too small
+        setSidebarVisible(false);
+        setManuallyHidden(false); // Reset manual state when auto-hiding
+      } else if (windowWidth >= 700 && !manuallyHidden) {
+        // Only show if it wasn't manually hidden
+        setSidebarVisible(true);
+      }
+    };
+
+    // Add event listener
+    window.addEventListener('resize', handleResize);
+
+    // Initial check
+    handleResize();
+
+    // Cleanup
+    return () => window.removeEventListener('resize', handleResize);
+  }, [manuallyHidden]); // Add manuallyHidden to dependencies
+
+  useEffect(() => {
+    saveSelectedModel(selectedModel);
+  }, [selectedModel]);
+
   return (
     <div className="flex h-screen bg-background">
       {/* Sidebar with animation */}
       <motion.div
         initial={false}
         animate={{
-          width: sidebarVisible ? '250px' : '0px',
+          width: sidebarVisible ? Math.max(250, sidebarWidth) : '0px',
           opacity: sidebarVisible ? 1 : 0,
         }}
         transition={{ duration: 0.2 }}
-        className="relative"
+        className="relative shrink-0"
+        style={{
+          minWidth: sidebarVisible ? '250px' : '0px',
+        }}
       >
         {sidebarVisible && (
-          <ThreadList
-            threads={threads}
-            activeThreadId={activeThreadId}
-            onThreadSelect={setActiveThreadId}
-            onNewThread={handleNewThread}
-            onDeleteThread={handleDeleteThread}
-            onRenameThread={handleRenameThread}
-            onReorderThreads={handleReorderThreads}
-          />
+          <ResizeObserver
+            onResize={(entry) => {
+              const width = entry.contentRect.width;
+              setSidebarWidth(width);
+              
+              // Auto-hide sidebar if width is less than 250px or window width is less than 500px
+              if (width < 250 || window.innerWidth < 500) {
+                setSidebarVisible(false);
+              }
+            }}
+          >
+            <div className="h-full" style={{ width: '100%' }}>
+              <ThreadList
+                threads={threads}
+                activeThreadId={activeThreadId}
+                onThreadSelect={setActiveThreadId}
+                onNewThread={handleNewThread}
+                onDeleteThread={handleDeleteThread}
+                onRenameThread={handleRenameThread}
+                onReorderThreads={handleReorderThreads}
+              />
+            </div>
+          </ResizeObserver>
         )}
       </motion.div>
 
       {/* Toggle button with keyboard shortcut tooltip and Shortcuts */}
       <Features 
         sidebarVisible={sidebarVisible}
-        onSidebarToggle={() => setSidebarVisible(!sidebarVisible)}
+        onSidebarToggle={handleSidebarToggle}
         onOpenShortcuts={() => {
           setPreferenceTab('shortcuts');
           setShowPreferences(true);
         }}
         files={activeThread?.files || []}
         onFileSelect={handleFileUpload}
+        onFileDelete={handleFileDelete}
       />
       
       {/* Main content */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0">
         <div 
-          {...getRootProps()}
+          {...dropzoneProps}
           className={cn(
-            "flex flex-col h-screen bg-background relative transition-all duration-200",
+            "flex flex-col h-full relative",
             isDragActive && activeThreadId && "ring-4 ring-primary ring-inset bg-primary/5",
             isDragActive && !activeThreadId && "ring-4 ring-destructive ring-inset bg-destructive/5"
           )}
@@ -608,17 +758,17 @@ function App() {
 
           <main 
             ref={chatContainerRef}
-            className="flex-1 overflow-y-auto p-6 space-y-6"
+            className="flex-1 overflow-y-auto p-6 space-y-6 min-w-0"
             onClick={(e) => e.stopPropagation()}
           >
             <AnimatePresence>
               {messages.length === 0 ? (
                 <div className="text-center text-muted-foreground mt-8 text-sm">
-                  Start a conversation or drop a file (⌘/Ctrl + K to clear history)
+                  Start a conversation or drop a file ({clearHistoryShortcut} to clear history)
                 </div>
               ) : (
                 messages.map((message, index) => (
-                  <div key={index} className="space-y-2">
+                  <div key={index} className="space-y-2 min-w-0">
                     <ChatMessage
                       role={message.role}
                       content={message.content}

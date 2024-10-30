@@ -2,6 +2,7 @@ import { Message, Thread } from '@/types';
 
 const THREADS_KEY = 'lex-threads';
 const ACTIVE_THREAD_KEY = 'lex-active-thread';
+const SELECTED_MODEL_KEY = 'lex-selected-model';
 
 export function saveThread(thread: Thread): void {
   try {
@@ -67,5 +68,22 @@ export function clearThreads(): void {
     localStorage.removeItem(ACTIVE_THREAD_KEY);
   } catch (error) {
     console.error('Failed to clear threads:', error);
+  }
+}
+
+export function saveSelectedModel(modelId: string): void {
+  try {
+    localStorage.setItem(SELECTED_MODEL_KEY, modelId);
+  } catch (error) {
+    console.error('Failed to save selected model:', error);
+  }
+}
+
+export function loadSelectedModel(): string | null {
+  try {
+    return localStorage.getItem(SELECTED_MODEL_KEY);
+  } catch (error) {
+    console.error('Failed to load selected model:', error);
+    return null;
   }
 } 

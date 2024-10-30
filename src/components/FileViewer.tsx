@@ -195,9 +195,9 @@ export const FileViewer: React.FC<FileViewerProps> = ({
                   onClick={() => setPreviewFile(null)}
                   className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  ←
+                  ← Back
                 </button>
-                <span>{previewFile.name}</span>
+                <span className="text-sm font-medium">{previewFile.name}</span>
               </div>
             ) : (
               `Files in "${threadName}"`
@@ -233,11 +233,12 @@ export const FileViewer: React.FC<FileViewerProps> = ({
                           <span className="font-medium text-sm truncate">
                             {file.name}
                           </span>
-                          <span className="text-xs text-muted-foreground">
-                            {formatDistanceToNow(file.timestamp, { addSuffix: true })}
-                          </span>
+                          
                         </div>
                       </div>
+                      <span className="text-xs text-muted-foreground">
+                            {formatDistanceToNow(file.timestamp, { addSuffix: true })}
+                          </span>
                       <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={(e) => {
@@ -249,26 +250,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({
                         >
                           <Eye className="h-4 w-4" />
                         </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openFile(file);
-                          }}
-                          className="p-1 hover:bg-background rounded-sm"
-                          title="Open in new window"
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            downloadFile(file);
-                          }}
-                          className="p-1 hover:bg-background rounded-sm"
-                          title="Download file"
-                        >
-                          <Download className="h-4 w-4" />
-                        </button>
+                        
                       </div>
                     </div>
                   ))}

@@ -296,13 +296,13 @@ export const Preferences: React.FC<PreferencesProps> = ({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => {
-                  const reset = resetShortcuts();
+                onClick={async () => {
+                  const reset = await resetShortcuts();
                   setShortcuts(reset);
                 }}
                 className="text-xs"
               >
-                Reset to Defaults
+                Reset to defaults
               </Button>
             </div>
             {shortcuts.map((shortcut) => (

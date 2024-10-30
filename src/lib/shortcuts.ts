@@ -7,18 +7,21 @@ export interface KeyboardShortcut {
   currentKey: string;
 }
 
+// Detect if we're on macOS
+const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+
 export const DEFAULT_SHORTCUTS: KeyboardShortcut[] = [
   {
     id: 'clear-history',
     description: 'Clear chat history',
-    defaultKey: '⌘/Ctrl + K',
-    currentKey: '⌘/Ctrl + K'
+    defaultKey: isMac ? '⌘ + K' : 'Ctrl + K',
+    currentKey: isMac ? '⌘ + K' : 'Ctrl + K'
   },
   {
     id: 'toggle-sidebar',
     description: 'Toggle sidebar',
-    defaultKey: '⌘/Ctrl + S',
-    currentKey: '⌘/Ctrl + S'
+    defaultKey: isMac ? '⌘ + S' : 'Ctrl + S',
+    currentKey: isMac ? '⌘ + S' : 'Ctrl + S'
   }
 ];
 
@@ -27,11 +30,36 @@ const SHORTCUTS_STORAGE_KEY = 'keyboard-shortcuts';
 export async function loadShortcuts(): Promise<KeyboardShortcut[]> {
   try {
     const stored = localStorage.getItem(SHORTCUTS_STORAGE_KEY);
-    if (!stored) return Promise.resolve(DEFAULT_SHORTCUTS);
-    return Promise.resolve(JSON.parse(stored));
+    if (!stored) return DEFAULT_SHORTCUTS;
+    
+    // When loading, ensure we're using the correct OS-specific keys
+    const shortcuts = JSON.parse(stored);
+    return shortcuts.map(shortcut => {
+      const defaultShortcut = DEFAULT_SHORTCUTS.find(s => s.id === shortcut.id);
+      // If we're on macOS, ensure the shortcut uses ⌘ instead of Ctrl
+      if (isMac && shortcut.currentKey.includes('Ctrl')) {
+        return {
+          ...shortcut,
+          defaultKey: defaultShortcut?.defaultKey || shortcut.defaultKey,
+          currentKey: shortcut.currentKey.replace('Ctrl', '⌘')
+        };
+      }
+      // If we're not on macOS, ensure the shortcut uses Ctrl instead of ⌘
+      if (!isMac && shortcut.currentKey.includes('⌘')) {
+        return {
+          ...shortcut,
+          defaultKey: defaultShortcut?.defaultKey || shortcut.defaultKey,
+          currentKey: shortcut.currentKey.replace('⌘', 'Ctrl')
+        };
+      }
+      return {
+        ...shortcut,
+        defaultKey: defaultShortcut?.defaultKey || shortcut.defaultKey
+      };
+    });
   } catch (error) {
     console.error('Failed to load shortcuts:', error);
-    return Promise.resolve(DEFAULT_SHORTCUTS);
+    return DEFAULT_SHORTCUTS;
   }
 }
 
@@ -58,7 +86,8 @@ export function matchesShortcut(e: KeyboardEvent<Element>, shortcut: KeyboardSho
   const key = parts[parts.length - 1];
 
   const hasRequiredModifiers = modifiers.every(mod => {
-    if (mod === '⌘' || mod === 'Ctrl') return e.metaKey || e.ctrlKey;
+    if (mod === '⌘') return e.metaKey;
+    if (mod === 'Ctrl') return e.ctrlKey;
     if (mod === 'Alt') return e.altKey;
     if (mod === 'Shift') return e.shiftKey;
     return false;
