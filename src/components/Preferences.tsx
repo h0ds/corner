@@ -32,6 +32,7 @@ type VerificationStatus = 'idle' | 'verifying' | 'success' | 'error';
 interface ApiKeys {
   anthropic: string;
   perplexity: string;
+  openai: string;
 }
 
 type PreferenceTab = 'api-keys' | 'appearance' | 'models' | 'shortcuts';
@@ -43,16 +44,22 @@ export const Preferences: React.FC<PreferencesProps> = ({
   onModelChange,
   initialTab = 'api-keys'
 }) => {
-  const [keys, setKeys] = useState<ApiKeys>({ anthropic: '', perplexity: '' });
+  const [keys, setKeys] = useState<ApiKeys>({ 
+    anthropic: '', 
+    perplexity: '', 
+    openai: '' 
+  });
   const [isSaving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<PreferenceTab>(initialTab);
   const [verificationStatus, setVerificationStatus] = useState<{
     anthropic: VerificationStatus;
     perplexity: VerificationStatus;
+    openai: VerificationStatus;
   }>({
     anthropic: 'idle',
-    perplexity: 'idle'
+    perplexity: 'idle',
+    openai: 'idle'
   });
   const [shortcuts, setShortcuts] = useState<KeyboardShortcut[]>([]);
   const [editingShortcutId, setEditingShortcutId] = useState<string | null>(null);
@@ -60,21 +67,24 @@ export const Preferences: React.FC<PreferencesProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      invoke<{ anthropic: string | null; perplexity: string | null }>('get_api_keys')
+      invoke<{ anthropic: string | null; perplexity: string | null; openai: string | null }>('get_api_keys')
         .then((storedKeys) => {
           console.log('Loaded stored keys:', {
             anthropic: storedKeys.anthropic ? '***' : 'none',
-            perplexity: storedKeys.perplexity ? '***' : 'none'
+            perplexity: storedKeys.perplexity ? '***' : 'none',
+            openai: storedKeys.openai ? '***' : 'none'
           });
           
           setKeys({
             anthropic: storedKeys.anthropic || '',
-            perplexity: storedKeys.perplexity || ''
+            perplexity: storedKeys.perplexity || '',
+            openai: storedKeys.openai || ''
           });
 
           setVerificationStatus(prev => ({
             anthropic: storedKeys.anthropic ? 'success' : prev.anthropic,
-            perplexity: storedKeys.perplexity ? 'success' : prev.perplexity
+            perplexity: storedKeys.perplexity ? 'success' : prev.perplexity,
+            openai: storedKeys.openai ? 'success' : prev.openai
           }));
         })
         .catch(err => {
@@ -160,6 +170,7 @@ export const Preferences: React.FC<PreferencesProps> = ({
       await invoke('set_api_keys', { 
         anthropic: keys.anthropic || null,
         perplexity: keys.perplexity || null,
+        openai: keys.openai || null,
       });
 
       const verifyPromises: Promise<void>[] = [];
@@ -206,7 +217,11 @@ export const Preferences: React.FC<PreferencesProps> = ({
           type="password"
           value={keys[type]}
           onChange={(e) => handleKeyChange(type, e.target.value)}
-          placeholder={`Enter your ${type} API key`}
+          placeholder={`Enter your ${
+            type === 'anthropic' ? 'Anthropic' :
+            type === 'perplexity' ? 'Perplexity' :
+            'OpenAI'
+          } API key`}
           className="rounded-sm text-sm pr-8 bg-background"
         />
         <div className="absolute right-2 top-1/2 -translate-y-1/2">
@@ -219,7 +234,9 @@ export const Preferences: React.FC<PreferencesProps> = ({
         </p>
       )}
       {verificationStatus[type] === 'error' && error && (
-        <div className="text-sm text-red-600 dark:text-red-400 whitespace-pre-wrap font-mono">
+        <div className="text-sm text-red-600 dark:text-red-400 whitespace-pre-wrap font-mono 
+                        max-h-[100px] overflow-y-auto rounded-sm border border-red-200 
+                        dark:border-red-900 p-2 bg-red-50 dark:bg-red-900/20">
           {error}
         </div>
       )}
@@ -241,6 +258,8 @@ export const Preferences: React.FC<PreferencesProps> = ({
             {renderApiKeyInput('anthropic', 'Anthropic API Key')}
             <div className="my-4" />
             {renderApiKeyInput('perplexity', 'Perplexity API Key')}
+            <div className="my-4" />
+            {renderApiKeyInput('openai', 'OpenAI API Key')}
           </div>
         );
       case 'appearance':
@@ -450,9 +469,10 @@ export const Preferences: React.FC<PreferencesProps> = ({
                 <Button 
                   onClick={handleSave} 
                   disabled={isSaving || 
-                    (!keys.anthropic && !keys.perplexity) || 
+                    (!keys.anthropic && !keys.perplexity && !keys.openai) || 
                     verificationStatus.anthropic === 'verifying' || 
-                    verificationStatus.perplexity === 'verifying'}
+                    verificationStatus.perplexity === 'verifying' || 
+                    verificationStatus.openai === 'verifying'}
                   className="rounded-sm text-sm"
                 >
                   {isSaving ? 'Saving...' : 'Save'}

@@ -33,6 +33,7 @@ import { cn } from "@/lib/utils";
 import { initializeCache, cacheFile, CachedFile } from '@/lib/fileCache';
 import { readTextFile } from '@tauri-apps/plugin-fs';
 import { KeyboardShortcut, loadShortcuts, matchesShortcut } from '@/lib/shortcuts';
+import { Features } from './components/Features';
 
 interface ApiResponse {
   content?: string;
@@ -475,52 +476,14 @@ function App() {
       </motion.div>
 
       {/* Toggle button with keyboard shortcut tooltip and Shortcuts */}
-      <div className="absolute left-2 top-2 z-50 flex items-center gap-2">
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => setSidebarVisible(!sidebarVisible)}
-                className="p-2 bg-background hover:bg-accent 
-                          rounded-sm transition-colors border border-border shadow-sm"
-              >
-                {sidebarVisible ? (
-                  <PanelLeftClose className="h-4 w-4" />
-                ) : (
-                  <PanelLeft className="h-4 w-4" />
-                )}
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="text-xs">
-              Toggle Sidebar
-              <span className="ml-2 text-muted-foreground">⌘S</span>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-
-        {/* Only show keyboard shortcuts button when sidebar is visible */}
-        {sidebarVisible && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => {
-                    setPreferenceTab('shortcuts');
-                    setShowPreferences(true);
-                  }}
-                  className="p-2 bg-background hover:bg-accent 
-                            rounded-sm transition-colors border border-border shadow-sm"
-                >
-                  <Keyboard className="h-4 w-4" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="right" className="text-xs">
-                Keyboard Shortcuts
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
-      </div>
+      <Features 
+        sidebarVisible={sidebarVisible}
+        onSidebarToggle={() => setSidebarVisible(!sidebarVisible)}
+        onOpenShortcuts={() => {
+          setPreferenceTab('shortcuts');
+          setShowPreferences(true);
+        }}
+      />
       
       {/* Main content */}
       <div className="flex-1 flex flex-col">
@@ -700,7 +663,8 @@ function App() {
                         <div className="flex flex-col gap-0.5">
                           <span className="font-medium">{model.name}</span>
                           <span className="text-muted-foreground">
-                            {model.provider === 'anthropic' ? 'Anthropic' : 'Perplexity'}
+                            {model.provider === 'anthropic' ? 'Anthropic' : 
+                             model.provider === 'openai' ? 'OpenAI' : 'Perplexity'}
                           </span>
                         </div>
                       ) : selectedModel;
@@ -714,7 +678,7 @@ function App() {
                   setShowPreferences(true);
                 }}
                 className="p-2 bg-background text-muted-foreground hover:text-foreground 
-                         hover:bg-accent rounded-sm shadow-sm transition-colors"
+                           hover:bg-accent rounded-sm shadow-sm transition-colors"
                 aria-label="Settings"
               >
                 <Settings className="h-5 w-5" />

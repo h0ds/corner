@@ -36,7 +36,8 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     if (!model) return null;
     return {
       name: model.name,
-      provider: model.provider === 'anthropic' ? 'Anthropic' : 'Perplexity'
+      provider: model.provider === 'anthropic' ? 'Anthropic' : 
+               model.provider === 'openai' ? 'OpenAI' : 'Perplexity'
     };
   };
 

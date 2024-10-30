@@ -12,6 +12,7 @@ use std::sync::Mutex;
 use tauri::AppHandle;
 use tauri::Manager;
 use tauri::State;
+use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION};
 
 #[derive(Serialize, Deserialize)]
 struct ChatMessage {
@@ -45,6 +46,7 @@ struct ChatResponseContent {
 struct ApiKeys {
     anthropic: Mutex<Option<String>>,
     perplexity: Mutex<Option<String>>,
+    openai: Mutex<Option<String>>,
 }
 
 #[derive(Serialize)]
@@ -253,6 +255,69 @@ async fn send_message(
                 })
             }
         }
+        "openai" => {
+            let stored_keys = load_stored_keys(&app_handle)?;
+            let api_key = if let Some(key) = stored_keys["openai"].as_str() {
+                key.to_string()
+            } else {
+                let state_key = state.openai.lock().unwrap();
+                match state_key.clone() {
+                    Some(key) if !key.is_empty() => key,
+                    _ => env::var("OPENAI_API_KEY").unwrap_or_default(),
+                }
+            };
+
+            if api_key.is_empty() {
+                return Ok(ApiResponse {
+                    content: None,
+                    error: Some("OpenAI API key not configured".to_string()),
+                });
+            }
+
+            println!("Sending message to OpenAI API...");
+            let request_body = serde_json::json!({
+                "model": request.model,
+                "messages": [{
+                    "role": "user",
+                    "content": message_with_file
+                }],
+                "temperature": 0.7
+            });
+
+            let mut headers = HeaderMap::new();
+            headers.insert(
+                AUTHORIZATION,
+                HeaderValue::from_str(&format!("Bearer {}", api_key))
+                    .map_err(|e| e.to_string())?
+            );
+
+            let response = client
+                .post("https://api.openai.com/v1/chat/completions")
+                .headers(headers)
+                .json(&request_body)
+                .send()
+                .await
+                .map_err(|e| e.to_string())?;
+
+            if response.status().is_success() {
+                let json: serde_json::Value = response.json().await.map_err(|e| e.to_string())?;
+                Ok(ApiResponse {
+                    content: Some(
+                        json["choices"][0]["message"]["content"]
+                            .as_str()
+                            .unwrap_or_default()
+                            .to_string(),
+                    ),
+                    error: None,
+                })
+            } else {
+                let error_text = response.text().await.map_err(|e| e.to_string())?;
+                Ok(ApiResponse {
+                    content: None,
+                    error: Some(format!("OpenAI API error: {}", error_text)),
+                })
+            }
+        }
         _ => Ok(ApiResponse {
             content: None,
             error: Some("Invalid provider specified".to_string()),
@@ -274,11 +339,13 @@ fn set_api_keys(
     app_handle: AppHandle,
     anthropic: Option<String>,
     perplexity: Option<String>,
+    openai: Option<String>,
 ) -> Result<(), String> {
     // Create a JSON object with the new keys
     let mut keys = serde_json::json!({
         "anthropic": null,
-        "perplexity": null
+        "perplexity": null,
+        "openai": null
     });
 
     // Use ref to avoid moving the values
@@ -287,6 +354,9 @@ fn set_api_keys(
     }
     if let Some(ref key) = perplexity {
         keys["perplexity"] = serde_json::Value::String(key.clone());
+    }
+    if let Some(ref key) = openai {
+        keys["openai"] = serde_json::Value::String(key.clone());
     }
 
     // Save to file storage
@@ -299,6 +369,9 @@ fn set_api_keys(
     }
     if let Some(key) = perplexity {
         *state.perplexity.lock().unwrap() = Some(key);
+    }
+    if let Some(key) = openai {
+        *state.openai.lock().unwrap() = Some(key);
     }
 
     Ok(())
@@ -539,6 +612,113 @@ async fn verify_api_key(
                 error: None,
             })
         }
+        "openai" => {
+            println!("\n=== OpenAI API Key Verification ===");
+            println!("Key prefix: {}...", &request.key[..10]);
+
+            let request_body = serde_json::json!({
+                "model": "gpt-3.5-turbo",
+                "messages": [{
+                    "role": "user",
+                    "content": "Hi"
+                }],
+                "max_tokens": 5
+            });
+
+            println!("\nRequest Details:");
+            println!("URL: https://api.openai.com/v1/chat/completions");
+            println!("Headers:");
+            println!("  Authorization: Bearer {}...", &request.key[..10]);
+            println!("\nRequest Body:");
+            println!("{}", serde_json::to_string_pretty(&request_body).unwrap());
+
+            let mut headers = HeaderMap::new();
+            headers.insert(
+                AUTHORIZATION,
+                HeaderValue::from_str(&format!("Bearer {}", request.key))
+                    .map_err(|e| e.to_string())?
+            );
+
+            let response = client
+                .post("https://api.openai.com/v1/chat/completions")
+                .headers(headers)
+                .json(&request_body)
+                .send()
+                .await
+                .map_err(|e| {
+                    println!("\nNetwork Error:");
+                    println!("Type: {}", e.to_string());
+                    if let Some(status) = e.status() {
+                        println!("Status: {}", status);
+                    }
+                    if let Some(url) = e.url() {
+                        println!("URL: {}", url);
+                    }
+                    e.to_string()
+                })?;
+
+            println!("\nResponse Details:");
+            println!(
+                "Status: {} ({})",
+                response.status(),
+                response.status().as_u16()
+            );
+            println!("Headers:");
+            for (key, value) in response.headers().iter() {
+                println!(
+                    "  {}: {}",
+                    key,
+                    value.to_str().unwrap_or("Unable to read header value")
+                );
+            }
+
+            let status = response.status();
+            let status_code = status.as_u16();
+            let response_text = response.text().await.map_err(|e| {
+                println!("\nError Reading Response Body: {}", e);
+                e.to_string()
+            })?;
+
+            println!("\nResponse Body:");
+            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&response_text) {
+                println!("{}", serde_json::to_string_pretty(&json).unwrap());
+            } else {
+                println!("{}", response_text);
+            }
+
+            if !status.is_success() {
+                let error_message = match status_code {
+                    401 => "Invalid API key (Authentication failed)",
+                    403 => "API key doesn't have permission",
+                    429 => "Rate limit exceeded",
+                    500..=599 => "OpenAI server error",
+                    _ => "Unknown error",
+                };
+
+                return Ok(ApiResponse {
+                    content: None,
+                    error: Some(format!(
+                        "OpenAI API Key Verification Failed\n\nStatus: {} ({})\nError: {}\n\nDetails: {}", 
+                        status,
+                        status_code,
+                        error_message,
+                        response_text
+                    )),
+                });
+            }
+
+            println!("\n=== End of Verification ===\n");
+
+            // Store the key if verification succeeds
+            let mut keys = load_stored_keys(&app_handle)?;
+            keys[request.provider.as_str()] = serde_json::Value::String(request.key.clone());
+            save_keys(&app_handle, &keys)?;
+
+            Ok(ApiResponse {
+                content: Some("API key verified successfully".to_string()),
+                error: None,
+            })
+        }
         _ => Ok(ApiResponse {
             content: None,
             error: Some("Invalid provider specified".to_string()),
@@ -578,7 +758,8 @@ fn load_stored_keys(app: &AppHandle) -> Result<serde_json::Value, String> {
     } else {
         Ok(serde_json::json!({
             "anthropic": null,
-            "perplexity": null
+            "perplexity": null,
+            "openai": null
         }))
     }
 }
@@ -619,6 +800,7 @@ fn main() {
         .manage(ApiKeys {
             anthropic: Mutex::new(None),
             perplexity: Mutex::new(None),
+            openai: Mutex::new(None),
         })
         .invoke_handler(tauri::generate_handler![
             send_message,

@@ -9,7 +9,7 @@ import {
 export interface Model {
   id: string;
   name: string;
-  provider: 'anthropic' | 'perplexity';
+  provider: 'anthropic' | 'perplexity' | 'openai';
 }
 
 export const AVAILABLE_MODELS: Model[] = [
@@ -18,18 +18,23 @@ export const AVAILABLE_MODELS: Model[] = [
   { id: 'claude-3-sonnet-20240229', name: 'Claude 3 Sonnet', provider: 'anthropic' },
   { id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku', provider: 'anthropic' },
   
-  // Perplexity Models - Sonar Series
-  { id: 'llama-3.1-sonar-small-128k-online', name: 'Sonar Small (8B)', provider: 'perplexity' },
-  { id: 'llama-3.1-sonar-large-128k-online', name: 'Sonar Large (70B)', provider: 'perplexity' },
-  { id: 'llama-3.1-sonar-huge-128k-online', name: 'Sonar Huge (405B)', provider: 'perplexity' },
+  // OpenAI Models
+  { id: 'gpt-4-turbo-preview', name: 'GPT-4 Turbo', provider: 'openai' },
+  { id: 'gpt-4', name: 'GPT-4', provider: 'openai' },
+  { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', provider: 'openai' },
   
-  // Perplexity Models - Chat Series
+  // Perplexity Sonar Models
+  { id: 'llama-3.1-sonar-small-128k-online', name: 'Sonar Small Online (8B)', provider: 'perplexity' },
+  { id: 'llama-3.1-sonar-large-128k-online', name: 'Sonar Large Online (70B)', provider: 'perplexity' },
+  { id: 'llama-3.1-sonar-huge-128k-online', name: 'Sonar Huge Online (405B)', provider: 'perplexity' },
+  
+  // Perplexity Chat Models
   { id: 'llama-3.1-sonar-small-128k-chat', name: 'Sonar Small Chat (8B)', provider: 'perplexity' },
   { id: 'llama-3.1-sonar-large-128k-chat', name: 'Sonar Large Chat (70B)', provider: 'perplexity' },
   
-  // Perplexity Models - Open Source
+  // Perplexity Open Source Models
   { id: 'llama-3.1-8b-instruct', name: 'Llama 3.1 8B', provider: 'perplexity' },
-  { id: 'llama-3.1-70b-instruct', name: 'Llama 3.1 70B', provider: 'perplexity' },
+  { id: 'llama-3.1-70b-instruct', name: 'Llama 3.1 70B', provider: 'perplexity' }
 ];
 
 interface ModelSelectorProps {
@@ -43,17 +48,10 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   onModelChange,
   disabled
 }) => {
-  // Group models by provider and series
+  // Group models by provider
   const anthropicModels = AVAILABLE_MODELS.filter(m => m.provider === 'anthropic');
-  const perplexitySonarModels = AVAILABLE_MODELS.filter(m => 
-    m.provider === 'perplexity' && m.id.includes('sonar') && m.id.includes('online')
-  );
-  const perplexityChatModels = AVAILABLE_MODELS.filter(m => 
-    m.provider === 'perplexity' && m.id.includes('chat')
-  );
-  const perplexityOpenSourceModels = AVAILABLE_MODELS.filter(m => 
-    m.provider === 'perplexity' && m.id.includes('instruct')
-  );
+  const openaiModels = AVAILABLE_MODELS.filter(m => m.provider === 'openai');
+  const perplexityModels = AVAILABLE_MODELS.filter(m => m.provider === 'perplexity');
 
   return (
     <Select
@@ -79,9 +77,9 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         ))}
         
         <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground mt-2">
-          Perplexity Sonar
+          OpenAI
         </div>
-        {perplexitySonarModels.map((model) => (
+        {openaiModels.map((model) => (
           <SelectItem
             key={model.id}
             value={model.id}
@@ -92,22 +90,9 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         ))}
 
         <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground mt-2">
-          Perplexity Chat
+          Perplexity
         </div>
-        {perplexityChatModels.map((model) => (
-          <SelectItem
-            key={model.id}
-            value={model.id}
-            className="text-sm"
-          >
-            {model.name}
-          </SelectItem>
-        ))}
-
-        <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground mt-2">
-          Perplexity Open Source
-        </div>
-        {perplexityOpenSourceModels.map((model) => (
+        {perplexityModels.map((model) => (
           <SelectItem
             key={model.id}
             value={model.id}
