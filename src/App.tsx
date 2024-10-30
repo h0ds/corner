@@ -672,17 +672,6 @@ function App() {
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-              <button
-                onClick={() => {
-                  setPreferenceTab('api-keys');
-                  setShowPreferences(true);
-                }}
-                className="p-2 bg-background text-muted-foreground hover:text-foreground 
-                           hover:bg-accent rounded-sm shadow-sm transition-colors"
-                aria-label="Settings"
-              >
-                <Settings className="h-5 w-5" />
-              </button>
             </div>
             <ChatInput
               onSendMessage={handleSendMessage}

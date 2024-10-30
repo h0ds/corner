@@ -65,6 +65,11 @@ export const Preferences: React.FC<PreferencesProps> = ({
   const [editingShortcutId, setEditingShortcutId] = useState<string | null>(null);
   const [recordingShortcut, setRecordingShortcut] = useState(false);
 
+  // Update active tab when initialTab prop changes
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
+
   useEffect(() => {
     if (isOpen) {
       invoke<{ anthropic: string | null; perplexity: string | null; openai: string | null }>('get_api_keys')
