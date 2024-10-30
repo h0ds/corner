@@ -85,6 +85,12 @@ const ThreadItem = ({
         isOverlay && "bg-background border border-border shadow-lg scale-105 rotate-2"
       )}
       onClick={() => !isOverlay && onThreadSelect(thread.id)}
+      onDoubleClick={(e) => {
+        e.stopPropagation();
+        if (!isOverlay) {
+          onStartRename(thread);
+        }
+      }}
     >
       <div 
         {...dragHandleProps}
