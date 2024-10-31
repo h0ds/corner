@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Upload, X, Eye, Trash2 } from 'lucide-react';
+import { FileText, Upload, Eye, Trash2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,

@@ -22,7 +22,7 @@ interface CustomTheme {
   };
 }
 
-const defaultColors = {
+export const defaultColors = {
   background: '#ffffff',
   foreground: '#020817',
   primary: '#020817',

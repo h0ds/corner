@@ -1,5 +1,3 @@
-import { create, readTextFile } from '@tauri-apps/plugin-fs';
-
 export async function getFileHandler(file: File): Promise<string> {
   if (isImageFile(file) || isPdfFile(file)) {
     return new Promise((resolve, reject) => {

@@ -42,7 +42,7 @@ export async function loadShortcuts(): Promise<KeyboardShortcut[]> {
     
     // When loading, ensure we're using the correct OS-specific keys
     const shortcuts = JSON.parse(stored);
-    return shortcuts.map(shortcut => {
+    return shortcuts.map((shortcut: KeyboardShortcut) => {
       const defaultShortcut = DEFAULT_SHORTCUTS.find(s => s.id === shortcut.id);
       // If we're on macOS, ensure the shortcut uses ⌘ instead of Ctrl
       if (isMac && shortcut.currentKey.includes('Ctrl')) {

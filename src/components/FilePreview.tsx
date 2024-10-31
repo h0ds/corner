@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Card } from './ui/card';
-import { FileText, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from './ui/button';
 import { cn } from '@/lib/utils';
 

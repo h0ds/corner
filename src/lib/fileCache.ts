@@ -1,4 +1,3 @@
-import { create, writeTextFile, readTextFile } from '@tauri-apps/plugin-fs';
 import { invoke } from '@tauri-apps/api/core';
 import { nanoid } from 'nanoid';
 
@@ -11,8 +10,6 @@ export interface CachedFile {
   type: string;
   isBase64?: boolean;
 }
-
-const CACHE_DIR = 'cache';
 
 export async function initializeCache(): Promise<void> {
   try {

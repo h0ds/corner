@@ -10,20 +10,13 @@ import {
 import { useTheme } from "next-themes"
 import { useEffect, useState } from "react"
 import { sanitizeCssVar } from '@/lib/utils';
+import { defaultColors } from './preferences/Appearance';
 
 interface CustomTheme {
   id: string;
   name: string;
   colors: Record<string, string>;
 }
-
-// Add defaultColors constant
-const defaultColors = {
-  background: "#ffffff",
-  foreground: "#000000",
-  primary: "#000000",
-  secondary: "#666666",
-};
 
 export function ThemeToggle() {
   const { setTheme, theme } = useTheme()

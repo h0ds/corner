@@ -2,13 +2,8 @@ import React from 'react';
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogClose,
 } from "@/components/ui/dialog";
-import { FileText, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from "@/components/ui/button";
 
 interface PluginDocsProps {
   isOpen: boolean;
@@ -32,7 +27,7 @@ export const PluginDocs: React.FC<PluginDocsProps> = ({
   onClose,
 }) => {
   return (
-    <Dialog open={isOpen} onOpenChange={onClose} className="h-full w-full">
+    <Dialog open={isOpen} onOpenChange={onClose}>
       
       <DialogContent className="h-[calc(100vh-3rem)] w-full max-w-none p-0">
         <div className="h-full w-full overflow-y-auto p-8">

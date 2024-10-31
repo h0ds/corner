@@ -1,17 +1,13 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, KeyboardEvent as ReactKeyboardEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { resolveResource } from '@tauri-apps/api/path';
-import { convertFileSrc } from '@tauri-apps/api/tauri';
 import { ChatMessage } from "./components/ChatMessage";
 import { ChatInput } from "./components/ChatInput";
 import { Preferences } from "./components/Preferences";
-import { ModelSelector, AVAILABLE_MODELS } from "./components/ModelSelector";
+import { AVAILABLE_MODELS } from "./components/ModelSelector";
 import { TypingIndicator } from "./components/TypingIndicator";
 import { FilePreview } from "./components/FilePreview";
 import { AnimatePresence, motion } from "framer-motion";
-import { Settings, Upload, PanelLeftClose, PanelLeft, Keyboard } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useDropzone } from 'react-dropzone';
 import { getFileHandler } from '@/lib/fileHandlers';
 import { 
   saveThread, 
@@ -32,25 +28,16 @@ import {
 } from "@/components/ui/tooltip";
 import { ThreadList } from './components/ThreadList';
 import { nanoid } from 'nanoid';
-import { Message, Thread, FileAttachment } from '@/types';
-import { cn } from "@/lib/utils";
+import { Message, Thread } from '@/types';
 import { initializeCache, cacheFile, CachedFile } from '@/lib/fileCache';
-import { readTextFile } from '@tauri-apps/plugin-fs';
 import { KeyboardShortcut, loadShortcuts, matchesShortcut } from '@/lib/shortcuts';
 import { Features } from './components/Features';
 import { ResizeObserver } from './components/ResizeObserver';
-import { Plugin, loadPlugins, evaluatePlugin } from '@/lib/plugins';
+import { Plugin, loadPlugins } from '@/lib/plugins';
 
 interface ApiResponse {
   content?: string;
   error?: string;
-}
-
-interface FileInfo {
-  name: string;
-  size: number;
-  type: string;
-  content?: string;
 }
 
 // Add type definition at the top
@@ -68,7 +55,6 @@ function App() {
   });
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-  const [uploadedFile, setUploadedFile] = useState<FileInfo | null>(null);
   const [sidebarVisible, setSidebarVisible] = useState(true);
   const [sidebarWidth, setSidebarWidth] = useState(250);
   const [shortcuts, setShortcuts] = useState<KeyboardShortcut[]>([]);
@@ -131,207 +117,6 @@ function App() {
     }
   };
 
-  const onDrop = useCallback(async (acceptedFiles: File[]) => {
-    console.log('onDrop called with files:', acceptedFiles);
-    if (acceptedFiles.length > 0) {
-      const file = acceptedFiles[0];
-      console.log('Processing file:', file);
-      
-      if (file.size > 10 * 1024 * 1024) {
-        toast({
-          variant: "destructive",
-          description: "File size must be less than 10MB",
-          duration: 2000,
-        });
-        return;
-      }
-
-      setUploadedFile({
-        name: file.name,
-        size: file.size,
-        type: file.type,
-      });
-      
-      try {
-        let content: string;
-        const nativeFile = file as any;
-        
-        if (nativeFile.path) {
-          console.log('Original native file path:', nativeFile.path);
-          
-          // For macOS, try to get the real path again if needed
-          let fullPath = nativeFile.path;
-          if (process.platform === 'darwin' && !fullPath.includes('/')) {
-            try {
-              fullPath = await invoke('get_real_path', {
-                path: file.name,
-                fileName: file.name
-              }) as string;
-              console.log('Got real path from backend:', fullPath);
-            } catch (error) {
-              console.error('Failed to get real path:', error);
-            }
-          }
-          
-          console.log('Attempting to read file from path:', fullPath);
-          content = await invoke('handle_file_drop', { path: fullPath });
-        } else {
-          console.log('Web file - no native path available');
-          content = await getFileHandler(file);
-        }
-
-        setUploadedFile({
-          name: file.name,
-          size: file.size,
-          type: file.type,
-          content
-        });
-
-        console.log('File content read successfully');
-        handleSendMessage("", file, content);
-      } catch (error) {
-        console.error('File read error:', error);
-        toast({
-          variant: "destructive",
-          description: `Failed to read file: ${error}`,
-          duration: 2000,
-        });
-      }
-    }
-  }, []);
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    maxFiles: 1,
-    noClick: true,
-    disabled: loading || !activeThreadId,
-    accept: {
-      'text/*': ['.txt', '.md'],
-      'application/json': ['.json'],
-      'text/plain': ['.txt'],
-      'text/markdown': ['.md'],
-      'application/javascript': ['.js', '.jsx', '.ts', '.tsx'],
-      'text/html': ['.html', '.htm'],
-      'text/css': ['.css'],
-      'text/yaml': ['.yml', '.yaml'],
-      'image/*': [
-        '.png', 
-        '.jpg', 
-        '.jpeg', 
-        '.gif', 
-        '.webp', 
-        '.svg', 
-        '.bmp'
-      ],
-      'application/pdf': ['.pdf'],
-      'application/msword': ['.doc'],
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
-      'application/vnd.ms-excel': ['.xls'],
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
-      'application/vnd.ms-powerpoint': ['.ppt'],
-      'application/vnd.openxmlformats-officedocument.presentationml.presentation': ['.pptx'],
-      'text/x-python': ['.py'],
-      'text/x-java': ['.java'],
-      'text/x-c': ['.c', '.cpp', '.h'],
-      'text/x-ruby': ['.rb'],
-      'text/x-php': ['.php'],
-      'text/x-go': ['.go'],
-      'text/x-rust': ['.rs'],
-      'application/xml': ['.xml'],
-      'application/x-yaml': ['.yaml', '.yml'],
-      'application/x-toml': ['.toml'],
-      'application/x-sh': ['.sh'],
-      'application/x-bat': ['.bat'],
-      'application/x-powershell': ['.ps1']
-    },
-    getFilesFromEvent: async (event: any) => {
-      console.log('getFilesFromEvent called with:', event);
-      
-      // Handle both drop and input change events
-      const items = event.dataTransfer?.items || event.target?.files;
-      if (!items) {
-        console.log('No items found in event');
-        return [];
-      }
-
-      const files: File[] = [];
-      for (let i = 0; i < items.length; i++) {
-        let file: File | null = null;
-        
-        if (items[i] instanceof File) {
-          // Handle direct file objects
-          file = items[i];
-        } else if (items[i].kind === 'file') {
-          // Handle DataTransferItem
-          file = items[i].getAsFile();
-        }
-
-        if (file) {
-          console.log('Processing file:', file.name);
-          
-          // For macOS, try to get the real path
-          if (process.platform === 'darwin') {
-            try {
-              const nativePath = await invoke('get_real_path', {
-                path: file.name,
-                fileName: file.name
-              });
-              console.log('Got native path:', nativePath);
-              
-              if (nativePath) {
-                Object.defineProperty(file, 'path', {
-                  value: nativePath,
-                  writable: false
-                });
-              }
-            } catch (error) {
-              console.error('Failed to get native path:', error);
-            }
-          }
-          
-          files.push(file);
-        }
-      }
-
-      console.log('Returning files:', files);
-      return files;
-    },
-    onDropRejected: (fileRejections) => {
-      console.log('Files rejected:', fileRejections);
-      toast({
-        variant: "destructive",
-        description: !activeThreadId 
-          ? "Please create or select a thread first"
-          : fileRejections[0]?.errors[0]?.message || "File type not supported",
-        duration: 2000,
-      });
-    },
-    onError: (error) => {
-      console.error('Dropzone error:', error);
-      toast({
-        variant: "destructive",
-        description: "Failed to process file",
-        duration: 2000,
-      });
-    }
-  });
-
-  const dropzoneProps = getRootProps({
-    onClick: (e) => e.stopPropagation(),
-    onDragEnter: (e) => {
-      console.log('Drag enter:', e);
-    },
-    onDragOver: (e) => {
-      console.log('Drag over:', e);
-    },
-    onDragLeave: (e) => {
-      console.log('Drag leave:', e);
-    },
-    onDrop: (e) => {
-      console.log('Drop:', e);
-    }
-  });
-
   useEffect(() => {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
@@ -339,7 +124,7 @@ function App() {
   }, [messages]);
 
   useEffect(() => {
-    const handleKeyDown = async (e: KeyboardEvent) => {
+    const handleKeyDown = async (e: ReactKeyboardEvent<Element>) => {
       // Load current shortcuts
       const currentShortcuts = await loadShortcuts();
       
@@ -360,8 +145,8 @@ function App() {
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown as any);
+    return () => window.removeEventListener('keydown', handleKeyDown as any);
   }, [sidebarVisible]);
 
   const handleSendMessage = async (message: string, file?: File, fileContent?: string) => {
@@ -405,7 +190,6 @@ function App() {
             return thread;
           }));
           setLoading(false);
-          setUploadedFile(null);
           return;
         }
       } catch (error) {
@@ -416,7 +200,6 @@ function App() {
           duration: 2000,
         });
         setLoading(false);
-        setUploadedFile(null);
         return;
       }
     }
@@ -511,7 +294,6 @@ function App() {
     }
 
     setLoading(false);
-    setUploadedFile(null);
   };
 
   const handleRenameThread = (threadId: string, newName: string) => {
@@ -710,93 +492,7 @@ function App() {
       
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
-        <div 
-          {...dropzoneProps}
-          className={cn(
-            "flex flex-col h-full relative",
-            isDragActive && activeThreadId && "ring-4 ring-primary ring-inset bg-primary/5",
-            isDragActive && !activeThreadId && "ring-4 ring-destructive ring-inset bg-destructive/5"
-          )}
-        >
-          <input {...getInputProps()} />
-
-          <AnimatePresence>
-            {isDragActive && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.2, ease: "easeOut" }}
-                className="absolute inset-0 z-[9999] bg-background/95 backdrop-blur-sm flex items-center justify-center"
-              >
-                <motion.div
-                  initial={{ y: 20 }}
-                  animate={{ y: 0 }}
-                  exit={{ y: 20 }}
-                  transition={{ duration: 0.2, ease: "easeOut" }}
-                  className={cn(
-                    "p-8 rounded-md border-4 border-dashed shadow-xl",
-                    activeThreadId 
-                      ? "border-primary bg-primary/5" 
-                      : "border-destructive bg-destructive/5"
-                  )}
-                >
-                  <div className="flex flex-col items-center gap-4">
-                    <Upload className={cn(
-                      "h-12 w-12 animate-bounce",
-                      activeThreadId ? "text-primary" : "text-destructive"
-                    )} />
-                    <div className="space-y-1 text-center">
-                      <p className="text-xl font-medium">
-                        {activeThreadId 
-                          ? "Drop your file here" 
-                          : "Please select a thread first"}
-                      </p>
-                      {activeThreadId && (
-                        <p className="text-sm text-muted-foreground">
-                          Supports images, PDFs, and text files up to 10MB
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </motion.div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* {(uploadedFile?.content || activeThread?.files.length > 0) && (
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              className="mx-4 mb-4 space-y-4"
-            >
-              {uploadedFile?.content && (
-                <FilePreview
-                  fileName={uploadedFile.name}
-                  content={uploadedFile.content}
-                  onClear={() => setUploadedFile(null)}
-                  defaultExpanded={true}
-                />
-              )}
-              {activeThread?.files.length > 0 && (
-                <div className="space-y-2">
-                  <div className="text-sm font-medium text-muted-foreground px-1">
-                    Added files:
-                  </div>
-                  {activeThread.files.map((file, index) => (
-                    <FilePreview
-                      key={index}
-                      fileName={file.name}
-                      content={file.content}
-                      defaultExpanded={false}
-                    />
-                  ))}
-                </div>
-              )}
-            </motion.div>
-          )} */}
-
+        <div className="flex flex-col h-full relative">
           <main 
             ref={chatContainerRef}
             className="flex-1 overflow-y-auto p-6 space-y-6 min-w-0"

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Keyboard, PanelLeft, PanelLeftClose, Settings, FileText } from 'lucide-react';
+import { PanelLeft, PanelLeftClose, Settings, FileText } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,

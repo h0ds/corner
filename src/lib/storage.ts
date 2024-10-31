@@ -1,5 +1,4 @@
-import { Message, Thread } from '@/types';
-
+import { Thread } from '@/types';
 const THREADS_KEY = 'lex-threads';
 const ACTIVE_THREAD_KEY = 'lex-active-thread';
 const SELECTED_MODEL_KEY = 'lex-selected-model';

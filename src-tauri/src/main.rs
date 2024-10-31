@@ -74,30 +74,6 @@ struct SendMessageRequest {
     file_name: Option<String>,
 }
 
-async fn log_response(provider: &str, response: &reqwest::Response) {
-    let status = response.status();
-    let headers = response.headers().clone();
-    
-    // Log status and headers first
-    println!("API Response from {provider}:");
-    println!("Status: {status}");
-    println!("Headers: {headers:?}");
-    
-    // Create a new request to get the body
-    let url = response.url().clone();
-    let client = reqwest::Client::new();
-    
-    match client.get(url).send().await {
-        Ok(res) => {
-            match res.text().await {
-                Ok(body) => println!("Body: {body}"),
-                Err(e) => println!("Failed to read response body: {e}")
-            }
-        },
-        Err(e) => println!("Failed to get response body: {e}")
-    }
-}
-
 #[tauri::command]
 async fn send_message(
     request: SendMessageRequest,
