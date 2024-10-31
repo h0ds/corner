@@ -4,6 +4,8 @@ import {
   DialogContent,
 } from "@/components/ui/dialog";
 import { cn } from '@/lib/utils';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 interface PluginDocsProps {
   isOpen: boolean;
@@ -11,15 +13,20 @@ interface PluginDocsProps {
 }
 
 const CodeBlock = ({ children, className }: { children: string, className?: string }) => (
-  <pre className={cn(
-    "bg-muted p-4 rounded-sm text-sm font-mono overflow-x-auto",
-    "border border-border/50",
-    className
-  )}>
-    <code className="text-[13px] leading-relaxed">
+  <div className="relative group bg-[#282c34] rounded-sm">
+    <SyntaxHighlighter
+      language="typescript"
+      style={oneDark}
+      customStyle={{
+        margin: 0,
+        borderRadius: '2px',
+        padding: '1.25rem',
+        background: 'transparent',
+      }}
+    >
       {children}
-    </code>
-  </pre>
+    </SyntaxHighlighter>
+  </div>
 );
 
 export const PluginDocs: React.FC<PluginDocsProps> = ({
@@ -28,9 +35,8 @@ export const PluginDocs: React.FC<PluginDocsProps> = ({
 }) => {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      
       <DialogContent className="h-[calc(100vh-3rem)] w-full max-w-none p-0">
-        <div className="h-full w-full overflow-y-auto p-8">
+        <div className="h-full w-full overflow-y-auto p-8 space-y-8">
           {/* Overview */}
           <section className="space-y-3">
             <h2 className="text-lg font-medium">Overview</h2>
@@ -60,14 +66,14 @@ export const PluginDocs: React.FC<PluginDocsProps> = ({
           </section>
 
           {/* Available Hooks */}
-          <section className="space-y-3">
+          <section className="space-y-4">
             <h2 className="text-lg font-medium">Available Hooks</h2>
-            <div className="space-y-6">
+            <div className="space-y-8">
               {/* onMessage */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm font-medium">onMessage</h3>
-                  <span className="text-xs text-muted-foreground px-2 py-0.5 rounded-full bg-muted">
+                  <span className="text-xs text-muted-foreground px-2 py-0.5 rounded-full bg-muted/50">
                     async
                   </span>
                 </div>
@@ -90,7 +96,7 @@ export const PluginDocs: React.FC<PluginDocsProps> = ({
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm font-medium">onThreadCreate</h3>
-                  <span className="text-xs text-muted-foreground px-2 py-0.5 rounded-full bg-muted">
+                  <span className="text-xs text-muted-foreground px-2 py-0.5 rounded-full bg-muted/50">
                     async
                   </span>
                 </div>
@@ -114,7 +120,7 @@ export const PluginDocs: React.FC<PluginDocsProps> = ({
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm font-medium">onThreadDelete</h3>
-                  <span className="text-xs text-muted-foreground px-2 py-0.5 rounded-full bg-muted">
+                  <span className="text-xs text-muted-foreground px-2 py-0.5 rounded-full bg-muted/50">
                     async
                   </span>
                 </div>
@@ -136,7 +142,7 @@ export const PluginDocs: React.FC<PluginDocsProps> = ({
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm font-medium">onFileUpload</h3>
-                  <span className="text-xs text-muted-foreground px-2 py-0.5 rounded-full bg-muted">
+                  <span className="text-xs text-muted-foreground px-2 py-0.5 rounded-full bg-muted/50">
                     async
                   </span>
                 </div>
@@ -221,39 +227,39 @@ export const PluginDocs: React.FC<PluginDocsProps> = ({
               Plugins can define custom React components to render content in messages.
             </p>
             <CodeBlock>{`{
-              id: "chart-plugin",
-              name: "Chart Plugin",
-              description: "Adds charts to messages",
-              version: "1.0.0",
-              author: "Your Name",
-              enabled: true,
-              // Define custom components
-              components: {
-                BarChart: ({ data }) => (
-                  <div className="chart">
-                    {/* Your chart implementation */}
-                  </div>
-                )
-              },
-              hooks: {
-                onMessage: async (message) => {
-                  // Check if message contains chart data
-                  if (message.content.includes('chart:')) {
-                    return {
-                      ...message,
-                      plugins: [{
-                        type: 'replace',
-                        content: '<div>Chart placeholder</div>',
-                        componentName: 'BarChart',
-                        meta: { data: parseChartData(message.content) },
-                        pluginId: 'chart-plugin'
-                      }]
-                    };
-                  }
-                  return message;
-                }
-              }
-            }`}</CodeBlock>
+  id: "chart-plugin",
+  name: "Chart Plugin",
+  description: "Adds charts to messages",
+  version: "1.0.0",
+  author: "Your Name",
+  enabled: true,
+  // Define custom components
+  components: {
+    BarChart: ({ data }) => (
+      <div className="chart">
+        {/* Your chart implementation */}
+      </div>
+    )
+  },
+  hooks: {
+    onMessage: async (message) => {
+      // Check if message contains chart data
+      if (message.content.includes('chart:')) {
+        return {
+          ...message,
+          plugins: [{
+            type: 'replace',
+            content: '<div>Chart placeholder</div>',
+            componentName: 'BarChart',
+            meta: { data: parseChartData(message.content) },
+            pluginId: 'chart-plugin'
+          }]
+        };
+      }
+      return message;
+    }
+  }
+}`}</CodeBlock>
           </section>
         </div>
       </DialogContent>

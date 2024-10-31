@@ -78,14 +78,14 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             }
 
             return (
-              <div className="relative group my-4">
+              <div className="relative group my-4 bg-[#282c34] rounded-sm">
                 <div 
                   className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 
                             transition-opacity"
                 >
                   <button
                     onClick={() => navigator.clipboard.writeText(String(children))}
-                    className="p-1.5 hover:bg-accent rounded-sm text-muted-foreground 
+                    className="p-1.5 hover:bg-accent/10 rounded-sm text-muted-foreground 
                               hover:text-accent-foreground"
                   >
                     <Copy className="h-4 w-4" />
@@ -98,6 +98,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                     margin: 0,
                     borderRadius: '2px',
                     padding: '1.25rem',
+                    background: 'transparent',
                   }}
                   {...props}
                 >
