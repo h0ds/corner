@@ -3,6 +3,13 @@ import { cn } from '@/lib/utils';
 import { Message, PluginModification } from '@/types';
 import { ModelIcon } from './ModelIcon';
 import { User, XCircle } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { AVAILABLE_MODELS } from './ModelSelector';
 
 interface ChatMessageProps {
   role: Message['role'];
@@ -88,17 +95,39 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
       "flex items-start gap-4",
       role === 'user' && "flex-row-reverse"
     )}>
-      <div className={cn(
-        "w-8 h-8 flex items-center justify-center rounded-sm shrink-0",
-        role === 'assistant' ? "bg-accent text-accent-foreground" : "bg-accent text-accent-foreground"
-      )}>
-        {role === 'assistant' && modelId && (
-          <ModelIcon modelId={modelId} className="h-4 w-4" />
-        )}
-        {role === 'user' && (
-          <User className="h-4 w-4" />
-        )}
-      </div>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className={cn(
+              "w-8 h-8 flex items-center justify-center rounded-sm shrink-0",
+              role === 'assistant' ? "bg-accent text-accent-foreground" : "bg-accent text-accent-foreground"
+            )}>
+              {role === 'assistant' && modelId && (
+                <ModelIcon modelId={modelId} className="h-4 w-4" />
+              )}
+              {role === 'user' && (
+                <User className="h-4 w-4" />
+              )}
+            </div>
+          </TooltipTrigger>
+          {role === 'assistant' && modelId && (
+            <TooltipContent side="top" className="text-xs">
+              {(() => {
+                const model = AVAILABLE_MODELS.find(m => m.id === modelId);
+                return model ? (
+                  <div className="flex flex-col gap-0.5">
+                    <span className="font-medium">{model.name}</span>
+                    <span className="text-muted-foreground">
+                      {model.provider === 'anthropic' ? 'Anthropic' : 
+                       model.provider === 'openai' ? 'OpenAI' : 'Perplexity'}
+                    </span>
+                  </div>
+                ) : modelId;
+              })()}
+            </TooltipContent>
+          )}
+        </Tooltip>
+      </TooltipProvider>
       <div className={cn(
         "flex-0 space-y-2 overflow-hidden text-sm selectable-text",
         "max-w-[80%] w-fit",

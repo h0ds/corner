@@ -74,6 +74,30 @@ struct SendMessageRequest {
     file_name: Option<String>,
 }
 
+async fn log_response(provider: &str, response: &reqwest::Response) {
+    let status = response.status();
+    let headers = response.headers().clone();
+    
+    // Log status and headers first
+    println!("API Response from {provider}:");
+    println!("Status: {status}");
+    println!("Headers: {headers:?}");
+    
+    // Create a new request to get the body
+    let url = response.url().clone();
+    let client = reqwest::Client::new();
+    
+    match client.get(url).send().await {
+        Ok(res) => {
+            match res.text().await {
+                Ok(body) => println!("Body: {body}"),
+                Err(e) => println!("Failed to read response body: {e}")
+            }
+        },
+        Err(e) => println!("Failed to get response body: {e}")
+    }
+}
+
 #[tauri::command]
 async fn send_message(
     request: SendMessageRequest,
@@ -124,10 +148,7 @@ async fn send_message(
                 "system": "You are a helpful AI assistant."
             });
 
-            println!(
-                "Request body: {}",
-                serde_json::to_string_pretty(&request_body).unwrap()
-            );
+            println!("Request body: {}", serde_json::to_string_pretty(&request_body).unwrap());
 
             let response = client
                 .post("https://api.anthropic.com/v1/messages")
@@ -144,19 +165,17 @@ async fn send_message(
             println!("Headers: {:#?}", response.headers());
 
             let status = response.status();
+            let response_text = response.text().await.map_err(|e| {
+                println!("Error reading response body: {:?}", e);
+                e.to_string()
+            })?;
+            println!("Response body: {}", response_text);
 
             if status.is_success() {
-                let response_text = response.text().await.map_err(|e| {
-                    println!("Error reading success response body: {:?}", e);
+                let json: serde_json::Value = serde_json::from_str(&response_text).map_err(|e| {
+                    println!("Error parsing JSON response: {:?}", e);
                     e.to_string()
                 })?;
-                println!("Anthropic API success response body: {}", response_text);
-
-                let json: serde_json::Value =
-                    serde_json::from_str(&response_text).map_err(|e| {
-                        println!("Error parsing JSON response: {:?}", e);
-                        e.to_string()
-                    })?;
 
                 Ok(ApiResponse {
                     content: Some(
@@ -168,15 +187,9 @@ async fn send_message(
                     error: None,
                 })
             } else {
-                let error_text = response.text().await.map_err(|e| {
-                    println!("Error reading error response body: {:?}", e);
-                    e.to_string()
-                })?;
-                println!("Anthropic API error response body: {}", error_text);
-
                 Ok(ApiResponse {
                     content: None,
-                    error: Some(format!("API error (Status: {}): {}", status, error_text)),
+                    error: Some(format!("API error (Status: {}): {}", status, response_text)),
                 })
             }
         }
@@ -382,354 +395,146 @@ fn set_api_keys(
 }
 
 #[tauri::command]
-async fn verify_api_key(
-    app_handle: AppHandle,
-    request: VerifyRequest,
-) -> Result<ApiResponse, String> {
+async fn verify_api_key(request: VerifyRequest) -> Result<ApiResponse, String> {
     let client = reqwest::Client::new();
+    let mut headers = HeaderMap::new();
 
-    let result = match request.provider.as_str() {
+    match request.provider.as_str() {
         "anthropic" => {
-            println!("\n=== Anthropic API Key Verification ===");
-            println!("Key prefix: {}...", &request.key[..10]);
-
-            let request_body = serde_json::json!({
-                "model": "claude-3-haiku-20240307",
-                "messages": [{
-                    "role": "user",
-                    "content": "Hi"
-                }],
-                "max_tokens": 1024
-            });
-
-            println!("\nRequest Details:");
-            println!("URL: https://api.anthropic.com/v1/messages");
-            println!("Headers:");
-            println!("  x-api-key: {}...", &request.key[..10]);
-            println!("  anthropic-version: 2023-06-01");
-            println!("  content-type: application/json");
-            println!("\nRequest Body:");
-            println!("{}", serde_json::to_string_pretty(&request_body).unwrap());
-
-            let response = client
-                .post("https://api.anthropic.com/v1/messages")
-                .header("x-api-key", &request.key)
-                .header("anthropic-version", "2023-06-01")
-                .header("content-type", "application/json")
-                .json(&request_body)
-                .send()
-                .await
-                .map_err(|e| {
-                    println!("\nNetwork Error:");
-                    println!("Type: {}", e.to_string());
-                    if let Some(status) = e.status() {
-                        println!("Status: {}", status);
-                    }
-                    if let Some(url) = e.url() {
-                        println!("URL: {}", url);
-                    }
-                    e.to_string()
-                })?;
-
-            println!("\nResponse Details:");
-            println!(
-                "Status: {} ({})",
-                response.status(),
-                response.status().as_u16()
-            );
-            println!("Headers:");
-            for (key, value) in response.headers().iter() {
-                println!(
-                    "  {}: {}",
-                    key,
-                    value.to_str().unwrap_or("Unable to read header value")
-                );
-            }
-
-            let status = response.status();
-            let status_code = status.as_u16();
-            let response_text = response.text().await.map_err(|e| {
-                println!("\nError Reading Response Body: {}", e);
-                e.to_string()
-            })?;
-
-            println!("\nResponse Body:");
-            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&response_text) {
-                println!("{}", serde_json::to_string_pretty(&json).unwrap());
-            } else {
-                println!("{}", response_text);
-            }
-
-            if !status.is_success() {
-                let error_message = match status_code {
-                    401 => "Invalid API key (Authentication failed)",
-                    403 => "API key doesn't have permission to access this resource",
-                    404 => "Endpoint not found (Check API version)",
-                    429 => "Rate limit exceeded",
-                    500..=599 => "Anthropic server error",
-                    _ => "Unknown error",
-                };
-
-                return Ok(ApiResponse {
-                    content: None,
-                    error: Some(format!(
-                        "Anthropic API Key Verification Failed\n\nStatus: {} ({})\nError: {}\n\nDetails: {}", 
-                        status,
-                        status_code,
-                        error_message,
-                        response_text
-                    )),
-                });
-            }
-
-            println!("\n=== End of Verification ===\n");
-
-            // Store the key if verification succeeds
-            let mut keys = load_stored_keys(&app_handle)?;
-            keys[request.provider.as_str()] = serde_json::Value::String(request.key.clone());
-            save_keys(&app_handle, &keys)?;
-
-            Ok(ApiResponse {
-                content: Some("API key is valid".to_string()),
-                error: None,
-            })
-        }
-        "perplexity" => {
-            println!("\n=== Perplexity API Key Verification ===");
-            println!("Key prefix: {}...", &request.key[..10]);
-
-            let request_body = serde_json::json!({
-                "model": "llama-3.1-sonar-small-128k-online",
-                "messages": [
-                    {
-                        "role": "system",
-                        "content": "Be precise and concise."
-                    },
-                    {
-                        "role": "user",
-                        "content": "Hi"
-                    }
-                ],
-                "max_tokens": 1,
-                "temperature": 0.2,
-                "top_p": 0.9,
-                "return_citations": true,
-                "search_domain_filter": ["perplexity.ai"],
-                "return_images": false,
-                "return_related_questions": false,
-                "search_recency_filter": "month",
-                "top_k": 0,
-                "stream": false,
-                "presence_penalty": 0,
-                "frequency_penalty": 1
-            });
-
-            println!("\nRequest Details:");
-            println!("URL: https://api.perplexity.ai/chat/completions");
-            println!("Headers:");
-            println!("  Authorization: Bearer {}...", &request.key[..10]);
-            println!("  Content-Type: application/json");
-            println!("\nRequest Body:");
-            println!("{}", serde_json::to_string_pretty(&request_body).unwrap());
-
-            let response = client
-                .post("https://api.perplexity.ai/chat/completions")
-                .header("Authorization", format!("Bearer {}", request.key))
-                .header("Content-Type", "application/json")
-                .json(&request_body)
-                .send()
-                .await
-                .map_err(|e| {
-                    println!("\nNetwork Error:");
-                    println!("Type: {}", e.to_string());
-                    if let Some(status) = e.status() {
-                        println!("Status: {}", status);
-                    }
-                    if let Some(url) = e.url() {
-                        println!("URL: {}", url);
-                    }
-                    e.to_string()
-                })?;
-
-            println!("\nResponse Details:");
-            println!(
-                "Status: {} ({})",
-                response.status(),
-                response.status().as_u16()
-            );
-            println!("Headers:");
-            for (key, value) in response.headers().iter() {
-                println!(
-                    "  {}: {}",
-                    key,
-                    value.to_str().unwrap_or("Unable to read header value")
-                );
-            }
-
-            let status = response.status();
-            let response_text = response.text().await.map_err(|e| e.to_string())?;
-
-            if !status.is_success() {
-                // Try to parse as JSON first
-                if let Ok(json) = serde_json::from_str::<serde_json::Value>(&response_text) {
-                    println!(
-                        "\nError Response (JSON): {}",
-                        serde_json::to_string_pretty(&json).unwrap()
-                    );
-                    return Ok(ApiResponse {
-                        content: None,
-                        error: Some(format!(
-                            "Perplexity API Error: {}",
-                            json["error"]["message"].as_str().unwrap_or("Unknown error")
-                        )),
-                    });
-                } else {
-                    // If not JSON, clean up HTML response
-                    let error_message = match status.as_u16() {
-                        401 => "Invalid API key (Authentication failed)",
-                        403 => "API key doesn't have permission",
-                        429 => "Rate limit exceeded",
-                        500..=599 => "Server error",
-                        _ => "Unknown error",
-                    };
-                    println!("\nError Response (non-JSON): {}", response_text);
-                    return Ok(ApiResponse {
-                        content: None,
-                        error: Some(format!(
-                            "Perplexity API Error: {} (Status {})",
-                            error_message, status
-                        )),
-                    });
-                }
-            }
-
-            println!("\nSuccess Response: {}", response_text);
-            println!("\n=== End of Verification ===\n");
-
-            // Store the key if verification succeeds
-            let mut keys = load_stored_keys(&app_handle)?;
-            keys[request.provider.as_str()] = serde_json::Value::String(request.key.clone());
-            save_keys(&app_handle, &keys)?;
-
-            Ok(ApiResponse {
-                content: Some("API key is valid".to_string()),
-                error: None,
-            })
-        }
-        "openai" => {
-            println!("\n=== OpenAI API Key Verification ===");
-            println!("Key prefix: {}...", &request.key[..10]);
-
-            let request_body = serde_json::json!({
-                "model": "gpt-3.5-turbo",
-                "messages": [{
-                    "role": "user",
-                    "content": "Hi"
-                }],
-                "max_tokens": 5
-            });
-
-            println!("\nRequest Details:");
-            println!("URL: https://api.openai.com/v1/chat/completions");
-            println!("Headers:");
-            println!("  Authorization: Bearer {}...", &request.key[..10]);
-            println!("\nRequest Body:");
-            println!("{}", serde_json::to_string_pretty(&request_body).unwrap());
-
-            let mut headers = HeaderMap::new();
             headers.insert(
                 AUTHORIZATION,
                 HeaderValue::from_str(&format!("Bearer {}", request.key))
-                    .map_err(|e| e.to_string())?
+                    .map_err(|e| format!("Invalid API key format: {}", e))?,
+            );
+
+            let response = client
+                .post("https://api.anthropic.com/v1/messages")
+                .headers(headers)
+                .json(&serde_json::json!({
+                    "model": "claude-3-opus-20240229",
+                    "max_tokens": 1,
+                    "messages": [{"role": "user", "content": "Hi"}]
+                }))
+                .send()
+                .await
+                .map_err(|e| format!("Failed to send request: {}", e))?;
+
+            // Clone status and headers before consuming the body
+            let status = response.status();
+            let headers = response.headers().clone();
+
+            // Log response info
+            println!("API Response from Anthropic:");
+            println!("Status: {}", status);
+            println!("Headers: {:?}", headers);
+
+            // Get response body
+            let body = response.text().await
+                .map_err(|e| format!("Failed to read response body: {}", e))?;
+            println!("Body: {}", body);
+
+            if status.is_success() {
+                Ok(ApiResponse {
+                    content: Some("API key verified successfully".to_string()),
+                    error: None,
+                })
+            } else {
+                Ok(ApiResponse {
+                    content: None,
+                    error: Some(body),
+                })
+            }
+        }
+        "perplexity" => {
+            headers.insert(
+                AUTHORIZATION,
+                HeaderValue::from_str(&format!("Bearer {}", request.key))
+                    .map_err(|e| format!("Invalid API key format: {}", e))?,
+            );
+
+            let response = client
+                .post("https://api.perplexity.ai/chat/completions")
+                .headers(headers)
+                .json(&serde_json::json!({
+                    "model": "llama-3.1-sonar-small-128k-online",
+                    "messages": [{"role": "user", "content": "Hi"}]
+                }))
+                .send()
+                .await
+                .map_err(|e| format!("Failed to send request: {}", e))?;
+
+            // Clone status and headers before consuming the body
+            let status = response.status();
+            let headers = response.headers().clone();
+
+            // Log response info
+            println!("API Response from Perplexity:");
+            println!("Status: {}", status);
+            println!("Headers: {:?}", headers);
+
+            // Get response body
+            let body = response.text().await
+                .map_err(|e| format!("Failed to read response body: {}", e))?;
+            println!("Body: {}", body);
+
+            if status.is_success() {
+                Ok(ApiResponse {
+                    content: Some("API key verified successfully".to_string()),
+                    error: None,
+                })
+            } else {
+                Ok(ApiResponse {
+                    content: None,
+                    error: Some(body),
+                })
+            }
+        }
+        "openai" => {
+            headers.insert(
+                AUTHORIZATION,
+                HeaderValue::from_str(&format!("Bearer {}", request.key))
+                    .map_err(|e| format!("Invalid API key format: {}", e))?,
             );
 
             let response = client
                 .post("https://api.openai.com/v1/chat/completions")
                 .headers(headers)
-                .json(&request_body)
+                .json(&serde_json::json!({
+                    "model": "gpt-3.5-turbo",
+                    "messages": [{"role": "user", "content": "Hi"}]
+                }))
                 .send()
                 .await
-                .map_err(|e| {
-                    println!("\nNetwork Error:");
-                    println!("Type: {}", e.to_string());
-                    if let Some(status) = e.status() {
-                        println!("Status: {}", status);
-                    }
-                    if let Some(url) = e.url() {
-                        println!("URL: {}", url);
-                    }
-                    e.to_string()
-                })?;
+                .map_err(|e| format!("Failed to send request: {}", e))?;
 
-            println!("\nResponse Details:");
-            println!(
-                "Status: {} ({})",
-                response.status(),
-                response.status().as_u16()
-            );
-            println!("Headers:");
-            for (key, value) in response.headers().iter() {
-                println!(
-                    "  {}: {}",
-                    key,
-                    value.to_str().unwrap_or("Unable to read header value")
-                );
-            }
-
+            // Clone status and headers before consuming the body
             let status = response.status();
-            let status_code = status.as_u16();
-            let response_text = response.text().await.map_err(|e| {
-                println!("\nError Reading Response Body: {}", e);
-                e.to_string()
-            })?;
+            let headers = response.headers().clone();
 
-            println!("\nResponse Body:");
-            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&response_text) {
-                println!("{}", serde_json::to_string_pretty(&json).unwrap());
+            // Log response info
+            println!("API Response from OpenAI:");
+            println!("Status: {}", status);
+            println!("Headers: {:?}", headers);
+
+            // Get response body
+            let body = response.text().await
+                .map_err(|e| format!("Failed to read response body: {}", e))?;
+            println!("Body: {}", body);
+
+            if status.is_success() {
+                Ok(ApiResponse {
+                    content: Some("API key verified successfully".to_string()),
+                    error: None,
+                })
             } else {
-                println!("{}", response_text);
-            }
-
-            if !status.is_success() {
-                let error_message = match status_code {
-                    401 => "Invalid API key (Authentication failed)",
-                    403 => "API key doesn't have permission",
-                    429 => "Rate limit exceeded",
-                    500..=599 => "OpenAI server error",
-                    _ => "Unknown error",
-                };
-
-                return Ok(ApiResponse {
+                Ok(ApiResponse {
                     content: None,
-                    error: Some(format!(
-                        "OpenAI API Key Verification Failed\n\nStatus: {} ({})\nError: {}\n\nDetails: {}", 
-                        status,
-                        status_code,
-                        error_message,
-                        response_text
-                    )),
-                });
+                    error: Some(body),
+                })
             }
-
-            println!("\n=== End of Verification ===\n");
-
-            // Store the key if verification succeeds
-            let mut keys = load_stored_keys(&app_handle)?;
-            keys[request.provider.as_str()] = serde_json::Value::String(request.key.clone());
-            save_keys(&app_handle, &keys)?;
-
-            Ok(ApiResponse {
-                content: Some("API key verified successfully".to_string()),
-                error: None,
-            })
         }
-        _ => Ok(ApiResponse {
-            content: None,
-            error: Some("Invalid provider specified".to_string()),
-        }),
-    };
-
-    result
+        _ => Err(format!("Unsupported provider: {}", request.provider)),
+    }
 }
 
 #[tauri::command]
@@ -946,9 +751,9 @@ async fn cache_file(
 ) -> Result<(), String> {
     let cache_dir = get_cache_dir()?;
     
-    // Create metadata file path
+    // Create metadata file path with file name in metadata
     let meta_path = cache_dir.join(format!("{}.meta.json", file_id));
-    println!("Writing metadata to: {:?}", meta_path);
+    println!("Writing metadata for '{}' to: {:?}", file_name, meta_path);
     
     // Write metadata
     fs::write(&meta_path, metadata)
@@ -956,13 +761,13 @@ async fn cache_file(
     
     // Create content file path
     let content_path = cache_dir.join(format!("{}.content", file_id));
-    println!("Writing content to: {:?}", content_path);
+    println!("Writing content for '{}' to: {:?}", file_name, content_path);
     
     // Write content
     fs::write(&content_path, content)
         .map_err(|e| format!("Failed to write content: {}", e))?;
     
-    println!("File cached successfully: {}", file_id);
+    println!("File '{}' cached successfully with ID: {}", file_name, file_id);
     Ok(())
 }
 

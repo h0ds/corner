@@ -37,7 +37,7 @@ export const Features: React.FC<FeaturesProps> = ({
               <button
                 onClick={onSidebarToggle}
                 className="p-2 bg-background hover:bg-accent 
-                          rounded-sm transition-colors border border-border shadow-sm"
+                          rounded-sm transition-colors border border-border"
               >
                 {sidebarVisible ? (
                   <PanelLeftClose className="h-4 w-4" />
@@ -62,7 +62,7 @@ export const Features: React.FC<FeaturesProps> = ({
                   <button
                     onClick={() => setShowFileMenu(true)}
                     className="p-2 bg-background hover:bg-accent 
-                              rounded-sm transition-colors border border-border shadow-sm"
+                              rounded-sm transition-colors border border-border"
                   >
                     <FileText className="h-4 w-4" />
                   </button>
@@ -79,7 +79,7 @@ export const Features: React.FC<FeaturesProps> = ({
                   <button
                     onClick={onOpenShortcuts}
                     className="p-2 bg-background hover:bg-accent 
-                              rounded-sm transition-colors border border-border shadow-sm"
+                              rounded-sm transition-colors border border-border"
                   >
                     <Settings className="h-4 w-4" />
                   </button>
