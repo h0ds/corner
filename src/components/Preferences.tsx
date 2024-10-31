@@ -32,6 +32,7 @@ import { Appearance } from './preferences/Appearance';
 import { Models } from './preferences/Models';
 import { Shortcuts } from './preferences/Shortcuts';
 import { Connections } from './preferences/Connections';
+import { Plugins } from './preferences/Plugins';
 
 interface PreferencesProps {
   isOpen: boolean;
@@ -309,6 +310,13 @@ export const Preferences: React.FC<PreferencesProps> = ({
               setShortcuts(reset);
             }}
             onSave={saveShortcuts}
+          />
+        );
+      case 'plugins':
+        return (
+          <Plugins
+            plugins={plugins}
+            onPluginChange={onPluginChange}
           />
         );
       case 'connections':

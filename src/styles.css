@@ -9,7 +9,9 @@
         -moz-user-select: none;
         -ms-user-select: none;
         user-select: none;
-        letter-spacing: -0.05em;
+        letter-spacing: -0.02em;
+        font-size: 14px;
+        font-weight: 400;
     }
 
     .selectable-text {
@@ -19,6 +21,43 @@
         user-select: text;
     }
 
+    /* Typography classes */
+    .text-default {
+        @apply text-sm tracking-[-0.02em] font-normal;
+    }
+
+    .text-small {
+        @apply text-xs tracking-[-0.02em] font-normal;
+    }
+
+    .text-heading {
+        @apply text-sm tracking-[-0.02em] font-medium;
+    }
+
+    .text-mono {
+        @apply font-mono text-xs tracking-tight;
+    }
+
+    /* Override Tailwind's default text classes */
+    .text-xs {
+        font-size: 12px;
+        letter-spacing: -0.02em;
+    }
+
+    .text-sm {
+        font-size: 14px;
+        letter-spacing: -0.02em;
+    }
+
+    .font-medium {
+        font-weight: 500;
+    }
+
+    .font-bold {
+        font-weight: 600;
+    }
+
+    /* Rest of your CSS... */
     :root {
         --background: 0 0% 100%;
         --foreground: 222.2 84% 4.9%;
