@@ -39,6 +39,7 @@ import { readTextFile } from '@tauri-apps/plugin-fs';
 import { KeyboardShortcut, loadShortcuts, matchesShortcut } from '@/lib/shortcuts';
 import { Features } from './components/Features';
 import { ResizeObserver } from './components/ResizeObserver';
+import { Plugin, loadPlugins, evaluatePlugin } from '@/lib/plugins';
 
 interface ApiResponse {
   content?: string;
@@ -72,6 +73,7 @@ function App() {
   const [sidebarWidth, setSidebarWidth] = useState(250);
   const [shortcuts, setShortcuts] = useState<KeyboardShortcut[]>([]);
   const [manuallyHidden, setManuallyHidden] = useState(false);
+  const [plugins, setPlugins] = useState<Plugin[]>([]);
 
   // Initialize cache on mount
   useEffect(() => {
@@ -612,6 +614,10 @@ function App() {
     saveSelectedModel(selectedModel);
   }, [selectedModel]);
 
+  useEffect(() => {
+    loadPlugins().then(setPlugins);
+  }, []);
+
   return (
     <div className="flex h-screen bg-background">
       {/* Sidebar with animation */}
@@ -840,6 +846,8 @@ function App() {
             selectedModel={selectedModel}
             onModelChange={setSelectedModel}
             initialTab={preferenceTab}
+            plugins={plugins}
+            onPluginChange={setPlugins}
           />
         </div>
       </div>

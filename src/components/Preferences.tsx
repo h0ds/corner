@@ -18,6 +18,15 @@ import { cn } from '@/lib/utils';
 import { loadApiKeys } from '@/lib/apiKeys';
 import { KeyboardShortcut, DEFAULT_SHORTCUTS, loadShortcuts, saveShortcuts, resetShortcuts } from '@/lib/shortcuts';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
+import { Plugin, loadPlugins, savePlugin, deletePlugin, togglePlugin } from '@/lib/plugins';
+import { nanoid } from 'nanoid';
+import { Code, Pencil, Trash2 } from 'lucide-react';
+import { Switch } from "@/components/ui/switch";
+import { Card } from "@/components/ui/card";
+import { Plus } from 'lucide-react';
+import { Search } from 'lucide-react';
+import { FileText } from 'lucide-react';
+import { PluginDocs } from './PluginDocs';
 
 interface PreferencesProps {
   isOpen: boolean;
@@ -25,6 +34,8 @@ interface PreferencesProps {
   selectedModel: string;
   onModelChange: (model: string) => void;
   initialTab?: PreferenceTab;
+  plugins?: Plugin[];
+  onPluginChange?: (plugins: Plugin[]) => void;
 }
 
 type VerificationStatus = 'idle' | 'verifying' | 'success' | 'error';
@@ -35,14 +46,16 @@ interface ApiKeys {
   openai: string;
 }
 
-type PreferenceTab = 'api-keys' | 'appearance' | 'models' | 'shortcuts';
+type PreferenceTab = 'api-keys' | 'appearance' | 'models' | 'shortcuts' | 'plugins';
 
 export const Preferences: React.FC<PreferencesProps> = ({ 
   isOpen, 
   onClose,
   selectedModel,
   onModelChange,
-  initialTab = 'api-keys'
+  initialTab = 'api-keys',
+  plugins = [],
+  onPluginChange,
 }) => {
   const [keys, setKeys] = useState<ApiKeys>({ 
     anthropic: '', 
@@ -64,6 +77,9 @@ export const Preferences: React.FC<PreferencesProps> = ({
   const [shortcuts, setShortcuts] = useState<KeyboardShortcut[]>([]);
   const [editingShortcutId, setEditingShortcutId] = useState<string | null>(null);
   const [recordingShortcut, setRecordingShortcut] = useState(false);
+  const [editingPlugin, setEditingPlugin] = useState<Plugin | null>(null);
+  const [pluginCode, setPluginCode] = useState('');
+  const [showDocs, setShowDocs] = useState(false);
 
   // Update active tab when initialTab prop changes
   useEffect(() => {
@@ -253,6 +269,7 @@ export const Preferences: React.FC<PreferencesProps> = ({
     { id: 'appearance', label: 'Appearance', icon: <Palette className="h-4 w-4" /> },
     { id: 'models', label: 'Models', icon: <Bot className="h-4 w-4" /> },
     { id: 'shortcuts', label: 'Shortcuts', icon: <Keyboard className="h-4 w-4" /> },
+    { id: 'plugins', label: 'Plugins', icon: <Code className="h-4 w-4" /> },
   ];
 
   const renderContent = () => {
@@ -355,6 +372,131 @@ export const Preferences: React.FC<PreferencesProps> = ({
             ))}
           </div>
         );
+      case 'plugins':
+        return (
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Input
+                  placeholder="Search community plugins..."
+                  className="pl-8"
+                />
+                <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => setShowDocs(true)}
+                className="whitespace-nowrap"
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Documentation
+              </Button>
+            </div>
+
+            {/* Upload button */}
+            <div className="flex justify-end">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => {
+                        // Add file input click handler
+                        const input = document.createElement('input');
+                        input.type = 'file';
+                        input.accept = '.js,.ts';
+                        input.onchange = (e) => {
+                          const file = (e.target as HTMLInputElement).files?.[0];
+                          if (file) {
+                            // Handle plugin file upload
+                            const reader = new FileReader();
+                            reader.onload = async (e) => {
+                              const content = e.target?.result as string;
+                              // Create new plugin from file
+                              const newPlugin: Plugin = {
+                                id: nanoid(),
+                                name: file.name.replace(/\.[^/.]+$/, ""),
+                                description: "Imported plugin",
+                                version: "1.0.0",
+                                author: "Unknown",
+                                enabled: false,
+                                code: content,
+                                hooks: {}
+                              };
+                              await savePlugin(newPlugin);
+                              const newPlugins = await loadPlugins();
+                              onPluginChange?.(newPlugins);
+                            };
+                            reader.readAsText(file);
+                          }
+                        };
+                        input.click();
+                      }}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Upload plugin file
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+
+            {/* Installed plugins grid */}
+            <div className="grid grid-cols-2 gap-4">
+              {plugins.map((plugin) => (
+                <Card
+                  key={plugin.id}
+                  className="p-4 space-y-2"
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="font-medium text-sm">{plugin.name}</h3>
+                      <p className="text-xs text-muted-foreground">
+                        {plugin.description}
+                      </p>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        v{plugin.version} • by {plugin.author}
+                      </div>
+                    </div>
+                    <Switch
+                      checked={plugin.enabled}
+                      onCheckedChange={(checked) => {
+                        togglePlugin(plugin.id, checked);
+                        const newPlugins = plugins.map(p =>
+                          p.id === plugin.id ? { ...p, enabled: checked } : p
+                        );
+                        onPluginChange?.(newPlugins);
+                      }}
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={async () => {
+                        await deletePlugin(plugin.id);
+                        const newPlugins = plugins.filter(p => p.id !== plugin.id);
+                        onPluginChange?.(newPlugins);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+
+            {plugins.length === 0 && (
+              <div className="text-center text-muted-foreground py-8">
+                No plugins installed
+              </div>
+            )}
+          </div>
+        );
     }
   };
 
@@ -411,6 +553,45 @@ export const Preferences: React.FC<PreferencesProps> = ({
     };
 
     window.addEventListener('keydown', handleKeyDown);
+  };
+
+  const handleCreatePlugin = () => {
+    const newPlugin: Plugin = {
+      id: nanoid(),
+      name: 'New Plugin',
+      description: 'A new plugin',
+      version: '1.0.0',
+      author: '',
+      enabled: false,
+      code: `// Plugin code here
+hooks: {
+  onMessage: async (message) => {
+    // Modify or process message here
+    return message;
+  },
+  onThreadCreate: async (thread) => {
+    // Modify or process new thread here
+    return thread;
+  }
+}`,
+      hooks: {}
+    };
+    setEditingPlugin(newPlugin);
+    setPluginCode(newPlugin.code);
+  };
+
+  const handleSavePlugin = async () => {
+    if (editingPlugin) {
+      const updatedPlugin = {
+        ...editingPlugin,
+        code: pluginCode
+      };
+      await savePlugin(updatedPlugin);
+      const newPlugins = await loadPlugins();
+      onPluginChange?.(newPlugins);
+      setEditingPlugin(null);
+      setPluginCode('');
+    }
   };
 
   return (
@@ -487,6 +668,10 @@ export const Preferences: React.FC<PreferencesProps> = ({
           </div>
         </div>
       </DialogContent>
+      <PluginDocs
+        isOpen={showDocs}
+        onClose={() => setShowDocs(false)}
+      />
     </Dialog>
   );
 };
