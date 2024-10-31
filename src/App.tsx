@@ -846,8 +846,8 @@ function App() {
                         setPreferenceTab('models');
                         setShowPreferences(true);
                       }}
-                      className="p-2 bg-background text-muted-foreground hover:text-foreground 
-                               hover:bg-accent rounded-sm shadow-sm transition-colors cursor-pointer"
+                      className="p-2 bg-background text-muted-foreground hover:text-foreground border border-border/50
+                               hover:bg-accent rounded-sm transition-colors cursor-pointer"
                     >
                       <ModelIcon modelId={selectedModel} className="h-5 w-5" />
                     </div>
