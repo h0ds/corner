@@ -90,7 +90,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     )}>
       <div className={cn(
         "w-8 h-8 flex items-center justify-center rounded-sm shrink-0",
-        role === 'assistant' ? "bg-accent text-primary-foreground" : "bg-blue-100 dark:bg-accent text-accent-foreground"
+        role === 'assistant' ? "bg-accent text-accent-foreground" : "bg-accent text-accent-foreground"
       )}>
         {role === 'assistant' && modelId && (
           <ModelIcon modelId={modelId} className="h-4 w-4" />
@@ -103,7 +103,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         "flex-0 space-y-2 overflow-hidden text-sm selectable-text",
         "max-w-[80%] w-fit",
         role === 'user' && "text-right ml-auto",
-        role === 'user' ? "bg-[#007AFF] text-white p-3 py-2 rounded-sm" : "border border-border/50 rounded-sm p-3 py-2"
+        role === 'user' ? "bg-primary text-primary-foreground p-3 py-2 rounded-sm" : "border border-border/50 rounded-sm p-3 py-2"
       )}>
         {renderContent()}
       </div>

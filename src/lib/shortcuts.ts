@@ -5,6 +5,7 @@ export interface KeyboardShortcut {
   description: string;
   defaultKey: string;
   currentKey: string;
+  hidden?: boolean;
 }
 
 // Detect if we're on macOS
@@ -22,6 +23,13 @@ export const DEFAULT_SHORTCUTS: KeyboardShortcut[] = [
     description: 'Toggle sidebar',
     defaultKey: isMac ? '⌘ + S' : 'Ctrl + S',
     currentKey: isMac ? '⌘ + S' : 'Ctrl + S'
+  },
+  {
+    id: 'toggle-fullscreen',
+    description: 'Toggle fullscreen',
+    defaultKey: isMac ? '⌘ + F' : 'Ctrl + F',
+    currentKey: isMac ? '⌘ + F' : 'Ctrl + F',
+    hidden: true
   }
 ];
 

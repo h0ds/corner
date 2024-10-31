@@ -318,6 +318,7 @@ export const ThreadList: React.FC<ThreadListProps> = ({
     }
 
     setActiveId(null);
+    setDropTarget(null);
   };
 
   const handleDragCancel = () => {
