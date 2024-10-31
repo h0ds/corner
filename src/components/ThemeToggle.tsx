@@ -29,15 +29,51 @@ export function ThemeToggle() {
   const { setTheme, theme } = useTheme()
   const [customThemes, setCustomThemes] = useState<CustomTheme[]>([])
 
-  // Load custom themes from localStorage
-  useEffect(() => {
+  // Function to load themes from localStorage
+  const loadThemes = () => {
     const stored = localStorage.getItem('custom-themes')
     if (stored) {
       try {
-        setCustomThemes(JSON.parse(stored))
+        const parsedThemes = JSON.parse(stored)
+        setCustomThemes(parsedThemes)
+        
+        // If current theme was deleted, switch to light theme
+        if (theme && !['light', 'dark', 'black', 'system'].includes(theme)) {
+          const themeExists = parsedThemes.some(
+            (t: CustomTheme) => sanitizeCssVar(t.name) === theme
+          )
+          if (!themeExists) {
+            handleThemeChange('light')
+          }
+        }
       } catch (error) {
         console.error('Failed to parse custom themes:', error)
       }
+    } else {
+      setCustomThemes([])
+    }
+  }
+
+  // Load themes initially
+  useEffect(() => {
+    loadThemes()
+  }, [theme])
+
+  // Listen for storage changes
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'custom-themes') {
+        loadThemes()
+      }
+    }
+
+    window.addEventListener('storage', handleStorageChange)
+    // Also listen for custom storage event for same-window updates
+    window.addEventListener('customThemeChange', loadThemes)
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+      window.removeEventListener('customThemeChange', loadThemes)
     }
   }, [])
 

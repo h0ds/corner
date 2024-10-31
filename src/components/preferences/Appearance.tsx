@@ -91,6 +91,9 @@ export const Appearance: React.FC = () => {
         }
       });
     }
+
+    // After saving theme changes to localStorage
+    window.dispatchEvent(new Event('customThemeChange'))
   };
 
   const startNewTheme = () => {
@@ -102,15 +105,24 @@ export const Appearance: React.FC = () => {
   };
 
   const deleteTheme = (themeId: string) => {
+    const themeToDelete = customThemes.find(t => t.id === themeId);
     const updatedThemes = customThemes.filter(t => t.id !== themeId);
     setCustomThemes(updatedThemes);
     localStorage.setItem('custom-themes', JSON.stringify(updatedThemes));
     
-    // Reset CSS variables if the theme was active
-    const root = document.documentElement;
-    Object.keys(defaultColors).forEach(key => {
-      root.style.removeProperty(`--${key}`);
-    });
+    // If the deleted theme was active, switch to light theme
+    if (themeToDelete && sanitizeCssVar(themeToDelete.name) === theme) {
+      setTheme('light');
+      
+      // Reset CSS variables
+      const root = document.documentElement;
+      Object.keys(defaultColors).forEach(key => {
+        root.style.removeProperty(`--${sanitizeCssVar(key)}`);
+      });
+    }
+
+    // Notify theme toggle of the change
+    window.dispatchEvent(new Event('customThemeChange'));
   };
 
   // Helper functions for color conversion
@@ -167,7 +179,7 @@ export const Appearance: React.FC = () => {
           className="text-xs"
         >
           <RotateCcw className="h-3 w-3 mr-1" />
-          Reset Appearance
+          Reset All
         </Button>
       </div>
 
