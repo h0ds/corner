@@ -78,7 +78,7 @@ const ThreadItem = ({
   return (
     <div
       className={cn(
-        "group flex items-center gap-2 px-3 py-2 rounded-sm cursor-pointer",
+        "group flex items-center gap-2 px-3 py-2 rounded-md cursor-pointer",
         "hover:bg-accent hover:text-accent-foreground transition-colors",
         activeThreadId === thread.id && "bg-accent text-accent-foreground",
         isDragging && "opacity-50",
@@ -332,7 +332,7 @@ export const ThreadList: React.FC<ThreadListProps> = ({
       <div className="p-2 border-b border-border mt-12">
         <button
           onClick={onNewThread}
-          className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-sm
+          className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md
                    bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
         >
           <Plus className="h-4 w-4" />

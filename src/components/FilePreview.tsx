@@ -24,7 +24,7 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
   const isPdf = /\.pdf$/i.test(fileName);
 
   return (
-    <Card className="rounded-none relative border-none p-2 shadow-none">
+    <Card className="rounded-md relative border-none p-2 shadow-none">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           {/* <span className="text-sm font-medium">

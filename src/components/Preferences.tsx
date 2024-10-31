@@ -389,7 +389,7 @@ export const Preferences: React.FC<PreferencesProps> = ({
                 className="whitespace-nowrap"
               >
                 <FileText className="h-4 w-4 mr-2" />
-                Documentation
+                Docs
               </Button>
             </div>
 

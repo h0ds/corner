@@ -116,7 +116,7 @@ export const FileMenu: React.FC<FileMenuProps> = ({
             <div
               {...getRootProps()}
               className={`
-                border-2 border-dashed rounded-sm p-8 text-center cursor-pointer
+                border-2 border-dashed rounded-md p-8 text-center cursor-pointer
                 transition-colors
                 ${isDragActive ? 'border-primary bg-primary/5' : 'border-border'}
               `}
@@ -139,7 +139,7 @@ export const FileMenu: React.FC<FileMenuProps> = ({
                   {files.map((file, index) => (
                     <div
                       key={index}
-                      className="flex items-center justify-between p-2 rounded-sm bg-muted group"
+                      className="flex items-center justify-between p-2 rounded-md bg-muted group"
                     >
                       <div className="flex items-center gap-2">
                         <FileText className="h-4 w-4 text-muted-foreground" />

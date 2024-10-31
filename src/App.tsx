@@ -115,7 +115,8 @@ function App() {
       files: [],
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      cachedFiles: []
+      cachedFiles: [],
+      lastUsedModel: selectedModel
     };
     setThreads(prev => [...prev, newThread]);
     setActiveThreadId(newThread.id);
@@ -435,12 +436,13 @@ function App() {
         })
       };
 
-      // Update thread with user message
+      // Update thread with user message and last used model
       setThreads(prev => prev.map(thread => {
         if (thread.id === activeThreadId) {
           return {
             ...thread,
             messages: [...thread.messages, userMessage],
+            lastUsedModel: selectedModel,
             updatedAt: Date.now(),
           };
         }
@@ -618,6 +620,23 @@ function App() {
     loadPlugins().then(setPlugins);
   }, []);
 
+  const handleThreadSelect = (threadId: string) => {
+    setActiveThreadId(threadId);
+    
+    // Find the thread and restore its last used model if available
+    const thread = threads.find(t => t.id === threadId);
+    if (thread?.lastUsedModel) {
+      // Make sure the model exists in AVAILABLE_MODELS before setting it
+      const modelExists = AVAILABLE_MODELS.some(m => m.id === thread.lastUsedModel);
+      if (modelExists) {
+        console.log('Restoring model:', thread.lastUsedModel, 'for thread:', threadId);
+        setSelectedModel(thread.lastUsedModel);
+      } else {
+        console.warn('Stored model not found:', thread.lastUsedModel);
+      }
+    }
+  };
+
   return (
     <div className="flex h-screen bg-background">
       {/* Sidebar with animation */}
@@ -649,7 +668,7 @@ function App() {
               <ThreadList
                 threads={threads}
                 activeThreadId={activeThreadId}
-                onThreadSelect={setActiveThreadId}
+                onThreadSelect={handleThreadSelect}
                 onNewThread={handleNewThread}
                 onDeleteThread={handleDeleteThread}
                 onRenameThread={handleRenameThread}
@@ -700,7 +719,7 @@ function App() {
                   exit={{ y: 20 }}
                   transition={{ duration: 0.2, ease: "easeOut" }}
                   className={cn(
-                    "p-8 rounded-lg border-4 border-dashed shadow-xl",
+                    "p-8 rounded-md border-4 border-dashed shadow-xl",
                     activeThreadId 
                       ? "border-primary bg-primary/5" 
                       : "border-destructive bg-destructive/5"
