@@ -103,7 +103,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         "flex-0 space-y-2 overflow-hidden text-sm selectable-text",
         "max-w-[80%] w-fit",
         role === 'user' && "text-right ml-auto",
-        role === 'user' ? "bg-[#007AFF] text-white p-3 rounded-md" : "border border-border/50 rounded-md p-3"
+        role === 'user' ? "bg-[#007AFF] text-white p-3 py-2 rounded-sm" : "border border-border/50 rounded-sm p-3 py-2"
       )}>
         {renderContent()}
       </div>

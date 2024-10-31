@@ -623,16 +623,32 @@ function App() {
   const handleThreadSelect = (threadId: string) => {
     setActiveThreadId(threadId);
     
-    // Find the thread and restore its last used model if available
+    // Find the thread
     const thread = threads.find(t => t.id === threadId);
-    if (thread?.lastUsedModel) {
-      // Make sure the model exists in AVAILABLE_MODELS before setting it
-      const modelExists = AVAILABLE_MODELS.some(m => m.id === thread.lastUsedModel);
-      if (modelExists) {
-        console.log('Restoring model:', thread.lastUsedModel, 'for thread:', threadId);
-        setSelectedModel(thread.lastUsedModel);
-      } else {
-        console.warn('Stored model not found:', thread.lastUsedModel);
+    if (thread) {
+      // Get the last message with a modelId
+      const lastModelMessage = [...thread.messages]
+        .reverse()
+        .find(m => m.modelId);
+
+      if (lastModelMessage?.modelId) {
+        // Make sure the model exists in AVAILABLE_MODELS before setting it
+        const modelExists = AVAILABLE_MODELS.some(m => m.id === lastModelMessage.modelId);
+        if (modelExists) {
+          console.log('Restoring model from last message:', lastModelMessage.modelId, 'for thread:', threadId);
+          setSelectedModel(lastModelMessage.modelId);
+        } else {
+          console.warn('Stored model not found:', lastModelMessage.modelId);
+        }
+      } else if (thread.lastUsedModel) {
+        // Fall back to lastUsedModel if no message has a modelId
+        const modelExists = AVAILABLE_MODELS.some(m => m.id === thread.lastUsedModel);
+        if (modelExists) {
+          console.log('Restoring last used model:', thread.lastUsedModel, 'for thread:', threadId);
+          setSelectedModel(thread.lastUsedModel);
+        } else {
+          console.warn('Stored model not found:', thread.lastUsedModel);
+        }
       }
     }
   };
