@@ -167,7 +167,7 @@ export function ThemeToggle() {
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="default" className="rounded-sm w-[200px] justify-start">
           {getIcon()}
-          <span className="ml-2">
+          <span className="-mb-1 ml-2">
             {customThemes.find(t => sanitizeCssVar(t.name) === theme)?.name || 
              (theme === 'black' ? 'Monochrome' : 
               theme === 'dark' ? 'Dark' : 
@@ -178,15 +178,15 @@ export function ThemeToggle() {
       <DropdownMenuContent align="end" className="rounded-sm">
         <DropdownMenuItem onClick={() => handleThemeChange("light")} className="text-sm">
           <Sun className="h-4 w-4 mr-2" />
-          Light
+          <span className="-mb-1">Light</span>
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => handleThemeChange("dark")} className="text-sm">
           <Moon className="h-4 w-4 mr-2" />
-          Dark
+          <span className="-mb-1">Dark</span> 
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => handleThemeChange("black")} className="text-sm">
           <Monitor className="h-4 w-4 mr-2" />
-          Monochrome
+          <span className="-mb-1">Monochrome</span>
         </DropdownMenuItem>
 
         {customThemes.length > 0 && (

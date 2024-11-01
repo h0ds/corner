@@ -333,7 +333,7 @@ export const Preferences: React.FC<PreferencesProps> = ({
 
           <div className="flex-1 p-6">
             <DialogHeader>
-              <DialogTitle className="text-sm font-medium">
+              <DialogTitle className="text-md font-medium">
                 {tabs.find(t => t.id === activeTab)?.label}
               </DialogTitle>
             </DialogHeader>

@@ -98,7 +98,7 @@ export const FileMenu: React.FC<FileMenuProps> = ({
                 <span className="text-sm font-medium">{previewFile.name}</span>
               </div>
             ) : (
-              "Upload Files"
+              <span className="font-mono text-md tracking-tighter">Upload Files</span>
             )}
           </DialogTitle>
         </DialogHeader>

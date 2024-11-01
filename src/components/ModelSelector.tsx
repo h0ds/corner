@@ -1,3 +1,4 @@
+import { ModelIcon } from './ModelIcon';
 import {
   Select,
   SelectContent,
@@ -60,7 +61,12 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
       disabled={disabled}
     >
       <SelectTrigger className="w-[180px] rounded-sm text-sm">
-        <SelectValue placeholder="Select a model" />
+        <SelectValue>
+          <div className="flex items-center gap-2">
+            <ModelIcon modelId={selectedModel} className="w-4 h-4" />
+            <span className="-mb-1">{AVAILABLE_MODELS.find(m => m.id === selectedModel)?.name || 'Select a model'}</span>
+          </div>
+        </SelectValue>
       </SelectTrigger>
       <SelectContent>
         <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
@@ -72,7 +78,10 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
             value={model.id}
             className="text-sm"
           >
-            {model.name}
+            <div className="flex items-center gap-2">
+              <ModelIcon modelId={model.id} className="w-4 h-4" />
+              <span className="-mb-1">{model.name}</span>
+            </div>
           </SelectItem>
         ))}
         
@@ -85,7 +94,10 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
             value={model.id}
             className="text-sm"
           >
-            {model.name}
+            <div className="flex items-center gap-2">
+              <ModelIcon modelId={model.id} className="w-4 h-4" />
+              <span className="-mb-1">{model.name}</span>
+            </div>
           </SelectItem>
         ))}
 
@@ -98,7 +110,10 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
             value={model.id}
             className="text-sm"
           >
-            {model.name}
+            <div className="flex items-center gap-2">
+              <ModelIcon modelId={model.id} className="w-4 h-4" />
+              <span className="-mb-1">{model.name}</span>
+            </div>
           </SelectItem>
         ))}
       </SelectContent>

@@ -31,7 +31,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { FileViewer } from './FileViewer';
-import { THREAD_COLORS, ThreadColor, THREAD_ICONS } from '@/types';
+import { THREAD_COLORS, THREAD_ICONS } from '@/types';
 
 interface ThreadListProps {
   threads: Thread[];
@@ -110,7 +110,7 @@ const ThreadItem = ({
         <div 
           className="absolute inset-0 rounded-md pointer-events-none border border-1"
           style={thread.color ? {
-            borderColor: thread.color ? `color-mix(in srgb, ${thread.color}, black 20%)` : undefined
+            borderColor: thread.color
           } : {
             borderColor: 'rgb(209 213 219)' // gray-300
           }}
@@ -339,12 +339,12 @@ const SortableThreadItem = ({
                      bg-background border border-border rounded-sm shadow-lg p-4"
             onClick={e => e.stopPropagation()}
           >
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Thread Color</span>
                 <button 
                   onClick={() => setShowColorPicker(false)}
-                  className="text-muted-foreground hover:text-foreground"
+                  className="absolute -top-2 -right-2 p-1 rounded-full bg-background border border-border text-muted-foreground hover:text-foreground"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -376,7 +376,7 @@ const SortableThreadItem = ({
                 <span className="text-sm font-medium">Thread Icon</span>
                 <button 
                   onClick={() => setShowIconPicker(false)}
-                  className="text-muted-foreground hover:text-foreground"
+                  className="absolute -top-2 -right-2 p-1 rounded-full bg-background border border-border text-muted-foreground hover:text-foreground"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -401,22 +401,28 @@ const ColorPicker: React.FC<{
   onColorSelect: (color: string) => void;
 }> = ({ currentColor, onColorSelect }) => {
   return (
-    <div className="grid grid-cols-5 gap-1 p-1">
-      {Object.entries(THREAD_COLORS).map(([name, color]) => (
-        <button
-          key={name}
-          onClick={() => onColorSelect(color)}
-          className={cn(
-            "w-5 h-5 rounded-full",
-            "hover:scale-110 transition-transform",
-            "border border-border",
-            currentColor === color && "ring-2 ring-primary ring-offset-2",
-            !color && "bg-background",
-          )}
-          style={color ? { backgroundColor: color } : undefined}
-          title={name}
-        />
-      ))}
+    <div className="flex flex-col gap-2 p-1">
+      <div className="grid grid-cols-4 gap-1">
+        {Object.entries(THREAD_COLORS).map(([name, color]) => (
+          <button
+            key={name}
+            onClick={() => onColorSelect(color)}
+            className={cn(
+              "w-5 h-5 rounded-sm",
+              "hover:opacity-75 transition-transform",
+              !color && "bg-background",
+            )}
+            style={color ? { backgroundColor: color } : undefined}
+            title={name}
+          />
+        ))}
+      </div>
+      <button
+        onClick={() => onColorSelect('')}
+        className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors -mb-2"
+      >
+        Reset Color
+      </button>
     </div>
   );
 };
