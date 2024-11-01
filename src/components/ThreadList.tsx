@@ -89,9 +89,8 @@ const ThreadItem = ({
   return (
     <div
       className={cn(
-        "group flex items-center gap-2 px-3 py-2 rounded-md cursor-pointer",
+        "group flex items-center gap-2 px-3 py-2 rounded-md cursor-pointer relative",
         "hover:bg-accent hover:text-accent-foreground transition-colors",
-        activeThreadId === thread.id && "bg-accent text-accent-foreground",
         isDragging && "opacity-50",
         isOverlay && "bg-background border border-border shadow-lg scale-105 rotate-2"
       )}
@@ -107,86 +106,99 @@ const ThreadItem = ({
         }
       }}
     >
-      {thread.icon ? (
+      {activeThreadId === thread.id && (
         <div 
-          {...dragHandleProps}
-          className="touch-none cursor-grab transition-opacity"
-        >
-          <div className="h-4 w-4 shrink-0 text-muted-foreground mr-2">{thread.icon}</div>
-        </div>
-      ) : !thread.isPinned && (
-        <div 
-          {...dragHandleProps}
-          className="touch-none cursor-grab opacity-0 group-hover:opacity-100 transition-opacity"
-        >
-          <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground mr-2" />
-        </div>
+          className="absolute inset-0 rounded-md pointer-events-none border border-1"
+          style={thread.color ? {
+            borderColor: thread.color ? `color-mix(in srgb, ${thread.color}, black 20%)` : undefined
+          } : {
+            borderColor: 'rgb(209 213 219)' // gray-300
+          }}
+        />
       )}
-      
-      {thread.isPinned && (
-        <Pin className="h-4 w-4 shrink-0 text-primary mr-2" />
-      )}
-      
-      {editingThreadId === thread.id ? (
-        <div 
-          className="flex-1" 
-          onClick={(e) => e.stopPropagation()}
-        >
-          <Input
-            value={editingName}
-            onChange={(e) => onEditingNameChange(e.target.value)}
-            onBlur={onFinishRename}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') onFinishRename();
-              if (e.key === 'Escape') onFinishRename();
-              e.stopPropagation();
-            }}
-            className="h-6 text-sm py-0"
-            autoFocus
-          />
-        </div>
-      ) : (
-        <span className="text-sm truncate flex-1 mt-1">
-          {thread.name || 'New Thread'}
-        </span>
-      )}
-      
-      {!isOverlay && (
-        <>
-          {thread.files && thread.files.length > 0 && activeThreadId === thread.id && (
+
+      <div className="relative z-10 flex items-center gap-2 w-full">
+        {thread.icon ? (
+          <div 
+            {...dragHandleProps}
+            className="touch-none cursor-grab transition-opacity"
+          >
+            <div className="h-4 w-4 shrink-0 text-muted-foreground mr-2">{thread.icon}</div>
+          </div>
+        ) : !thread.isPinned && (
+          <div 
+            {...dragHandleProps}
+            className="touch-none cursor-grab opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground mr-2" />
+          </div>
+        )}
+        
+        {thread.isPinned && (
+          <Pin className="h-4 w-4 shrink-0 text-primary mr-2" />
+        )}
+        
+        {editingThreadId === thread.id ? (
+          <div 
+            className="flex-1" 
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Input
+              value={editingName}
+              onChange={(e) => onEditingNameChange(e.target.value)}
+              onBlur={onFinishRename}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') onFinishRename();
+                if (e.key === 'Escape') onFinishRename();
+                e.stopPropagation();
+              }}
+              className="h-6 text-sm py-0"
+              autoFocus
+            />
+          </div>
+        ) : (
+          <span className="text-sm truncate flex-1 mt-1">
+            {thread.name || 'New Thread'}
+          </span>
+        )}
+        
+        {!isOverlay && (
+          <>
+            {thread.files && thread.files.length > 0 && activeThreadId === thread.id && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowFiles(true);
+                }}
+                className="opacity-0 group-hover:opacity-100 hover:text-accent-foreground transition-opacity"
+                title={`${thread.files.length} file${thread.files.length === 1 ? '' : 's'}`}
+              >
+                <FileText className="h-4 w-4" />
+              </button>
+            )}
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                setShowFiles(true);
+                onDeleteThread(thread.id);
               }}
-              className="opacity-0 group-hover:opacity-100 hover:text-accent-foreground transition-opacity"
-              title={`${thread.files.length} file${thread.files.length === 1 ? '' : 's'}`}
+              className="opacity-0 group-hover:opacity-100 hover:text-destructive transition-opacity"
             >
-              <FileText className="h-4 w-4" />
+              <Trash2 className="h-4 w-4" />
             </button>
-          )}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDeleteThread(thread.id);
-            }}
-            className="opacity-0 group-hover:opacity-100 hover:text-destructive transition-opacity"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
-          {activeThreadId === thread.id && (
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          )}
-          {thread.files && (
-            <FileViewer
-              isOpen={showFiles}
-              onClose={() => setShowFiles(false)}
-              files={thread.files}
-              threadName={thread.name}
-            />
-          )}
-        </>
-      )}
+            {activeThreadId === thread.id && (
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            )}
+            {thread.files && (
+              <FileViewer
+                isOpen={showFiles}
+                onClose={() => setShowFiles(false)}
+                files={thread.files}
+                threadName={thread.name}
+              />
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 };
@@ -539,10 +551,10 @@ export const ThreadList: React.FC<ThreadListProps> = ({
       <div className="p-2 border-b border-border mt-12">
         <button
           onClick={onNewThread}
-          className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+          className="w-full flex items-center gap-2 p-3 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
         >
           <Plus className="h-4 w-4 shrink-0" />
-          <span className="flex items-center -mb-1">New</span>
+          <span className="flex items-center -mb-1">Start a new thread</span>
         </button>
       </div>
       

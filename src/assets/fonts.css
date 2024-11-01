@@ -1,15 +1,23 @@
 @font-face {
   font-family: 'Server Mono';
-  src: url('./assets/fonts/ServerMono-Regular.woff2') format('woff2'),
-       url('./assets/fonts/ServerMono-Regular.woff') format('woff');
+  src: url('/fonts/ServerMono-Regular.woff2') format('woff2'),
+       url('/fonts/ServerMono-Regular.woff') format('woff');
   font-weight: normal;
   font-style: normal;
 }
 
-/* @font-face {
-  font-family: 'Server Mono';
-  src: url('./assets/fonts/ServerMono-Bold.woff2') format('woff2'),
-       url('./assets/fonts/ServerMono-Bold.woff') format('woff');
-  font-weight: bold;
+@font-face {
+  font-family: 'Instrument Serif';
+  src: url('/fonts/InstrumentSerif-Regular.ttf') format('truetype');
+  font-weight: normal;
   font-style: normal;
-} */
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Instrument Serif';
+  src: url('/fonts/InstrumentSerif-Italic.ttf') format('truetype');
+  font-weight: normal;
+  font-style: italic;
+  font-display: swap;
+}

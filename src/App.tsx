@@ -37,6 +37,7 @@ import { ResizeObserver } from './components/ResizeObserver';
 import { Plugin, loadPlugins } from '@/lib/plugins';
 import { Square } from 'lucide-react';
 import { ThreadHeader } from './components/ThreadHeader';
+import { cn } from '@/lib/utils';
 
 interface ApiResponse {
   content?: string;
@@ -108,6 +109,7 @@ function App() {
   const [shouldStopDiscussion, setShouldStopDiscussion] = useState(false);
   const [isDiscussionPaused, setIsDiscussionPaused] = useState(false);
   const stopDiscussionRef = useRef(false);
+  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
 
   // Initialize cache on mount
   useEffect(() => {
@@ -820,17 +822,23 @@ function App() {
               thread={activeThread}
               onRename={(newName) => handleRenameThread(activeThread.id, newName)}
               onIconChange={(newIcon) => handleThreadIconChange(activeThread.id, newIcon)}
+              isCollapsed={isHeaderCollapsed}
+              onToggleCollapse={() => setIsHeaderCollapsed(!isHeaderCollapsed)}
             />
           )}
           <main 
             ref={chatContainerRef}
-            className="flex-1 overflow-y-auto p-6 space-y-6 min-w-0 mt-16"
+            className={cn(
+              "flex-1 overflow-y-auto p-6 space-y-6 min-w-0",
+              isHeaderCollapsed ? "mt-0" : "mt-16",
+              "transition-spacing duration-200"
+            )}
             onClick={(e) => e.stopPropagation()}
           >
             <AnimatePresence>
               {messages.length === 0 ? (
-                <div className="text-center text-muted-foreground mt-8 text-sm">
-                  Start a conversation or drop a file ({clearHistoryShortcut} to clear history)
+                <div className="text-center text-muted-foreground/40 mt-2 text-sm tracking-tighter">
+                  Start a conversation ({clearHistoryShortcut} to clear history)
                 </div>
               ) : (
                 messages.map((message, index) => (

@@ -17,6 +17,10 @@ module.exports = {
             },
         },
         extend: {
+            fontFamily: {
+                'serif': ['Instrument Serif', 'serif'],
+                'mono': ['Server Mono', 'monospace'],
+            },
             colors: {
                 border: "hsl(var(--border))",
                 input: "hsl(var(--input))",

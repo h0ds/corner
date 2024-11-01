@@ -57,6 +57,20 @@
         font-weight: 600;
     }
 
+    .font-serif {
+        font-family: 'Instrument Serif', serif;
+        font-weight: normal;
+    }
+
+    .font-serif-italic {
+        font-family: 'Instrument Serif', serif;
+        font-style: italic;
+    }
+
+    .font-mono {
+        font-family: 'Server Mono', monospace;
+    }
+
     /* Rest of your CSS... */
     :root {
         --background: 0 0% 100%;
@@ -79,6 +93,7 @@
         --input: 214.3 31.8% 91.4%;
         --ring: 222.2 84% 4.9%;
         --radius: 0.5rem;
+        --font-serif: 'Instrument Serif', serif;
     }
     
     .dark {
@@ -132,4 +147,8 @@
     html, body {
         @apply bg-background text-foreground;
     }
+}
+
+.serif-text {
+    font-family: var(--font-serif);
 }
