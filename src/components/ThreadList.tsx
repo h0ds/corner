@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Pencil, GripVertical, FileText, Pin, Palette } from 'lucide-react';
+import { Plus, Trash2, Pencil, GripVertical, FileText, Pin, Palette, X, SmilePlus, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Thread } from '@/types';
@@ -31,7 +31,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { FileViewer } from './FileViewer';
-import { THREAD_COLORS, ThreadColor } from '@/types';
+import { THREAD_COLORS, ThreadColor, THREAD_ICONS } from '@/types';
 
 interface ThreadListProps {
   threads: Thread[];
@@ -43,6 +43,7 @@ interface ThreadListProps {
   onReorderThreads: (threads: Thread[]) => void;
   onTogglePin: (threadId: string) => void;
   onColorChange: (threadId: string, color: string) => void;
+  onIconChange: (threadId: string, icon: string) => void;
 }
 
 interface SortableThreadItemProps {
@@ -57,6 +58,7 @@ interface SortableThreadItemProps {
   onDeleteThread: (threadId: string) => void;
   onTogglePin: (threadId: string) => void;
   onColorChange: (threadId: string, color: string) => void;
+  onIconChange: (threadId: string, icon: string) => void;
   dropTarget?: { id: string; position: 'before' | 'after' } | null;
   threads: Thread[];
 }
@@ -73,6 +75,7 @@ const ThreadItem = ({
   onDeleteThread,
   onTogglePin,
   onColorChange,
+  onIconChange,
   isDragging = false,
   isOverlay = false,
   dragHandleProps = {},
@@ -104,18 +107,26 @@ const ThreadItem = ({
         }
       }}
     >
-      {!thread.isPinned && (
+      {thread.icon ? (
+        <div 
+          {...dragHandleProps}
+          className="touch-none cursor-grab transition-opacity"
+        >
+          <div className="h-4 w-4 shrink-0 text-muted-foreground mr-2">{thread.icon}</div>
+        </div>
+      ) : !thread.isPinned && (
         <div 
           {...dragHandleProps}
           className="touch-none cursor-grab opacity-0 group-hover:opacity-100 transition-opacity"
         >
-          <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground mr-2" />
         </div>
       )}
+      
       {thread.isPinned && (
-        <Pin className="h-4 w-4 shrink-0 text-primary" />
+        <Pin className="h-4 w-4 shrink-0 text-primary mr-2" />
       )}
-      {/* <MessageSquare className="h-4 w-4 shrink-0" /> */}
+      
       {editingThreadId === thread.id ? (
         <div 
           className="flex-1" 
@@ -139,9 +150,10 @@ const ThreadItem = ({
           {thread.name || 'New Thread'}
         </span>
       )}
-      {activeThreadId === thread.id && !editingThreadId && !isOverlay && (
+      
+      {!isOverlay && (
         <>
-          {thread.files && thread.files.length > 0 && (
+          {thread.files && thread.files.length > 0 && activeThreadId === thread.id && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -162,6 +174,9 @@ const ThreadItem = ({
           >
             <Trash2 className="h-4 w-4" />
           </button>
+          {activeThreadId === thread.id && (
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          )}
           {thread.files && (
             <FileViewer
               isOpen={showFiles}
@@ -188,6 +203,7 @@ const SortableThreadItem = ({
   onDeleteThread,
   onTogglePin,
   onColorChange,
+  onIconChange,
   dropTarget,
   isDragging,
   threads
@@ -214,6 +230,9 @@ const SortableThreadItem = ({
     transition: transition || undefined,
     zIndex: isThisItemDragging ? 999 : undefined,
   };
+
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [showIconPicker, setShowIconPicker] = useState(false);
 
   return (
     <ContextMenu>
@@ -246,6 +265,7 @@ const SortableThreadItem = ({
             onDeleteThread={onDeleteThread}
             onTogglePin={onTogglePin}
             onColorChange={onColorChange}
+            onIconChange={onIconChange}
             isDragging={isThisItemDragging}
             dragHandleProps={{ ...attributes, ...listeners }}
           />
@@ -275,17 +295,18 @@ const SortableThreadItem = ({
           <span>Rename</span>
         </ContextMenuItem>
         <ContextMenuItem
-          className="flex flex-col gap-2 cursor-default focus:bg-background"
-          onSelect={(e) => e.preventDefault()}
+          onClick={() => setShowColorPicker(true)}
+          className="flex items-center gap-2 cursor-pointer"
         >
-          {/* <div className="flex items-center gap-2">
-            <Palette className="h-4 w-4" />
-            <span>Color</span>
-          </div> */}
-          <ColorPicker
-            currentColor={thread.color}
-            onColorSelect={(color) => onColorChange(thread.id, color)}
-          />
+          <Palette className="h-4 w-4" />
+          <span>Change Color</span>
+        </ContextMenuItem>
+        <ContextMenuItem
+          onClick={() => setShowIconPicker(true)}
+          className="flex items-center gap-2 cursor-pointer"
+        >
+          <SmilePlus className="h-4 w-4" />
+          <span>Change Icon</span>
         </ContextMenuItem>
         <ContextMenuItem
           onClick={() => onDeleteThread(thread.id)}
@@ -295,6 +316,70 @@ const SortableThreadItem = ({
           <span>Delete</span>
         </ContextMenuItem>
       </ContextMenuContent>
+
+      {showColorPicker && (
+        <div 
+          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50"
+          onClick={() => setShowColorPicker(false)}
+        >
+          <div 
+            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 
+                     bg-background border border-border rounded-sm shadow-lg p-4"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Thread Color</span>
+                <button 
+                  onClick={() => setShowColorPicker(false)}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <ColorPicker
+                currentColor={thread.color}
+                onColorSelect={(color) => {
+                  onColorChange(thread.id, color);
+                  setShowColorPicker(false);
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showIconPicker && (
+        <div 
+          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50"
+          onClick={() => setShowIconPicker(false)}
+        >
+          <div 
+            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 
+                     bg-background border border-border rounded-sm shadow-lg p-4"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Thread Icon</span>
+                <button 
+                  onClick={() => setShowIconPicker(false)}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <IconPicker
+                currentIcon={thread.icon}
+                onIconSelect={(icon) => {
+                  onIconChange(thread.id, icon);
+                  setShowIconPicker(false);
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </ContextMenu>
   );
 };
@@ -324,6 +409,29 @@ const ColorPicker: React.FC<{
   );
 };
 
+const IconPicker: React.FC<{
+  currentIcon: string | undefined;
+  onIconSelect: (icon: string) => void;
+}> = ({ currentIcon, onIconSelect }) => {
+  return (
+    <div className="grid grid-cols-8 gap-1 p-1">
+      {THREAD_ICONS.map((icon) => (
+        <button
+          key={icon}
+          onClick={() => onIconSelect(icon)}
+          className={cn(
+            "w-8 h-8 rounded-sm flex items-center justify-center",
+            "hover:bg-accent hover:text-accent-foreground transition-colors",
+            currentIcon === icon && "bg-accent text-accent-foreground"
+          )}
+        >
+          {icon}
+        </button>
+      ))}
+    </div>
+  );
+};
+
 export const ThreadList: React.FC<ThreadListProps> = ({
   threads,
   activeThreadId,
@@ -334,6 +442,7 @@ export const ThreadList: React.FC<ThreadListProps> = ({
   onReorderThreads,
   onTogglePin,
   onColorChange,
+  onIconChange,
 }) => {
   const [editingThreadId, setEditingThreadId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
@@ -433,7 +542,7 @@ export const ThreadList: React.FC<ThreadListProps> = ({
           className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
         >
           <Plus className="h-4 w-4 shrink-0" />
-          <span className="flex items-center -mb-1">New Thread</span>
+          <span className="flex items-center -mb-1">New</span>
         </button>
       </div>
       
@@ -467,6 +576,7 @@ export const ThreadList: React.FC<ThreadListProps> = ({
                   onDeleteThread={onDeleteThread}
                   onTogglePin={onTogglePin}
                   onColorChange={onColorChange}
+                  onIconChange={onIconChange}
                   dropTarget={dropTarget}
                   isDragging={isDragging}
                 />
@@ -491,6 +601,7 @@ export const ThreadList: React.FC<ThreadListProps> = ({
                 onDeleteThread={onDeleteThread}
                 onTogglePin={onTogglePin}
                 onColorChange={onColorChange}
+                onIconChange={onIconChange}
                 isOverlay
               />
             ) : null}

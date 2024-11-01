@@ -36,6 +36,7 @@ import { Features } from './components/Features';
 import { ResizeObserver } from './components/ResizeObserver';
 import { Plugin, loadPlugins } from '@/lib/plugins';
 import { Square } from 'lucide-react';
+import { ThreadHeader } from './components/ThreadHeader';
 
 interface ApiResponse {
   content?: string;
@@ -740,6 +741,19 @@ function App() {
     }));
   };
 
+  const handleThreadIconChange = (threadId: string, icon: string) => {
+    setThreads(prev => prev.map(thread => {
+      if (thread.id === threadId) {
+        return {
+          ...thread,
+          icon: icon || undefined,
+          updatedAt: Date.now(),
+        };
+      }
+      return thread;
+    }));
+  };
+
   return (
     <div className="flex h-screen bg-background">
       {/* Sidebar with animation */}
@@ -778,6 +792,7 @@ function App() {
                 onReorderThreads={handleReorderThreads}
                 onTogglePin={handleTogglePin}
                 onColorChange={handleThreadColorChange}
+                onIconChange={handleThreadIconChange}
               />
             </div>
           </ResizeObserver>
@@ -800,9 +815,16 @@ function App() {
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
         <div className="flex flex-col h-full relative">
+          {activeThread && (
+            <ThreadHeader
+              thread={activeThread}
+              onRename={(newName) => handleRenameThread(activeThread.id, newName)}
+              onIconChange={(newIcon) => handleThreadIconChange(activeThread.id, newIcon)}
+            />
+          )}
           <main 
             ref={chatContainerRef}
-            className="flex-1 overflow-y-auto p-6 space-y-6 min-w-0"
+            className="flex-1 overflow-y-auto p-6 space-y-6 min-w-0 mt-16"
             onClick={(e) => e.stopPropagation()}
           >
             <AnimatePresence>

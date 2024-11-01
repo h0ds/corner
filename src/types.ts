@@ -29,6 +29,7 @@ export interface Thread {
   lastUsedModel?: string;
   isPinned?: boolean;
   color?: string;
+  icon?: string;
 }
 
 export interface FileInfo {
@@ -85,4 +86,11 @@ export const THREAD_COLORS = {
   orange: '#fed7aa',
 } as const;
 
-export type ThreadColor = keyof typeof THREAD_COLORS; 
+export type ThreadColor = keyof typeof THREAD_COLORS;
+
+export const THREAD_ICONS = [
+  '💬', '🤖', '🧠', '💡', '📝', '🎯', '🔍', '⚡️',
+  '🎨', '🎮', '📊', '📈', '🔧', '⚙️', '🛠️', '📱',
+  '💻', '🖥️', '🌐', '🔐', '📡', '🎓', '📚', '✨',
+  '🚀', '🎪', '🌟', '💫', '🔮', '🎲', '🎯', '🎪'
+] as const;
