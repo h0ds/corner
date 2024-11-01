@@ -34,6 +34,7 @@ import { KeyboardShortcut, loadShortcuts, matchesShortcut } from '@/lib/shortcut
 import { Features } from './components/Features';
 import { ResizeObserver } from './components/ResizeObserver';
 import { Plugin, loadPlugins } from '@/lib/plugins';
+import { Square } from 'lucide-react';
 
 interface ApiResponse {
   content?: string;
@@ -101,6 +102,10 @@ function App() {
   const [shortcuts, setShortcuts] = useState<KeyboardShortcut[]>([]);
   const [manuallyHidden, setManuallyHidden] = useState(false);
   const [plugins, setPlugins] = useState<Plugin[]>([]);
+  const [isDiscussing, setIsDiscussing] = useState(false);
+  const [shouldStopDiscussion, setShouldStopDiscussion] = useState(false);
+  const [isDiscussionPaused, setIsDiscussionPaused] = useState(false);
+  const stopDiscussionRef = useRef(false);
 
   // Initialize cache on mount
   useEffect(() => {
@@ -191,6 +196,13 @@ function App() {
   }, [sidebarVisible]);
 
   const handleSendMessage = async (message: string, overrideModel?: string) => {
+    if (isDiscussing && isDiscussionPaused) {
+      // Resume the discussion with the new message
+      setIsDiscussionPaused(false);
+      handleStartDiscussion(message, overrideModel || selectedModel, selectedModel);
+      return;
+    }
+
     setLoading(true);
     
     if (message && activeThreadId) {
@@ -529,6 +541,177 @@ function App() {
     setLoading(false);
   };
 
+  const handleStartDiscussion = async (message: string, model1Id: string, model2Id: string) => {
+    setIsDiscussing(true);
+    setIsDiscussionPaused(false);
+    setShouldStopDiscussion(false);
+    stopDiscussionRef.current = false;
+    setLoading(true);
+
+    if (!activeThreadId) {
+      handleNewThread();
+    }
+
+    // Add initial user message
+    const userMessage: Message = { 
+      role: 'user', 
+      content: message
+    };
+
+    setThreads(prev => prev.map(thread => {
+      if (thread.id === activeThreadId) {
+        return {
+          ...thread,
+          messages: [...thread.messages, userMessage],
+          updatedAt: Date.now(),
+        };
+      }
+      return thread;
+    }));
+
+    let currentMessage = message;
+    let currentRound = 0;
+    const MAX_ROUNDS = 5;
+
+    const wait = (ms: number) => new Promise<void>((resolve) => {
+      console.log(`Waiting ${ms}ms before next message...`);
+      const timeoutId = setTimeout(resolve, ms);
+      const checkInterval = setInterval(() => {
+        if (stopDiscussionRef.current) {
+          clearTimeout(timeoutId);
+          clearInterval(checkInterval);
+          resolve();
+        }
+      }, 100);
+    });
+
+    const stopDiscussion = () => {
+      stopDiscussionRef.current = true;
+      setShouldStopDiscussion(true);
+      setIsDiscussing(false);
+      setLoading(false);
+      
+      // Add system message about stopping
+      setThreads(prev => prev.map(thread => {
+        if (thread.id === activeThreadId) {
+          return {
+            ...thread,
+            messages: [...thread.messages, {
+              role: 'system',
+              content: 'Discussion stopped by user'
+            }],
+            updatedAt: Date.now(),
+          };
+        }
+        return thread;
+      }));
+    };
+
+    try {
+      while (currentRound < MAX_ROUNDS && !stopDiscussionRef.current) {
+        if (stopDiscussionRef.current) break;
+
+        // Model 1's turn
+        const model1 = AVAILABLE_MODELS.find(m => m.id === model1Id);
+        if (!model1) throw new Error('Invalid model 1 selected');
+
+        if (stopDiscussionRef.current) break;
+
+        const response1 = await invoke<ApiResponse>('send_message', {
+          request: {
+            message: currentMessage,
+            model: model1Id,
+            provider: model1.provider
+          }
+        });
+
+        if (stopDiscussionRef.current) break;
+        if (response1.error) break;
+
+        // Add Model 1's response
+        setThreads(prev => prev.map(thread => {
+          if (thread.id === activeThreadId) {
+            return {
+              ...thread,
+              messages: [...thread.messages, {
+                role: 'assistant',
+                content: response1.content!,
+                modelId: model1Id
+              }],
+              updatedAt: Date.now(),
+            };
+          }
+          return thread;
+        }));
+
+        // Mandatory wait after Model 1's response
+        if (!stopDiscussionRef.current) {
+          await wait(5000);
+        }
+
+        if (stopDiscussionRef.current) break;
+
+        // Model 2's turn
+        const model2 = AVAILABLE_MODELS.find(m => m.id === model2Id);
+        if (!model2) throw new Error('Invalid model 2 selected');
+
+        if (stopDiscussionRef.current) break;
+
+        const response2 = await invoke<ApiResponse>('send_message', {
+          request: {
+            message: response1.content!,
+            model: model2Id,
+            provider: model2.provider
+          }
+        });
+
+        if (stopDiscussionRef.current) break;
+        if (response2.error) break;
+
+        // Add Model 2's response
+        setThreads(prev => prev.map(thread => {
+          if (thread.id === activeThreadId) {
+            return {
+              ...thread,
+              messages: [...thread.messages, {
+                role: 'assistant',
+                content: response2.content!,
+                modelId: model2Id
+              }],
+              updatedAt: Date.now(),
+            };
+          }
+          return thread;
+        }));
+
+        currentMessage = response2.content!;
+        currentRound++;
+
+        // Mandatory wait after Model 2's response before next round
+        if (!stopDiscussionRef.current && currentRound < MAX_ROUNDS) {
+          await wait(5000);
+        }
+      }
+    } catch (error) {
+      console.error('Failed during discussion:', error);
+      toast({
+        variant: "destructive",
+        description: "Failed during model discussion",
+        duration: 2000,
+      });
+    } finally {
+      setIsDiscussing(false);
+      setShouldStopDiscussion(false);
+      stopDiscussionRef.current = false;
+      setLoading(false);
+    }
+  };
+
+  const handleStopDiscussion = () => {
+    stopDiscussionRef.current = true;
+    setShouldStopDiscussion(true);
+  };
+
   return (
     <div className="flex h-screen bg-background">
       {/* Sidebar with animation */}
@@ -629,6 +812,24 @@ function App() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="absolute right-4 -top-12 flex items-center gap-2">
+              {isDiscussing && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={handleStopDiscussion}
+                        className="p-2 bg-destructive text-destructive-foreground 
+                                 hover:bg-destructive/90 rounded-sm transition-colors"
+                      >
+                        <Square className="h-4 w-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="text-xs">
+                      Stop Discussion
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -663,9 +864,13 @@ function App() {
             <ChatInput
               onSendMessage={handleSendMessage}
               onCompareModels={handleCompareModels}
+              onStartDiscussion={handleStartDiscussion}
+              onStopDiscussion={handleStopDiscussion}
               onClearThread={clearCurrentThread}
               disabled={loading}
               selectedModel={selectedModel}
+              isDiscussing={isDiscussing}
+              isPaused={isDiscussionPaused}
             />
           </footer>
 

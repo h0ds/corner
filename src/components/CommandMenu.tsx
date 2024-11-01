@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Command } from 'cmdk';
-import { Trash2, Power, Split } from 'lucide-react';
+import { Trash2, Power, Split, MessageCircle, Square } from 'lucide-react';
 
 interface CommandMenuProps {
   query: string;
@@ -33,6 +33,18 @@ const AVAILABLE_COMMANDS: CommandItem[] = [
     name: 'Compare Models',
     description: 'Send message to both mentioned and selected model',
     icon: <Split className="h-4 w-4" />
+  },
+  {
+    id: 'discuss',
+    name: 'Model Discussion',
+    description: 'Start a back-and-forth discussion between models',
+    icon: <MessageCircle className="h-4 w-4" />
+  },
+  {
+    id: 'stop',
+    name: 'Stop Discussion',
+    description: 'Stop any ongoing model discussion',
+    icon: <Square className="h-4 w-4" />
   }
 ];
 

@@ -11,17 +11,25 @@ import { useToast } from "@/hooks/use-toast";
 interface ChatInputProps {
   onSendMessage: (message: string, overrideModel?: string) => void;
   onCompareModels?: (message: string, model1: string, model2: string) => void;
+  onStartDiscussion?: (message: string, model1: string, model2: string) => void;
+  onStopDiscussion?: () => void;
   onClearThread?: () => void;
   disabled?: boolean;
   selectedModel: string;
+  isDiscussing?: boolean;
+  isPaused?: boolean;
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({ 
   onSendMessage, 
   onCompareModels,
+  onStartDiscussion,
+  onStopDiscussion,
   onClearThread,
   disabled,
-  selectedModel 
+  selectedModel,
+  isDiscussing,
+  isPaused
 }) => {
   const [message, setMessage] = useState('');
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
@@ -106,9 +114,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       }
     }
 
-    if (e.key === 'Escape' && selectedCommand) {
+    // Handle escape key for both command deactivation and discussion stopping
+    if (e.key === 'Escape') {
       e.preventDefault();
-      deactivateCommand();
+      if (selectedCommand) {
+        deactivateCommand();
+      } else if (isDiscussing && onStopDiscussion) {
+        onStopDiscussion();
+      }
       return;
     }
 
@@ -200,8 +213,16 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         await exit(0);
         break;
       case 'compare':
-        // Store the command
         setSelectedCommand('compare');
+        break;
+      case 'discuss':
+        setSelectedCommand('discuss');
+        break;
+      case 'stop':
+        if (onStopDiscussion) {
+          onStopDiscussion();
+          setMessage('');
+        }
         break;
     }
 
@@ -228,18 +249,24 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           return;
         }
         if (onCompareModels) {
-          console.log('Executing compare with:', {
-            message,
-            model1: mentionedModelId,
-            model2: selectedModel
-          });
           onCompareModels(message, mentionedModelId, selectedModel);
-          setSelectedCommand(null); // Clear the command after execution
-        } else {
-          console.error('onCompareModels not provided');
+          setSelectedCommand(null);
         }
         break;
-      // Add other command executions here
+      case 'discuss':
+        if (!mentionedModelId) {
+          toast({
+            variant: "destructive",
+            description: "Please mention a model to discuss with (e.g. @GPT-4)",
+            duration: 2000,
+          });
+          return;
+        }
+        if (onStartDiscussion) {
+          onStartDiscussion(message, mentionedModelId, selectedModel);
+          setSelectedCommand(null);
+        }
+        break;
     }
   };
 
@@ -281,23 +308,35 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               </button>
             </div>
           )}
+          {isDiscussing && isPaused && (
+            <div className="text-xs text-muted-foreground">
+              Discussion paused - send a message to continue
+            </div>
+          )}
           <div className="flex gap-2">
             <Input
               ref={inputRef}
               value={message}
               onChange={handleChange}
               onKeyDown={handleKeyDown}
-              placeholder={selectedCommand ? `Type a message to ${selectedCommand}...` : "Type a message"}
-              disabled={disabled}
+              placeholder={
+                isDiscussing && isPaused 
+                  ? "Send a message to continue the discussion..." 
+                  : selectedCommand 
+                    ? `Type a message to ${selectedCommand}...` 
+                    : "Type a message"
+              }
+              disabled={!isDiscussing && disabled}
               className={`h-[35px] resize-none rounded-sm text-sm 
                        bg-background placeholder:text-muted-foreground selectable-text
-                       ${selectedCommand ? 'border-primary' : ''}`}
+                       ${selectedCommand ? 'border-primary' : ''}
+                       ${isDiscussing && isPaused ? 'border-yellow-500' : ''}`}
             />
           </div>
         </div>
         <Button 
           type="submit" 
-          disabled={disabled || !message.trim()}
+          disabled={(!isDiscussing && disabled) || !message.trim()}
           size="icon"
           className="rounded-sm shrink-0 h-[35px]"
         >
@@ -307,6 +346,11 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       {selectedCommand === 'compare' && (
         <div className="absolute -top-8 left-0 text-xs text-muted-foreground">
           Mention a model to compare with the currently selected model (@model-name)
+        </div>
+      )}
+      {selectedCommand === 'discuss' && (
+        <div className="absolute -top-8 left-0 text-xs text-muted-foreground">
+          Mention a model to start a discussion with the currently selected model (@model-name)
         </div>
       )}
     </div>
