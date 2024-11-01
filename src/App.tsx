@@ -149,83 +149,26 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown as any);
   }, [sidebarVisible]);
 
-  const handleSendMessage = async (message: string, file?: File, fileContent?: string) => {
+  const handleSendMessage = async (message: string, overrideModel?: string) => {
     setLoading(true);
     
-    let cachedFile: CachedFile | undefined;
-
-    if (file && fileContent) {
-      try {
-        console.log('Attempting to cache file:', {
-          name: file.name,
-          type: file.type,
-          size: file.size,
-          contentLength: fileContent.length,
-          isBase64: fileContent.startsWith('data:')
-        });
-        
-        // Cache the file
-        cachedFile = await cacheFile(file, fileContent);
-        console.log('File cached successfully:', cachedFile);
-
-        // If this is just a file upload (no message), update thread and return
-        if (!message && activeThreadId) {
-          setThreads(prev => prev.map(thread => {
-            if (thread.id === activeThreadId) {
-              return {
-                ...thread,
-                files: [
-                  ...(thread.files || []),
-                  {
-                    name: cachedFile!.name,
-                    content: cachedFile!.content,
-                    timestamp: cachedFile!.timestamp,
-                    cacheId: cachedFile!.id
-                  }
-                ],
-                cachedFiles: [...(thread.cachedFiles || []), cachedFile!.id],
-                updatedAt: Date.now(),
-              };
-            }
-            return thread;
-          }));
-          setLoading(false);
-          return;
-        }
-      } catch (error) {
-        console.error('Failed to cache file:', error);
-        toast({
-          variant: "destructive",
-          description: "Failed to cache file",
-          duration: 2000,
-        });
-        setLoading(false);
-        return;
-      }
-    }
-
-    // Handle message sending
     if (message && activeThreadId) {
+      // Use the overrideModel if provided, otherwise use selectedModel
+      const modelToUse = overrideModel || selectedModel;
+      
+      // Store the clean message in the thread
       const userMessage: Message = { 
         role: 'user', 
-        content: message,
-        ...(cachedFile && {
-          file: {
-            name: cachedFile.name,
-            content: cachedFile.content,
-            timestamp: cachedFile.timestamp,
-            cacheId: cachedFile.id
-          }
-        })
+        content: message
       };
 
-      // Update thread with user message and last used model
+      // Update thread with user message
       setThreads(prev => prev.map(thread => {
         if (thread.id === activeThreadId) {
           return {
             ...thread,
             messages: [...thread.messages, userMessage],
-            lastUsedModel: selectedModel,
+            lastUsedModel: modelToUse,
             updatedAt: Date.now(),
           };
         }
@@ -233,27 +176,20 @@ function App() {
       }));
 
       try {
-        const model = AVAILABLE_MODELS.find(m => m.id === selectedModel);
+        const model = AVAILABLE_MODELS.find(m => m.id === modelToUse);
         if (!model) throw new Error('Invalid model selected');
 
-        console.log('Sending message:', {
-          message,
-          model: selectedModel,
-          provider: model.provider,
-          hasFileContent: !!fileContent,
-          fileName: file?.name
-        });
-
+        // Send the clean message to the API
         const response = await invoke<ApiResponse>('send_message', {
           request: {
             message,
-            model: selectedModel,
+            model: modelToUse,
             provider: model.provider,
-            file_content: fileContent,
-            file_name: file?.name
+            file_content: undefined,
+            file_name: undefined
           }
         });
-
+        
         if (response.error) {
           // Add error message to thread
           setThreads(prev => prev.map(thread => {
@@ -275,7 +211,7 @@ function App() {
                 messages: [...thread.messages, { 
                   role: 'assistant', 
                   content: response.content!,
-                  modelId: selectedModel
+                  modelId: modelToUse
                 }],
                 updatedAt: Date.now(),
               };

@@ -6,7 +6,7 @@ import { ModelMention } from './ModelMention';
 import { AVAILABLE_MODELS } from './ModelSelector';
 
 interface ChatInputProps {
-  onSendMessage: (message: string) => void;
+  onSendMessage: (message: string, overrideModel?: string) => void;
   disabled?: boolean;
 }
 
@@ -19,7 +19,34 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled })
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (message.trim() && !disabled) {
-      onSendMessage(message);
+      // Extract model mention if present
+      const parts = message.split('@');
+      if (parts.length > 1) {
+        // Get the part after @
+        const afterMention = parts[1];
+        // Find the first space after the mention
+        const spaceIndex = afterMention.indexOf(' ');
+        
+        if (spaceIndex !== -1) {
+          const mentionedModelId = afterMention.slice(0, spaceIndex).trim();
+          const model = AVAILABLE_MODELS.find(m => m.id === mentionedModelId);
+          
+          if (model) {
+            // Get only the text after the space following the mention
+            const cleanMessage = afterMention.slice(spaceIndex + 1).trim();
+            
+            if (cleanMessage) {
+              console.log('Sending clean message:', cleanMessage); // Debug log
+              onSendMessage(cleanMessage, model.id);
+              setMessage('');
+            }
+            return;
+          }
+        }
+      }
+      
+      // No valid model mention, send normally
+      onSendMessage(message.trim());
       setMessage('');
     }
   };
@@ -66,16 +93,16 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled })
 
     const before = message.slice(0, mentionStartIndex);
     const after = message.slice(mentionStartIndex + (mentionQuery?.length || 0) + 1);
-    const modelName = AVAILABLE_MODELS.find(m => m.id === modelId)?.name || modelId;
     
-    const newMessage = `${before}@${modelName} ${after}`;
+    // Use modelId instead of name in the message text
+    const newMessage = `${before}@${modelId} ${after}`;
     setMessage(newMessage);
     setMentionQuery(null);
     setMentionStartIndex(null);
 
     requestAnimationFrame(() => {
       if (inputRef.current) {
-        const newPosition = mentionStartIndex + modelName.length + 2;
+        const newPosition = mentionStartIndex + modelId.length + 2;
         inputRef.current.setSelectionRange(newPosition, newPosition);
         inputRef.current.focus();
       }
