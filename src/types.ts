@@ -27,6 +27,7 @@ export interface Thread {
   updatedAt: number;
   cachedFiles: string[];
   lastUsedModel?: string;
+  isPinned?: boolean;
 }
 
 export interface FileInfo {

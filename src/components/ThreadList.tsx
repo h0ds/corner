@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Pencil, GripVertical, FileText } from 'lucide-react';
+import { Plus, Trash2, Pencil, GripVertical, FileText, Pin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Thread } from '@/types';
@@ -40,6 +40,7 @@ interface ThreadListProps {
   onDeleteThread: (threadId: string) => void;
   onRenameThread: (threadId: string, newName: string) => void;
   onReorderThreads: (threads: Thread[]) => void;
+  onTogglePin: (threadId: string) => void;
 }
 
 interface SortableThreadItemProps {
@@ -52,7 +53,9 @@ interface SortableThreadItemProps {
   onEditingNameChange: (value: string) => void;
   onThreadSelect: (threadId: string) => void;
   onDeleteThread: (threadId: string) => void;
+  onTogglePin: (threadId: string) => void;
   dropTarget?: { id: string; position: 'before' | 'after' } | null;
+  threads: Thread[];
 }
 
 const ThreadItem = ({
@@ -65,6 +68,7 @@ const ThreadItem = ({
   onEditingNameChange,
   onThreadSelect,
   onDeleteThread,
+  onTogglePin,
   isDragging = false,
   isOverlay = false,
   dragHandleProps = {},
@@ -92,12 +96,17 @@ const ThreadItem = ({
         }
       }}
     >
-      <div 
-        {...dragHandleProps}
-        className="touch-none cursor-grab opacity-0 group-hover:opacity-100 transition-opacity"
-      >
-        <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground" />
-      </div>
+      {!thread.isPinned && (
+        <div 
+          {...dragHandleProps}
+          className="touch-none cursor-grab opacity-0 group-hover:opacity-100 transition-opacity"
+        >
+          <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground" />
+        </div>
+      )}
+      {thread.isPinned && (
+        <Pin className="h-4 w-4 shrink-0 text-primary" />
+      )}
       {/* <MessageSquare className="h-4 w-4 shrink-0" /> */}
       {editingThreadId === thread.id ? (
         <div 
@@ -118,7 +127,7 @@ const ThreadItem = ({
           />
         </div>
       ) : (
-        <span className="text-sm truncate flex-1">
+        <span className="text-sm truncate flex-1 mt-1">
           {thread.name || 'New Thread'}
         </span>
       )}
@@ -169,7 +178,10 @@ const SortableThreadItem = ({
   onEditingNameChange,
   onThreadSelect,
   onDeleteThread,
+  onTogglePin,
   dropTarget,
+  isDragging,
+  threads
 }: SortableThreadItemProps) => {
   const {
     attributes,
@@ -177,16 +189,21 @@ const SortableThreadItem = ({
     setNodeRef,
     transform,
     transition,
-    isDragging,
+    isDragging: isThisItemDragging,
   } = useSortable({ 
     id: thread.id,
-    disabled: editingThreadId === thread.id
+    disabled: editingThreadId === thread.id || thread.isPinned
   });
+
+  const shouldShowSeparator = (targetId: string) => {
+    const targetThread = threads.find(t => t.id === targetId);
+    return !thread.isPinned && !targetThread?.isPinned;
+  };
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition: transition || undefined,
-    zIndex: isDragging ? 999 : undefined,
+    zIndex: isThisItemDragging ? 999 : undefined,
   };
 
   return (
@@ -200,11 +217,13 @@ const SortableThreadItem = ({
           exit={{ opacity: 0, x: -20 }}
           className={cn(
             "relative",
-            isDragging && "z-50"
+            isThisItemDragging && "z-50"
           )}
         >
-          {dropTarget?.id === thread.id && dropTarget.position === 'before' && (
-            <div className="absolute -top-px left-0 right-0 h-0.5 bg-primary rounded-full" />
+          {isDragging && dropTarget?.id === thread.id && 
+           dropTarget.position === 'before' && 
+           shouldShowSeparator(dropTarget.id) && (
+            <div className="absolute -top-0.5 left-0 right-0 h-0.5 bg-primary rounded-full" />
           )}
           <ThreadItem
             thread={thread}
@@ -216,18 +235,28 @@ const SortableThreadItem = ({
             onEditingNameChange={onEditingNameChange}
             onThreadSelect={onThreadSelect}
             onDeleteThread={onDeleteThread}
-            isDragging={isDragging}
+            onTogglePin={onTogglePin}
+            isDragging={isThisItemDragging}
             dragHandleProps={{ ...attributes, ...listeners }}
           />
-          {dropTarget?.id === thread.id && dropTarget.position === 'after' && (
-            <div className="absolute -bottom-px left-0 right-0 h-0.5 bg-primary rounded-full" />
+          {isDragging && dropTarget?.id === thread.id && 
+           dropTarget.position === 'after' && 
+           shouldShowSeparator(dropTarget.id) && (
+            <div className="absolute -bottom-0.5 left-0 right-0 h-0.5 bg-primary rounded-full" />
           )}
-          {isDragging && (
+          {isThisItemDragging && (
             <div className="absolute inset-0 bg-primary/10 border-2 border-primary rounded-sm pointer-events-none" />
           )}
         </motion.div>
       </ContextMenuTrigger>
       <ContextMenuContent>
+        <ContextMenuItem
+          onClick={() => onTogglePin(thread.id)}
+          className="flex items-center gap-2 cursor-pointer"
+        >
+          <Pin className="h-4 w-4" />
+          <span>{thread.isPinned ? 'Unpin' : 'Pin'}</span>
+        </ContextMenuItem>
         <ContextMenuItem
           onClick={() => onStartRename(thread)}
           className="flex items-center gap-2 cursor-pointer"
@@ -255,11 +284,13 @@ export const ThreadList: React.FC<ThreadListProps> = ({
   onDeleteThread,
   onRenameThread,
   onReorderThreads,
+  onTogglePin,
 }) => {
   const [editingThreadId, setEditingThreadId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [activeId, setActiveId] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<{ id: string; position: 'before' | 'after' } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   const handleStartRename = (thread: Thread) => {
     setEditingThreadId(thread.id);
@@ -287,6 +318,7 @@ export const ThreadList: React.FC<ThreadListProps> = ({
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string);
+    setIsDragging(true);
   };
 
   const handleDragOver = (event: DragOverEvent) => {
@@ -311,22 +343,38 @@ export const ThreadList: React.FC<ThreadListProps> = ({
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
+      const activeThread = threads.find(t => t.id === active.id);
+      const overThread = threads.find(t => t.id === over.id);
+      
+      if (activeThread?.isPinned || overThread?.isPinned) {
+        return;
+      }
+
       const oldIndex = threads.findIndex((t) => t.id === active.id);
       const newIndex = threads.findIndex((t) => t.id === over.id);
       const newThreads = arrayMove(threads, oldIndex, newIndex);
       onReorderThreads(newThreads);
     }
 
+    setIsDragging(false);
     setActiveId(null);
     setDropTarget(null);
   };
 
   const handleDragCancel = () => {
+    setIsDragging(false);
     setActiveId(null);
     setDropTarget(null);
   };
 
   const activeThread = activeId ? threads.find(t => t.id === activeId) : null;
+
+  // Sort threads to show pinned ones at the top
+  const sortedThreads = [...threads].sort((a, b) => {
+    if (a.isPinned && !b.isPinned) return -1;
+    if (!a.isPinned && b.isPinned) return 1;
+    return 0;
+  });
 
   return (
     <div className="absolute inset-0 border-r border-border bg-card flex flex-col">
@@ -351,14 +399,15 @@ export const ThreadList: React.FC<ThreadListProps> = ({
           modifiers={[]}
         >
           <SortableContext
-            items={threads.map(t => t.id)}
+            items={sortedThreads.map(t => t.id)}
             strategy={verticalListSortingStrategy}
           >
             <AnimatePresence mode="popLayout">
-              {threads.map((thread) => (
+              {sortedThreads.map((thread) => (
                 <SortableThreadItem
                   key={thread.id}
                   thread={thread}
+                  threads={threads}
                   activeThreadId={activeThreadId}
                   editingThreadId={editingThreadId}
                   editingName={editingName}
@@ -367,7 +416,9 @@ export const ThreadList: React.FC<ThreadListProps> = ({
                   onEditingNameChange={setEditingName}
                   onThreadSelect={onThreadSelect}
                   onDeleteThread={onDeleteThread}
+                  onTogglePin={onTogglePin}
                   dropTarget={dropTarget}
+                  isDragging={isDragging}
                 />
               ))}
             </AnimatePresence>
@@ -388,6 +439,7 @@ export const ThreadList: React.FC<ThreadListProps> = ({
                 onEditingNameChange={setEditingName}
                 onThreadSelect={onThreadSelect}
                 onDeleteThread={onDeleteThread}
+                onTogglePin={onTogglePin}
                 isOverlay
               />
             ) : null}

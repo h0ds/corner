@@ -712,6 +712,19 @@ function App() {
     setShouldStopDiscussion(true);
   };
 
+  const handleTogglePin = (threadId: string) => {
+    setThreads(prev => prev.map(thread => {
+      if (thread.id === threadId) {
+        return {
+          ...thread,
+          isPinned: !thread.isPinned,
+          updatedAt: Date.now(),
+        };
+      }
+      return thread;
+    }));
+  };
+
   return (
     <div className="flex h-screen bg-background">
       {/* Sidebar with animation */}
@@ -748,6 +761,7 @@ function App() {
                 onDeleteThread={handleDeleteThread}
                 onRenameThread={handleRenameThread}
                 onReorderThreads={handleReorderThreads}
+                onTogglePin={handleTogglePin}
               />
             </div>
           </ResizeObserver>

@@ -326,7 +326,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                     ? `Type a message to ${selectedCommand}...` 
                     : "Type a message"
               }
-              disabled={!isDiscussing && disabled}
+              disabled={disabled}
               className={`h-[35px] resize-none rounded-sm text-sm 
                        bg-background placeholder:text-muted-foreground selectable-text
                        ${selectedCommand ? 'border-primary' : ''}
@@ -336,7 +336,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         </div>
         <Button 
           type="submit" 
-          disabled={(!isDiscussing && disabled) || !message.trim()}
+          disabled={disabled || !message.trim()}
           size="icon"
           className="rounded-sm shrink-0 h-[35px]"
         >

@@ -31,7 +31,7 @@ export const Plugins: React.FC<PluginsProps> = ({
       <div className="flex gap-2">
         <div className="relative flex-1">
           <Input
-            placeholder="Search community plugins..."
+            placeholder="Search for Lex plugins"
             className="pl-8"
           />
           <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -41,8 +41,8 @@ export const Plugins: React.FC<PluginsProps> = ({
           onClick={() => setShowDocs(true)}
           className="whitespace-nowrap"
         >
-          <FileText className="h-4 w-4 mr-2" />
-          Documentation
+          <FileText className="h-4 w-4" />
+          <span className="mt-1">Docs</span>
         </Button>
       </div>
 
