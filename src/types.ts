@@ -1,9 +1,14 @@
 export interface Message {
-  role: 'user' | 'assistant' | 'error';
+  role: 'user' | 'assistant' | 'error' | 'comparison';
   content: string;
   modelId?: string;
   file?: FileAttachment;
   plugins?: PluginModification[];
+  comparison?: {
+    message: string;
+    model1: { id: string; response: string };
+    model2: { id: string; response: string };
+  };
 }
 
 export interface FileAttachment {

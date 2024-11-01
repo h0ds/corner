@@ -43,6 +43,47 @@ interface ApiResponse {
 // Add type definition at the top
 type PreferenceTab = 'api-keys' | 'appearance' | 'models' | 'shortcuts';
 
+// Add this new component for side-by-side comparison
+const ComparisonView: React.FC<{
+  message: string;
+  model1Response: string;
+  model2Response: string;
+  model1Id: string;
+  model2Id: string;
+}> = ({ message, model1Response, model2Response, model1Id, model2Id }) => {
+  return (
+    <div className="flex flex-col gap-2 w-full">
+      <div className="text-sm text-muted-foreground">
+        Comparing responses for: "{message}"
+      </div>
+      <div className="flex gap-4">
+        <div className="flex-1 border border-border rounded-sm p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <ModelIcon modelId={model1Id} className="h-4 w-4" />
+            <span className="text-sm font-medium">
+              {AVAILABLE_MODELS.find(m => m.id === model1Id)?.name}
+            </span>
+          </div>
+          <div className="text-sm">
+            {model1Response}
+          </div>
+        </div>
+        <div className="flex-1 border border-border rounded-sm p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <ModelIcon modelId={model2Id} className="h-4 w-4" />
+            <span className="text-sm font-medium">
+              {AVAILABLE_MODELS.find(m => m.id === model2Id)?.name}
+            </span>
+          </div>
+          <div className="text-sm">
+            {model2Response}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 function App() {
   const [threads, setThreads] = useState<Thread[]>(() => loadThreads());
   const [activeThreadId, setActiveThreadId] = useState<string | null>(() => loadActiveThreadId());
@@ -388,6 +429,106 @@ function App() {
     }
   };
 
+  const handleCompareModels = async (message: string, model1Id: string, model2Id: string) => {
+    console.log('handleCompareModels starting:', { message, model1Id, model2Id });
+    setLoading(true);
+
+    if (!activeThreadId) {
+      console.log('No active thread, creating new one');
+      handleNewThread();
+    }
+
+    // Add user message
+    const userMessage: Message = { 
+      role: 'user', 
+      content: message
+    };
+
+    setThreads(prev => prev.map(thread => {
+      if (thread.id === activeThreadId) {
+        return {
+          ...thread,
+          messages: [...thread.messages, userMessage],
+          updatedAt: Date.now(),
+        };
+      }
+      return thread;
+    }));
+
+    try {
+      const model1 = AVAILABLE_MODELS.find(m => m.id === model1Id);
+      const model2 = AVAILABLE_MODELS.find(m => m.id === model2Id);
+      
+      console.log('Using models:', { model1, model2 });
+      
+      if (!model1 || !model2) throw new Error('Invalid model selected');
+
+      // Send to first model
+      console.log('Sending to first model:', model1Id);
+      const response1 = await invoke<ApiResponse>('send_message', {
+        request: {
+          message,
+          model: model1Id,
+          provider: model1.provider
+        }
+      });
+
+      // Send to second model
+      console.log('Sending to second model:', model2Id);
+      const response2 = await invoke<ApiResponse>('send_message', {
+        request: {
+          message,
+          model: model2Id,
+          provider: model2.provider
+        }
+      });
+
+      console.log('Got responses:', { response1, response2 });
+
+      if (response1.error || response2.error) {
+        const errorMessage = response1.error || response2.error;
+        setThreads(prev => prev.map(thread => {
+          if (thread.id === activeThreadId) {
+            return {
+              ...thread,
+              messages: [...thread.messages, { role: 'error', content: errorMessage! }],
+              updatedAt: Date.now(),
+            };
+          }
+          return thread;
+        }));
+      } else if (response1.content && response2.content) {
+        setThreads(prev => prev.map(thread => {
+          if (thread.id === activeThreadId) {
+            return {
+              ...thread,
+              messages: [...thread.messages, {
+                role: 'comparison',
+                content: message,
+                comparison: {
+                  message,
+                  model1: { id: model1Id, response: response1.content },
+                  model2: { id: model2Id, response: response2.content }
+                }
+              }],
+              updatedAt: Date.now(),
+            };
+          }
+          return thread;
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to compare models:', error);
+      toast({
+        variant: "destructive",
+        description: "Failed to compare models",
+        duration: 2000,
+      });
+    }
+
+    setLoading(false);
+  };
+
   return (
     <div className="flex h-screen bg-background">
       {/* Sidebar with animation */}
@@ -464,6 +605,7 @@ function App() {
                       content={message.content}
                       onErrorClick={() => setShowPreferences(true)}
                       modelId={message.modelId}
+                      comparison={message.comparison}
                     />
                     {message.file && (
                       <FilePreview
@@ -520,8 +662,10 @@ function App() {
             </div>
             <ChatInput
               onSendMessage={handleSendMessage}
+              onCompareModels={handleCompareModels}
               onClearThread={clearCurrentThread}
               disabled={loading}
+              selectedModel={selectedModel}
             />
           </footer>
 

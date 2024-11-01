@@ -21,6 +21,11 @@ interface ChatMessageProps {
   onErrorClick?: () => void;
   modelId?: string;
   plugins?: PluginModification[];
+  comparison?: {
+    message: string;
+    model1: { id: string; response: string };
+    model2: { id: string; response: string };
+  };
 }
 
 // Add this component to render plugin content
@@ -42,7 +47,8 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   content,
   onErrorClick,
   modelId,
-  plugins = []
+  plugins = [],
+  comparison
 }) => {
   const [copied, setCopied] = React.useState(false);
 
@@ -199,6 +205,54 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
           {content}
           <div className="text-xs text-muted-foreground group-hover:underline">
             Click to configure API keys
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (role === 'comparison' && comparison) {
+    return (
+      <div className="flex flex-col gap-2 w-full">
+        <div className="text-sm text-muted-foreground">
+          Comparing responses for: "{comparison.message}"
+        </div>
+        <div className="flex gap-4">
+          <div className="flex-1 border border-border rounded-sm p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <ModelIcon modelId={comparison.model1.id} className="h-4 w-4" />
+              <span className="text-sm font-medium">
+                {AVAILABLE_MODELS.find(m => m.id === comparison.model1.id)?.name}
+              </span>
+            </div>
+            <div className="text-sm">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  // ... existing markdown components ...
+                }}
+              >
+                {comparison.model1.response}
+              </ReactMarkdown>
+            </div>
+          </div>
+          <div className="flex-1 border border-border rounded-sm p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <ModelIcon modelId={comparison.model2.id} className="h-4 w-4" />
+              <span className="text-sm font-medium">
+                {AVAILABLE_MODELS.find(m => m.id === comparison.model2.id)?.name}
+              </span>
+            </div>
+            <div className="text-sm">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  // ... existing markdown components ...
+                }}
+              >
+                {comparison.model2.response}
+              </ReactMarkdown>
+            </div>
           </div>
         </div>
       </div>

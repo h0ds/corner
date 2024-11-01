@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Command } from 'cmdk';
-import { Trash2, Power } from 'lucide-react';
+import { Trash2, Power, Split } from 'lucide-react';
 
 interface CommandMenuProps {
   query: string;
@@ -27,6 +27,12 @@ const AVAILABLE_COMMANDS: CommandItem[] = [
     name: 'Quit App',
     description: 'Close the application',
     icon: <Power className="h-4 w-4" />
+  },
+  {
+    id: 'compare',
+    name: 'Compare Models',
+    description: 'Send message to both mentioned and selected model',
+    icon: <Split className="h-4 w-4" />
   }
 ];
 
