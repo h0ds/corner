@@ -28,6 +28,7 @@ export interface Thread {
   cachedFiles: string[];
   lastUsedModel?: string;
   isPinned?: boolean;
+  color?: string;
 }
 
 export interface FileInfo {
@@ -69,4 +70,19 @@ export interface Plugin {
     onThreadDelete?: (threadId: string) => Promise<void>;
     onFileUpload?: (file: File) => Promise<File | void>;
   };
-} 
+}
+
+export const THREAD_COLORS = {
+  default: '',
+  rose: '#fecdd3',
+  pink: '#fbcfe8',
+  purple: '#e9d5ff',
+  blue: '#bfdbfe',
+  cyan: '#a5f3fc',
+  teal: '#99f6e4',
+  green: '#bbf7d0',
+  yellow: '#fef08a',
+  orange: '#fed7aa',
+} as const;
+
+export type ThreadColor = keyof typeof THREAD_COLORS; 

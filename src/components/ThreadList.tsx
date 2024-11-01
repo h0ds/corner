@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Pencil, GripVertical, FileText, Pin } from 'lucide-react';
+import { Plus, Trash2, Pencil, GripVertical, FileText, Pin, Palette } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Thread } from '@/types';
@@ -31,6 +31,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { FileViewer } from './FileViewer';
+import { THREAD_COLORS, ThreadColor } from '@/types';
 
 interface ThreadListProps {
   threads: Thread[];
@@ -41,6 +42,7 @@ interface ThreadListProps {
   onRenameThread: (threadId: string, newName: string) => void;
   onReorderThreads: (threads: Thread[]) => void;
   onTogglePin: (threadId: string) => void;
+  onColorChange: (threadId: string, color: string) => void;
 }
 
 interface SortableThreadItemProps {
@@ -54,6 +56,7 @@ interface SortableThreadItemProps {
   onThreadSelect: (threadId: string) => void;
   onDeleteThread: (threadId: string) => void;
   onTogglePin: (threadId: string) => void;
+  onColorChange: (threadId: string, color: string) => void;
   dropTarget?: { id: string; position: 'before' | 'after' } | null;
   threads: Thread[];
 }
@@ -69,6 +72,7 @@ const ThreadItem = ({
   onThreadSelect,
   onDeleteThread,
   onTogglePin,
+  onColorChange,
   isDragging = false,
   isOverlay = false,
   dragHandleProps = {},
@@ -88,6 +92,10 @@ const ThreadItem = ({
         isDragging && "opacity-50",
         isOverlay && "bg-background border border-border shadow-lg scale-105 rotate-2"
       )}
+      style={thread.color ? {
+        backgroundColor: thread.color,
+        '--tw-bg-opacity': '0.3',
+      } as React.CSSProperties : undefined}
       onClick={() => !isOverlay && onThreadSelect(thread.id)}
       onDoubleClick={(e) => {
         e.stopPropagation();
@@ -179,6 +187,7 @@ const SortableThreadItem = ({
   onThreadSelect,
   onDeleteThread,
   onTogglePin,
+  onColorChange,
   dropTarget,
   isDragging,
   threads
@@ -236,6 +245,7 @@ const SortableThreadItem = ({
             onThreadSelect={onThreadSelect}
             onDeleteThread={onDeleteThread}
             onTogglePin={onTogglePin}
+            onColorChange={onColorChange}
             isDragging={isThisItemDragging}
             dragHandleProps={{ ...attributes, ...listeners }}
           />
@@ -265,6 +275,19 @@ const SortableThreadItem = ({
           <span>Rename</span>
         </ContextMenuItem>
         <ContextMenuItem
+          className="flex flex-col gap-2 cursor-default focus:bg-background"
+          onSelect={(e) => e.preventDefault()}
+        >
+          {/* <div className="flex items-center gap-2">
+            <Palette className="h-4 w-4" />
+            <span>Color</span>
+          </div> */}
+          <ColorPicker
+            currentColor={thread.color}
+            onColorSelect={(color) => onColorChange(thread.id, color)}
+          />
+        </ContextMenuItem>
+        <ContextMenuItem
           onClick={() => onDeleteThread(thread.id)}
           className="flex items-center gap-2 cursor-pointer text-destructive focus:text-destructive"
         >
@@ -273,6 +296,31 @@ const SortableThreadItem = ({
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>
+  );
+};
+
+const ColorPicker: React.FC<{
+  currentColor: string | undefined;
+  onColorSelect: (color: string) => void;
+}> = ({ currentColor, onColorSelect }) => {
+  return (
+    <div className="grid grid-cols-5 gap-1 p-1">
+      {Object.entries(THREAD_COLORS).map(([name, color]) => (
+        <button
+          key={name}
+          onClick={() => onColorSelect(color)}
+          className={cn(
+            "w-5 h-5 rounded-full",
+            "hover:scale-110 transition-transform",
+            "border border-border",
+            currentColor === color && "ring-2 ring-primary ring-offset-2",
+            !color && "bg-background",
+          )}
+          style={color ? { backgroundColor: color } : undefined}
+          title={name}
+        />
+      ))}
+    </div>
   );
 };
 
@@ -285,6 +333,7 @@ export const ThreadList: React.FC<ThreadListProps> = ({
   onRenameThread,
   onReorderThreads,
   onTogglePin,
+  onColorChange,
 }) => {
   const [editingThreadId, setEditingThreadId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
@@ -417,6 +466,7 @@ export const ThreadList: React.FC<ThreadListProps> = ({
                   onThreadSelect={onThreadSelect}
                   onDeleteThread={onDeleteThread}
                   onTogglePin={onTogglePin}
+                  onColorChange={onColorChange}
                   dropTarget={dropTarget}
                   isDragging={isDragging}
                 />
@@ -440,6 +490,7 @@ export const ThreadList: React.FC<ThreadListProps> = ({
                 onThreadSelect={onThreadSelect}
                 onDeleteThread={onDeleteThread}
                 onTogglePin={onTogglePin}
+                onColorChange={onColorChange}
                 isOverlay
               />
             ) : null}

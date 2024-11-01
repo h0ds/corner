@@ -2,6 +2,7 @@ import { Thread } from '@/types';
 const THREADS_KEY = 'lex-threads';
 const ACTIVE_THREAD_KEY = 'lex-active-thread';
 const SELECTED_MODEL_KEY = 'lex-selected-model';
+const THREAD_ORDER_KEY = 'thread-order';
 
 export function saveThread(thread: Thread): void {
   try {
@@ -21,9 +22,6 @@ export function saveThread(thread: Thread): void {
       });
     }
     
-    // Sort threads by updatedAt before saving
-    threads.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
-    
     localStorage.setItem(THREADS_KEY, JSON.stringify(threads));
     console.log('Saved thread:', thread.id, 'Total threads:', threads.length);
   } catch (error) {
@@ -33,22 +31,42 @@ export function saveThread(thread: Thread): void {
 
 export function loadThreads(): Thread[] {
   try {
-    const stored = localStorage.getItem(THREADS_KEY);
-    if (!stored) return [];
+    // Load all threads
+    const threadsJson = localStorage.getItem(THREADS_KEY);
+    const threads: Thread[] = threadsJson ? JSON.parse(threadsJson) : [];
     
-    const threads = JSON.parse(stored);
-    // Ensure all threads have the required properties
-    return threads.map((thread: Thread) => ({
-      ...thread,
-      files: thread.files || [],
-      cachedFiles: thread.cachedFiles || [],
-      messages: thread.messages || [],
-      createdAt: thread.createdAt || Date.now(),
-      updatedAt: thread.updatedAt || Date.now()
-    }));
+    // Load thread order
+    const orderJson = localStorage.getItem(THREAD_ORDER_KEY);
+    const order: string[] = orderJson ? JSON.parse(orderJson) : [];
+    
+    if (order.length > 0) {
+      // Create a map for quick thread lookup
+      const threadMap = new Map(threads.map(t => [t.id, t]));
+      
+      // First, add threads in the saved order
+      const orderedThreads = order
+        .map(id => threadMap.get(id))
+        .filter((t): t is Thread => t !== undefined);
+      
+      // Then add any new threads that aren't in the order
+      const remainingThreads = threads.filter(t => !order.includes(t.id));
+      
+      return [...orderedThreads, ...remainingThreads];
+    }
+    
+    return threads;
   } catch (error) {
     console.error('Failed to load threads:', error);
     return [];
+  }
+}
+
+export function saveThreadOrder(threadIds: string[]): void {
+  try {
+    localStorage.setItem(THREAD_ORDER_KEY, JSON.stringify(threadIds));
+    console.log('Saved thread order:', threadIds);
+  } catch (error) {
+    console.error('Failed to save thread order:', error);
   }
 }
 
@@ -111,4 +129,5 @@ export function loadSelectedModel(): string | null {
     console.error('Failed to load selected model:', error);
     return null;
   }
-} 
+}
+  

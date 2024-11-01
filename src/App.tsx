@@ -17,7 +17,8 @@ import {
   loadActiveThreadId, 
   clearThreads,
   saveSelectedModel,
-  loadSelectedModel
+  loadSelectedModel,
+  saveThreadOrder
 } from '@/lib/storage';
 import { ModelIcon } from './components/ModelIcon';
 import {
@@ -300,6 +301,7 @@ function App() {
 
   const handleReorderThreads = (newThreads: Thread[]) => {
     setThreads(newThreads);
+    saveThreadOrder(newThreads.map(t => t.id));
   };
 
   // Get active thread
@@ -725,6 +727,19 @@ function App() {
     }));
   };
 
+  const handleThreadColorChange = (threadId: string, color: string) => {
+    setThreads(prev => prev.map(thread => {
+      if (thread.id === threadId) {
+        return {
+          ...thread,
+          color: color || undefined,
+          updatedAt: Date.now(),
+        };
+      }
+      return thread;
+    }));
+  };
+
   return (
     <div className="flex h-screen bg-background">
       {/* Sidebar with animation */}
@@ -762,6 +777,7 @@ function App() {
                 onRenameThread={handleRenameThread}
                 onReorderThreads={handleReorderThreads}
                 onTogglePin={handleTogglePin}
+                onColorChange={handleThreadColorChange}
               />
             </div>
           </ResizeObserver>
