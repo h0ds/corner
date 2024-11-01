@@ -15,7 +15,6 @@ export const ModelMention: React.FC<ModelMentionProps> = ({
   onClose,
 }) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   const filteredModels = AVAILABLE_MODELS.filter(model =>
     model.name.toLowerCase().includes(query.toLowerCase()) ||
@@ -28,33 +27,37 @@ export const ModelMention: React.FC<ModelMentionProps> = ({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        setSelectedIndex(i => Math.min(i + 1, filteredModels.length - 1));
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        setSelectedIndex(i => Math.max(i - 1, 0));
-      } else if (e.key === 'Enter') {
-        e.preventDefault();
-        onSelect(filteredModels[selectedIndex].id);
-      } else if (e.key === 'Escape') {
-        e.preventDefault();
-        onClose();
+      if (filteredModels.length === 0) return;
+
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          setSelectedIndex(i => (i + 1) % filteredModels.length);
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          setSelectedIndex(i => (i - 1 + filteredModels.length) % filteredModels.length);
+          break;
+        case 'Enter':
+          e.preventDefault();
+          onSelect(filteredModels[selectedIndex].id);
+          break;
+        case 'Escape':
+          e.preventDefault();
+          onClose();
+          break;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedIndex, filteredModels, onSelect, onClose]);
+  }, [filteredModels, selectedIndex, onSelect, onClose]);
 
   if (filteredModels.length === 0) return null;
 
   return (
-    <div 
-      ref={containerRef}
-      className="absolute bottom-full mb-2 bg-popover border border-border 
-                 rounded-sm shadow-md overflow-hidden z-50 min-w-[200px]"
-    >
+    <div className="absolute bottom-full mb-2 bg-popover border border-border 
+                   rounded-sm shadow-md overflow-hidden z-50 min-w-[200px]">
       <Command className="border-none bg-transparent p-0">
         <Command.List className="max-h-[300px] overflow-y-auto p-1">
           {filteredModels.map((model, index) => (
@@ -62,8 +65,8 @@ export const ModelMention: React.FC<ModelMentionProps> = ({
               key={model.id}
               onSelect={() => onSelect(model.id)}
               className={`flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm cursor-default
-                         ${index === selectedIndex ? 'bg-accent text-accent-foreground' : 'text-foreground'}
-                         hover:bg-accent hover:text-accent-foreground`}
+                       ${index === selectedIndex ? 'bg-accent text-accent-foreground' : ''}
+                       hover:bg-accent hover:text-accent-foreground`}
             >
               <ModelIcon modelId={model.id} className="h-4 w-4" />
               <div className="flex flex-col">

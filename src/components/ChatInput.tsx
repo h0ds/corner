@@ -3,17 +3,26 @@ import { Button } from "@/components/ui/button";
 import { Send } from "lucide-react";
 import { Input } from './ui/input';
 import { ModelMention } from './ModelMention';
+import { CommandMenu } from './CommandMenu';
 import { AVAILABLE_MODELS } from './ModelSelector';
+import { exit } from '@tauri-apps/plugin-process';
 
 interface ChatInputProps {
   onSendMessage: (message: string, overrideModel?: string) => void;
+  onClearThread?: () => void;
   disabled?: boolean;
 }
 
-export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled }) => {
+export const ChatInput: React.FC<ChatInputProps> = ({ 
+  onSendMessage, 
+  onClearThread,
+  disabled 
+}) => {
   const [message, setMessage] = useState('');
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionStartIndex, setMentionStartIndex] = useState<number | null>(null);
+  const [commandQuery, setCommandQuery] = useState<string | null>(null);
+  const [commandStartIndex, setCommandStartIndex] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -52,7 +61,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled })
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (mentionQuery !== null) {
+    if (mentionQuery !== null || commandQuery !== null) {
       if (['ArrowUp', 'ArrowDown', 'Enter', 'Escape'].includes(e.key)) {
         e.preventDefault();
         return;
@@ -62,6 +71,12 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled })
     if (e.key === '@') {
       setMentionStartIndex(e.currentTarget.selectionStart);
       setMentionQuery('');
+      return;
+    }
+
+    if (e.key === '!') {
+      setCommandStartIndex(e.currentTarget.selectionStart);
+      setCommandQuery('');
       return;
     }
 
@@ -84,6 +99,18 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled })
         setMentionStartIndex(null);
       } else {
         setMentionQuery(textAfterMention);
+      }
+    }
+
+    if (commandStartIndex !== null) {
+      const currentPosition = e.target.selectionStart;
+      const textAfterCommand = newValue.slice(commandStartIndex + 1, currentPosition);
+      
+      if (textAfterCommand.includes(' ') || currentPosition <= commandStartIndex) {
+        setCommandQuery(null);
+        setCommandStartIndex(null);
+      } else {
+        setCommandQuery(textAfterCommand);
       }
     }
   };
@@ -109,6 +136,25 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled })
     });
   };
 
+  const handleCommandSelect = async (commandId: string) => {
+    if (commandStartIndex === null) return;
+
+    switch (commandId) {
+      case 'clear':
+        if (onClearThread) {
+          onClearThread();
+          setMessage('');
+        }
+        break;
+      case 'quit':
+        await exit(0);
+        break;
+    }
+
+    setCommandQuery(null);
+    setCommandStartIndex(null);
+  };
+
   return (
     <div className="relative w-full">
       {mentionQuery !== null && (
@@ -118,6 +164,16 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled })
           onClose={() => {
             setMentionQuery(null);
             setMentionStartIndex(null);
+          }}
+        />
+      )}
+      {commandQuery !== null && (
+        <CommandMenu
+          query={commandQuery}
+          onSelect={handleCommandSelect}
+          onClose={() => {
+            setCommandQuery(null);
+            setCommandStartIndex(null);
           }}
         />
       )}

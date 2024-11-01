@@ -1,22 +1,22 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use base64::engine::general_purpose::STANDARD;
+use base64::Engine;
 use dotenv::dotenv;
+use percent_encoding;
 use reqwest;
+use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION};
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::env;
 use std::fs;
+use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Mutex;
 use tauri::AppHandle;
 use tauri::Manager;
 use tauri::State;
-use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION};
-use std::path::Path;
-use base64::engine::general_purpose::STANDARD;
-use base64::Engine;
-use percent_encoding;
 
 #[derive(Serialize, Deserialize)]
 struct ChatMessage {
@@ -124,7 +124,10 @@ async fn send_message(
                 "system": "You are a helpful AI assistant."
             });
 
-            println!("Request body: {}", serde_json::to_string_pretty(&request_body).unwrap());
+            println!(
+                "Request body: {}",
+                serde_json::to_string_pretty(&request_body).unwrap()
+            );
 
             let response = client
                 .post("https://api.anthropic.com/v1/messages")
@@ -148,10 +151,11 @@ async fn send_message(
             println!("Response body: {}", response_text);
 
             if status.is_success() {
-                let json: serde_json::Value = serde_json::from_str(&response_text).map_err(|e| {
-                    println!("Error parsing JSON response: {:?}", e);
-                    e.to_string()
-                })?;
+                let json: serde_json::Value =
+                    serde_json::from_str(&response_text).map_err(|e| {
+                        println!("Error parsing JSON response: {:?}", e);
+                        e.to_string()
+                    })?;
 
                 Ok(ApiResponse {
                     content: Some(
@@ -280,8 +284,7 @@ async fn send_message(
             let mut headers = HeaderMap::new();
             headers.insert(
                 AUTHORIZATION,
-                HeaderValue::from_str(&format!("Bearer {}", api_key))
-                    .map_err(|e| e.to_string())?
+                HeaderValue::from_str(&format!("Bearer {}", api_key)).map_err(|e| e.to_string())?,
             );
 
             let response = client
@@ -405,7 +408,9 @@ async fn verify_api_key(request: VerifyRequest) -> Result<ApiResponse, String> {
             println!("Headers: {:?}", headers);
 
             // Get response body
-            let body = response.text().await
+            let body = response
+                .text()
+                .await
                 .map_err(|e| format!("Failed to read response body: {}", e))?;
             println!("Body: {}", body);
 
@@ -449,7 +454,9 @@ async fn verify_api_key(request: VerifyRequest) -> Result<ApiResponse, String> {
             println!("Headers: {:?}", headers);
 
             // Get response body
-            let body = response.text().await
+            let body = response
+                .text()
+                .await
                 .map_err(|e| format!("Failed to read response body: {}", e))?;
             println!("Body: {}", body);
 
@@ -493,7 +500,9 @@ async fn verify_api_key(request: VerifyRequest) -> Result<ApiResponse, String> {
             println!("Headers: {:?}", headers);
 
             // Get response body
-            let body = response.text().await
+            let body = response
+                .text()
+                .await
                 .map_err(|e| format!("Failed to read response body: {}", e))?;
             println!("Body: {}", body);
 
@@ -516,49 +525,52 @@ async fn verify_api_key(request: VerifyRequest) -> Result<ApiResponse, String> {
 #[tauri::command]
 async fn handle_file_drop(path: String) -> Result<String, String> {
     println!("Received file path: {}", path);
-    
+
     // Clean the path
     let clean_path = if path.starts_with("file://") {
         path.strip_prefix("file://").unwrap_or(&path)
     } else {
         &path
     };
-    
+
     // URL decode the path
     let decoded_path = percent_encoding::percent_decode_str(clean_path)
         .decode_utf8()
         .map_err(|e| format!("Failed to decode path: {}", e))?;
-    
+
     println!("Cleaned and decoded path: {}", decoded_path);
-    
+
     // Create Path from cleaned string
     let path = Path::new(decoded_path.as_ref());
-    
+
     // If the path doesn't exist, try to find it in common directories
     let file_path = if !path.exists() {
-        let file_name = path.file_name()
+        let file_name = path
+            .file_name()
             .and_then(|n| n.to_str())
             .ok_or_else(|| "Invalid file name".to_string())?;
-            
+
         get_real_path(decoded_path.to_string(), Some(file_name.to_string()))?
     } else {
         decoded_path.to_string()
     };
-    
+
     println!("Final path to read: {}", file_path);
 
     // Check if the file is a PDF by extension
     let is_pdf = file_path.to_lowercase().ends_with(".pdf");
-    
+
     if is_pdf {
         println!("Handling PDF file");
         // For PDFs, read as binary and convert to base64
         match fs::read(&file_path) {
             Ok(bytes) => {
                 println!("Successfully read PDF file as binary");
-                Ok(format!("data:application/pdf;base64,{}", 
-                    STANDARD.encode(&bytes)))
-            },
+                Ok(format!(
+                    "data:application/pdf;base64,{}",
+                    STANDARD.encode(&bytes)
+                ))
+            }
             Err(e) => {
                 println!("Failed to read PDF file: {:?}", e);
                 Err(format!("Failed to read PDF file: {}", e))
@@ -570,7 +582,7 @@ async fn handle_file_drop(path: String) -> Result<String, String> {
             Ok(content) => {
                 println!("Successfully read file as text");
                 Ok(content)
-            },
+            }
             Err(e) => {
                 println!("Error reading as text: {:?}", e);
                 // Try reading as binary
@@ -580,7 +592,7 @@ async fn handle_file_drop(path: String) -> Result<String, String> {
                             Ok(content) => {
                                 println!("Successfully converted binary to UTF-8");
                                 Ok(content)
-                            },
+                            }
                             Err(_) => {
                                 println!("Converting binary to base64");
                                 // Determine MIME type based on file extension
@@ -600,12 +612,14 @@ async fn handle_file_drop(path: String) -> Result<String, String> {
                                     },
                                     None => "application/octet-stream",
                                 };
-                                Ok(format!("data:{};base64,{}", 
+                                Ok(format!(
+                                    "data:{};base64,{}",
                                     mime_type,
-                                    STANDARD.encode(&bytes)))
+                                    STANDARD.encode(&bytes)
+                                ))
                             }
                         }
-                    },
+                    }
                     Err(e) => {
                         println!("Failed to read file as binary: {:?}", e);
                         Err(format!("Failed to read file: {}", e))
@@ -674,12 +688,11 @@ async fn store_api_key(app_handle: AppHandle, request: serde_json::Value) -> Res
 fn get_real_path(path: String, file_name: Option<String>) -> Result<String, String> {
     println!("Attempting to resolve path: {}", path);
     println!("File name: {:?}", file_name);
-    
+
     // Try to get the current working directory
-    let cwd = env::current_dir()
-        .map_err(|e| format!("Failed to get current directory: {}", e))?;
+    let cwd = env::current_dir().map_err(|e| format!("Failed to get current directory: {}", e))?;
     println!("Current working directory: {:?}", cwd);
-    
+
     // Try different locations to find the file
     let possible_paths = vec![
         // Try the exact path first
@@ -687,13 +700,19 @@ fn get_real_path(path: String, file_name: Option<String>) -> Result<String, Stri
         // Try in current directory
         cwd.join(&path),
         // Try in Downloads directory
-        dirs::download_dir().unwrap_or_default().join(file_name.as_ref().unwrap_or(&path)),
+        dirs::download_dir()
+            .unwrap_or_default()
+            .join(file_name.as_ref().unwrap_or(&path)),
         // Try in Documents directory
-        dirs::document_dir().unwrap_or_default().join(file_name.as_ref().unwrap_or(&path)),
+        dirs::document_dir()
+            .unwrap_or_default()
+            .join(file_name.as_ref().unwrap_or(&path)),
         // Try in Desktop directory
-        dirs::desktop_dir().unwrap_or_default().join(file_name.as_ref().unwrap_or(&path)),
+        dirs::desktop_dir()
+            .unwrap_or_default()
+            .join(file_name.as_ref().unwrap_or(&path)),
     ];
-    
+
     // Try each path
     for try_path in possible_paths {
         println!("Trying path: {:?}", try_path);
@@ -705,8 +724,11 @@ fn get_real_path(path: String, file_name: Option<String>) -> Result<String, Stri
                 .map(String::from);
         }
     }
-    
-    Err(format!("Could not find file in any expected location: {}", path))
+
+    Err(format!(
+        "Could not find file in any expected location: {}",
+        path
+    ))
 }
 
 #[tauri::command]
@@ -723,44 +745,45 @@ async fn cache_file(
     file_id: String,
     file_name: String,
     content: String,
-    metadata: String
+    metadata: String,
 ) -> Result<(), String> {
     let cache_dir = get_cache_dir()?;
-    
+
     // Create metadata file path with file name in metadata
     let meta_path = cache_dir.join(format!("{}.meta.json", file_id));
     println!("Writing metadata for '{}' to: {:?}", file_name, meta_path);
-    
+
     // Write metadata
-    fs::write(&meta_path, metadata)
-        .map_err(|e| format!("Failed to write metadata: {}", e))?;
-    
+    fs::write(&meta_path, metadata).map_err(|e| format!("Failed to write metadata: {}", e))?;
+
     // Create content file path
     let content_path = cache_dir.join(format!("{}.content", file_id));
     println!("Writing content for '{}' to: {:?}", file_name, content_path);
-    
+
     // Write content
-    fs::write(&content_path, content)
-        .map_err(|e| format!("Failed to write content: {}", e))?;
-    
-    println!("File '{}' cached successfully with ID: {}", file_name, file_id);
+    fs::write(&content_path, content).map_err(|e| format!("Failed to write content: {}", e))?;
+
+    println!(
+        "File '{}' cached successfully with ID: {}",
+        file_name, file_id
+    );
     Ok(())
 }
 
 #[tauri::command]
 async fn load_cached_file(file_id: String) -> Result<serde_json::Value, String> {
     let cache_dir = get_cache_dir()?;
-    
+
     // Read metadata
     let meta_path = cache_dir.join(format!("{}.meta.json", file_id));
-    let metadata = fs::read_to_string(&meta_path)
-        .map_err(|e| format!("Failed to read metadata: {}", e))?;
-    
+    let metadata =
+        fs::read_to_string(&meta_path).map_err(|e| format!("Failed to read metadata: {}", e))?;
+
     // Read content
     let content_path = cache_dir.join(format!("{}.content", file_id));
-    let content = fs::read_to_string(&content_path)
-        .map_err(|e| format!("Failed to read content: {}", e))?;
-    
+    let content =
+        fs::read_to_string(&content_path).map_err(|e| format!("Failed to read content: {}", e))?;
+
     Ok(serde_json::json!({
         "metadata": metadata,
         "content": content
@@ -770,21 +793,21 @@ async fn load_cached_file(file_id: String) -> Result<serde_json::Value, String> 
 #[tauri::command]
 async fn delete_cached_file(file_id: String) -> Result<(), String> {
     let cache_dir = get_cache_dir()?;
-    
+
     // Delete metadata file
     let meta_path = cache_dir.join(format!("{}.meta.json", file_id));
     if meta_path.exists() {
         fs::remove_file(&meta_path)
             .map_err(|e| format!("Failed to delete metadata file: {}", e))?;
     }
-    
+
     // Delete content file
     let content_path = cache_dir.join(format!("{}.content", file_id));
     if content_path.exists() {
         fs::remove_file(&content_path)
             .map_err(|e| format!("Failed to delete content file: {}", e))?;
     }
-    
+
     println!("Successfully deleted cached file: {}", file_id);
     Ok(())
 }
@@ -794,7 +817,7 @@ fn get_cache_dir() -> Result<PathBuf, String> {
         .ok_or_else(|| "Failed to get cache directory".to_string())?
         .join("lex")
         .join("cache");
-    
+
     Ok(app_cache)
 }
 
@@ -802,6 +825,7 @@ fn main() {
     dotenv().ok();
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_upload::init())

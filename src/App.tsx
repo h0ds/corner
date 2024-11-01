@@ -371,6 +371,23 @@ function App() {
     }
   };
 
+  const clearCurrentThread = () => {
+    if (activeThreadId) {
+      setThreads(prev => prev.map(thread => {
+        if (thread.id === activeThreadId) {
+          return {
+            ...thread,
+            messages: [],
+            files: [],
+            cachedFiles: [],
+            updatedAt: Date.now(),
+          };
+        }
+        return thread;
+      }));
+    }
+  };
+
   return (
     <div className="flex h-screen bg-background">
       {/* Sidebar with animation */}
@@ -503,6 +520,7 @@ function App() {
             </div>
             <ChatInput
               onSendMessage={handleSendMessage}
+              onClearThread={clearCurrentThread}
               disabled={loading}
             />
           </footer>
