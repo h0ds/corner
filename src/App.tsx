@@ -757,7 +757,7 @@ function App() {
   };
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen bg-background border-t">
       {/* Sidebar with animation */}
       <motion.div
         initial={false}
