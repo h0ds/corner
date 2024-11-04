@@ -31,6 +31,7 @@
     "@tauri-apps/plugin-shell": "^2.0.0-beta",
     "@tauri-apps/plugin-upload": "~2",
     "@tiptap/core": "^2.9.1",
+    "@tiptap/extension-link": "^2.9.1",
     "@tiptap/pm": "^2.9.1",
     "@tiptap/react": "^2.9.1",
     "@tiptap/starter-kit": "^2.9.1",
@@ -44,11 +45,13 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-dropzone": "^14.2.10",
+    "react-force-graph-2d": "^1.25.7",
     "react-markdown": "^9.0.1",
     "react-syntax-highlighter": "^15.6.1",
     "remark-gfm": "^4.0.0",
     "tailwind-merge": "^2.5.4",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "tiptap-markdown": "^0.8.10"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",

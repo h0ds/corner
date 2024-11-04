@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/tooltip";
 import { ThreadList } from './components/ThreadList';
 import { nanoid } from 'nanoid';
-import { Message, Thread } from '@/types';
+import { Message, Thread, NoteThread } from '@/types';
 import { initializeCache, cacheFile, CachedFile } from '@/lib/fileCache';
 import { KeyboardShortcut, loadShortcuts, matchesShortcut } from '@/lib/shortcuts';
 import { Features } from './components/Features';
@@ -42,6 +42,8 @@ import { ThreadContainer } from './components/ThreadContainer';
 import { NoteEditor } from './components/NoteEditor';
 import { ChatView } from './components/ChatView';
 import { KnowledgeGraph } from './components/KnowledgeGraph';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { FileLinkMenu } from './components/FileLinkMenu';
 
 interface ApiResponse {
   content?: string;
@@ -116,6 +118,10 @@ function App() {
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
   const [showKnowledgeGraph, setShowKnowledgeGraph] = useState(false);
   const [view, setView] = useState<'thread' | 'note' | 'graph'>('thread');
+  const [showFilePreview, setShowFilePreview] = useState(false);
+  const [previewFile, setPreviewFile] = useState<FileAttachment | null>(null);
+  const [showFileLinkMenu, setShowFileLinkMenu] = useState(false);
+  const [fileLinkQuery, setFileLinkQuery] = useState('');
 
   // Initialize cache on mount
   useEffect(() => {
@@ -809,6 +815,61 @@ function App() {
     }
   }, [activeThreadId, activeThread?.isNote]);
 
+  const handleKnowledgeGraphNodeClick = (threadId: string) => {
+    const thread = threads.find(t => t.id === threadId);
+    if (thread) {
+      setActiveThreadId(threadId);
+      // Set the correct view based on thread type
+      setView(thread.isNote ? 'note' : 'thread');
+      // Also switch to the correct tab in ThreadContainer
+      const event = new CustomEvent('switch-tab', {
+        detail: { tab: thread.isNote ? 'notes' : 'threads' }
+      });
+      window.dispatchEvent(event);
+    }
+  };
+
+  const handleCreateNote = (name: string) => {
+    const newNote: NoteThread = {
+      id: nanoid(),
+      name: name,
+      isNote: true,
+      content: '',
+      files: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      cachedFiles: [],
+    };
+    
+    setThreads(prev => [...prev, newNote]);
+    return newNote;
+  };
+
+  const handleShowFileLinkMenu = () => {
+    setShowFileLinkMenu(true);
+    setFileLinkQuery('');
+  };
+
+  const handleFileLinkSelect = (fileName: string) => {
+    if (activeThread?.isNote) {
+      // Update note content with the file link
+      const newContent = activeThread.content + `[[${fileName}]]`;
+      handleNoteUpdate(newContent);
+    }
+    setShowFileLinkMenu(false);
+  };
+
+  // Add this effect near other useEffect hooks
+  useEffect(() => {
+    const handleSelectNote = (event: CustomEvent<{ noteId: string }>) => {
+      const { noteId } = event.detail;
+      setActiveThreadId(noteId);
+    };
+
+    window.addEventListener('select-note', handleSelectNote as any);
+    return () => window.removeEventListener('select-note', handleSelectNote as any);
+  }, []);
+
   return (
     <div className="flex h-screen bg-background border-t">
       {/* Sidebar with animation */}
@@ -893,13 +954,23 @@ function App() {
             onClick={(e) => e.stopPropagation()}
           >
             {view === 'graph' ? (
-              <KnowledgeGraph threads={threads} />
+              <KnowledgeGraph 
+                threads={threads} 
+                onNodeClick={handleKnowledgeGraphNodeClick}
+              />
             ) : activeThread ? (
               activeThread.isNote ? (
                 <NoteEditor 
                   note={activeThread}
                   onUpdate={handleNoteUpdate}
                   initialContent={activeThread.content}
+                  allNotes={threads.filter((t): t is NoteThread => t.isNote === true)}
+                  onFileClick={(file) => {
+                    setShowFilePreview(true);
+                    setPreviewFile(file);
+                  }}
+                  files={activeThread.files}
+                  onCreateNote={handleCreateNote}
                 />
               ) : (
                 <ChatView
@@ -939,6 +1010,40 @@ function App() {
         plugins={plugins}
         onPluginChange={setPlugins}
       />
+
+      {/* Add FilePreview dialog */}
+      {showFilePreview && previewFile && (
+        <Dialog open={showFilePreview} onOpenChange={setShowFilePreview}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{previewFile.name}</DialogTitle>
+            </DialogHeader>
+            <FilePreview
+              fileName={previewFile.name}
+              content={previewFile.content}
+              showToggle={false}
+              defaultExpanded={true}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Add FileLinkMenu dialog */}
+      {showFileLinkMenu && activeThread?.isNote && (
+        <Dialog open={showFileLinkMenu} onOpenChange={setShowFileLinkMenu}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Link File</DialogTitle>
+            </DialogHeader>
+            <FileLinkMenu
+              query={fileLinkQuery}
+              files={activeThread.files}
+              onSelect={handleFileLinkSelect}
+              onClose={() => setShowFileLinkMenu(false)}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

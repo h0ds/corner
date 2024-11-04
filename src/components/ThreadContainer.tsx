@@ -28,6 +28,16 @@ export const ThreadContainer: React.FC<ThreadContainerProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'threads' | 'notes'>('threads');
 
+  // Listen for tab change events from Knowledge Graph clicks
+  useEffect(() => {
+    const handleTabChange = (event: CustomEvent<{ tab: 'threads' | 'notes' }>) => {
+      setActiveTab(event.detail.tab);
+    };
+
+    window.addEventListener('switch-tab', handleTabChange as any);
+    return () => window.removeEventListener('switch-tab', handleTabChange as any);
+  }, []);
+
   // Type-safe filtering
   const notes = threads.filter((t): t is NoteThread => t.isNote === true);
   const chatThreads = threads.filter((t): t is ChatThread => t.isNote !== true);
