@@ -756,6 +756,19 @@ function App() {
     }));
   };
 
+  const handleThreadTextColorChange = (threadId: string, color: string) => {
+    setThreads(prev => prev.map(thread => {
+      if (thread.id === threadId) {
+        return {
+          ...thread,
+          textColor: color || undefined,
+          updatedAt: Date.now(),
+        };
+      }
+      return thread;
+    }));
+  };
+
   return (
     <div className="flex h-screen bg-background border-t">
       {/* Sidebar with animation */}
@@ -795,6 +808,7 @@ function App() {
                 onTogglePin={handleTogglePin}
                 onColorChange={handleThreadColorChange}
                 onIconChange={handleThreadIconChange}
+                onTextColorChange={handleThreadTextColorChange}
               />
             </div>
           </ResizeObserver>
@@ -837,7 +851,7 @@ function App() {
           >
             <AnimatePresence>
               {messages.length === 0 ? (
-                <div className="text-center text-muted-foreground/40 mt-2 text-sm tracking-tighter">
+                <div className="text-center text-muted-foreground/40 mt-1 text-sm tracking-tighter">
                   Start a conversation ({clearHistoryShortcut} to clear history)
                 </div>
               ) : (

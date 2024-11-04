@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Pencil, GripVertical, FileText, Pin, Palette, X, SmilePlus, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, Pencil, GripVertical, FileText, Pin, Palette, X, SmilePlus, ChevronRight, Type } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Thread } from '@/types';
@@ -44,6 +44,7 @@ interface ThreadListProps {
   onTogglePin: (threadId: string) => void;
   onColorChange: (threadId: string, color: string) => void;
   onIconChange: (threadId: string, icon: string) => void;
+  onTextColorChange: (threadId: string, color: string) => void;
 }
 
 interface SortableThreadItemProps {
@@ -59,6 +60,7 @@ interface SortableThreadItemProps {
   onTogglePin: (threadId: string) => void;
   onColorChange: (threadId: string, color: string) => void;
   onIconChange: (threadId: string, icon: string) => void;
+  onTextColorChange: (threadId: string, color: string) => void;
   dropTarget?: { id: string; position: 'before' | 'after' } | null;
   threads: Thread[];
 }
@@ -76,6 +78,7 @@ const ThreadItem = ({
   onTogglePin,
   onColorChange,
   onIconChange,
+  onTextColorChange,
   isDragging = false,
   isOverlay = false,
   dragHandleProps = {},
@@ -94,10 +97,10 @@ const ThreadItem = ({
         isDragging && "opacity-50",
         isOverlay && "bg-background border border-border shadow-lg scale-105 rotate-2"
       )}
-      style={thread.color ? {
-        backgroundColor: thread.color,
-        '--tw-bg-opacity': '0.3',
-      } as React.CSSProperties : undefined}
+      style={{
+        backgroundColor: thread.color ? `${thread.color}4D` : undefined,
+        color: thread.textColor || undefined,
+      } as React.CSSProperties}
       onClick={() => !isOverlay && onThreadSelect(thread.id)}
       onDoubleClick={(e) => {
         e.stopPropagation();
@@ -203,6 +206,79 @@ const ThreadItem = ({
   );
 };
 
+const ColorPickerModal: React.FC<{
+  title: string;
+  currentColor: string | undefined;
+  onColorSelect: (color: string) => void;
+  onClose: () => void;
+}> = ({ title, currentColor, onColorSelect, onClose }) => {
+  return (
+    <div 
+      className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50"
+      onClick={onClose}
+    >
+      <div 
+        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 
+                 bg-background border border-border rounded-sm shadow-lg p-6 min-w-[280px]"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <h3 className="text-sm font-medium">{title}</h3>
+              <p className="text-xs text-muted-foreground">
+                Choose a color or click reset to remove
+              </p>
+            </div>
+            <button 
+              onClick={onClose}
+              className="absolute -top-2 -right-2 p-1.5 rounded-full bg-background 
+                       border border-border text-muted-foreground hover:text-foreground
+                       transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="flex flex-col gap-4">
+            <div className="grid grid-cols-5 gap-2">
+              {Object.entries(THREAD_COLORS).map(([name, color]) => (
+                <button
+                  key={name}
+                  onClick={() => onColorSelect(color)}
+                  className={cn(
+                    "w-10 h-10 rounded-sm relative group",
+                    "hover:scale-110 transition-transform",
+                    !color && "bg-background",
+                    name === 'white' && "border border-border",
+                    currentColor === color && "ring-2 ring-primary ring-offset-2",
+                  )}
+                  style={color ? { backgroundColor: color } : undefined}
+                >
+                  <span className="sr-only">{name} color</span>
+                  <span className="absolute inset-0 flex items-center justify-center opacity-0 
+                                 group-hover:opacity-100 transition-opacity bg-background/80 
+                                 text-xs font-medium rounded-sm">
+                    {name.charAt(0).toUpperCase() + name.slice(1)}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => onColorSelect('')}
+              className="w-full py-2 text-xs text-muted-foreground hover:text-foreground 
+                       transition-colors border border-border rounded-sm hover:bg-accent"
+            >
+              Reset Color
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const SortableThreadItem = ({
   thread,
   activeThreadId,
@@ -216,6 +292,7 @@ const SortableThreadItem = ({
   onTogglePin,
   onColorChange,
   onIconChange,
+  onTextColorChange,
   dropTarget,
   isDragging,
   threads
@@ -245,6 +322,7 @@ const SortableThreadItem = ({
 
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showIconPicker, setShowIconPicker] = useState(false);
+  const [showTextColorPicker, setShowTextColorPicker] = useState(false);
 
   return (
     <ContextMenu>
@@ -278,6 +356,7 @@ const SortableThreadItem = ({
             onTogglePin={onTogglePin}
             onColorChange={onColorChange}
             onIconChange={onIconChange}
+            onTextColorChange={onTextColorChange}
             isDragging={isThisItemDragging}
             dragHandleProps={{ ...attributes, ...listeners }}
           />
@@ -307,18 +386,25 @@ const SortableThreadItem = ({
           <span>Rename</span>
         </ContextMenuItem>
         <ContextMenuItem
-          onClick={() => setShowColorPicker(true)}
-          className="flex items-center gap-2 cursor-pointer"
-        >
-          <Palette className="h-4 w-4" />
-          <span>Change Color</span>
-        </ContextMenuItem>
-        <ContextMenuItem
           onClick={() => setShowIconPicker(true)}
           className="flex items-center gap-2 cursor-pointer"
         >
           <SmilePlus className="h-4 w-4" />
-          <span>Change Icon</span>
+          <span>Icon</span>
+        </ContextMenuItem>
+        <ContextMenuItem
+          onClick={() => setShowColorPicker(true)}
+          className="flex items-center gap-2 cursor-pointer"
+        >
+          <Palette className="h-4 w-4" />
+          <span>Background Color</span>
+        </ContextMenuItem>
+        <ContextMenuItem
+          onClick={() => setShowTextColorPicker(true)}
+          className="flex items-center gap-2 cursor-pointer"
+        >
+          <Type className="h-4 w-4" />
+          <span>Text Color</span>
         </ContextMenuItem>
         <ContextMenuItem
           onClick={() => onDeleteThread(thread.id)}
@@ -330,35 +416,15 @@ const SortableThreadItem = ({
       </ContextMenuContent>
 
       {showColorPicker && (
-        <div 
-          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50"
-          onClick={() => setShowColorPicker(false)}
-        >
-          <div 
-            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 
-                     bg-background border border-border rounded-sm shadow-lg p-4"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Thread Color</span>
-                <button 
-                  onClick={() => setShowColorPicker(false)}
-                  className="absolute -top-2 -right-2 p-1 rounded-full bg-background border border-border text-muted-foreground hover:text-foreground"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-              <ColorPicker
-                currentColor={thread.color}
-                onColorSelect={(color) => {
-                  onColorChange(thread.id, color);
-                  setShowColorPicker(false);
-                }}
-              />
-            </div>
-          </div>
-        </div>
+        <ColorPickerModal
+          title="Thread Background Color"
+          currentColor={thread.color}
+          onColorSelect={(color) => {
+            onColorChange(thread.id, color);
+            setShowColorPicker(false);
+          }}
+          onClose={() => setShowColorPicker(false)}
+        />
       )}
 
       {showIconPicker && (
@@ -392,38 +458,19 @@ const SortableThreadItem = ({
           </div>
         </div>
       )}
-    </ContextMenu>
-  );
-};
 
-const ColorPicker: React.FC<{
-  currentColor: string | undefined;
-  onColorSelect: (color: string) => void;
-}> = ({ currentColor, onColorSelect }) => {
-  return (
-    <div className="flex flex-col gap-2 p-1">
-      <div className="grid grid-cols-4 gap-1">
-        {Object.entries(THREAD_COLORS).map(([name, color]) => (
-          <button
-            key={name}
-            onClick={() => onColorSelect(color)}
-            className={cn(
-              "w-5 h-5 rounded-sm",
-              "hover:opacity-75 transition-transform",
-              !color && "bg-background",
-            )}
-            style={color ? { backgroundColor: color } : undefined}
-            title={name}
-          />
-        ))}
-      </div>
-      <button
-        onClick={() => onColorSelect('')}
-        className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors -mb-2"
-      >
-        Reset Color
-      </button>
-    </div>
+      {showTextColorPicker && (
+        <ColorPickerModal
+          title="Thread Text Color"
+          currentColor={thread.textColor}
+          onColorSelect={(color) => {
+            onTextColorChange(thread.id, color);
+            setShowTextColorPicker(false);
+          }}
+          onClose={() => setShowTextColorPicker(false)}
+        />
+      )}
+    </ContextMenu>
   );
 };
 
@@ -461,6 +508,7 @@ export const ThreadList: React.FC<ThreadListProps> = ({
   onTogglePin,
   onColorChange,
   onIconChange,
+  onTextColorChange,
 }) => {
   const [editingThreadId, setEditingThreadId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
@@ -595,6 +643,7 @@ export const ThreadList: React.FC<ThreadListProps> = ({
                   onTogglePin={onTogglePin}
                   onColorChange={onColorChange}
                   onIconChange={onIconChange}
+                  onTextColorChange={onTextColorChange}
                   dropTarget={dropTarget}
                   isDragging={isDragging}
                 />
@@ -620,6 +669,7 @@ export const ThreadList: React.FC<ThreadListProps> = ({
                 onTogglePin={onTogglePin}
                 onColorChange={onColorChange}
                 onIconChange={onIconChange}
+                onTextColorChange={onTextColorChange}
                 isOverlay
               />
             ) : null}

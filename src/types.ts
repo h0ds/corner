@@ -29,6 +29,7 @@ export interface Thread {
   lastUsedModel?: string;
   isPinned?: boolean;
   color?: string;
+  textColor?: string;
   icon?: string;
 }
 
@@ -74,6 +75,8 @@ export interface Plugin {
 }
 
 export const THREAD_COLORS = {
+  white: '#ffffff',
+  black: '#000000',
   rose: '#fecdd3',
   pink: '#fbcfe8',
   purple: '#e9d5ff',
