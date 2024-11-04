@@ -1,10 +1,10 @@
-# Lex
+# Corner
 
 <div align="center">
   <img src="assets/lex-demo.gif" alt="Lex Demo" width="600px"/>
 </div>
 
-Lex is a sleek, minimalist chat UI for AI models.
+Corner is a sleek, minimalist chat UI for AI models.
 
 <div align="center">
   <img src="https://img.shields.io/github/license/h0ds/lex?style=flat-square"/>
@@ -14,17 +14,18 @@ Lex is a sleek, minimalist chat UI for AI models.
 
 ## Goals
 
-The goal of Lex is to become the de-facto on-ramp for AI models.
+The goal of Corner is to become the de-facto on-ramp for AI models.
 Open, easy-to-use, easy-to-customize, easy-to-extend.
 
 Removing the need for end-users to wait until providers ship their own desktop experiences, whilst offering providers the ability to offer desktop support without needing to reallocate valuable engineering resources.
 
-Lex is intended to be a solid unopinionated foundation for AI workflows.
+Corner is intended to be a solid unopinionated foundation for AI workflows.
 
 Use frontier models at-cost by providing your own API keys.
 
-Extend and contribute to the Lex ecosystem with your own plugins to add support for your own AI tools and workflows.
-Customize Lex to your liking with themes.
+Extend and contribute to the Corner ecosystem with your own plugins to add support for your own AI tools and workflows.
+
+Customize Corner to your liking with themes.
 
 
 ## Features

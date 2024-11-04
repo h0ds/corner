@@ -430,6 +430,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "corner"
+version = "0.1.0"
+dependencies = [
+ "base64 0.21.7",
+ "dirs",
+ "dotenv",
+ "percent-encoding",
+ "reqwest 0.11.27",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-fs",
+ "tauri-plugin-process",
+ "tauri-plugin-shell",
+ "tauri-plugin-upload",
+ "tokio",
+]
+
+[[package]]
 name = "cpufeatures"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1684,26 +1704,6 @@ name = "lazy_static"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
-
-[[package]]
-name = "lex"
-version = "0.1.0"
-dependencies = [
- "base64 0.21.7",
- "dirs",
- "dotenv",
- "percent-encoding",
- "reqwest 0.11.27",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-fs",
- "tauri-plugin-process",
- "tauri-plugin-shell",
- "tauri-plugin-upload",
- "tokio",
-]
 
 [[package]]
 name = "libappindicator"
