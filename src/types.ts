@@ -1,5 +1,5 @@
 export interface Message {
-  role: 'user' | 'assistant' | 'error' | 'comparison';
+  role: 'user' | 'assistant' | 'error' | 'comparison' | 'system';
   content: string;
   modelId?: string;
   file?: FileAttachment;
@@ -31,6 +31,7 @@ export interface Thread {
   color?: string;
   textColor?: string;
   icon?: string;
+  isNote?: boolean;
 }
 
 export interface FileInfo {

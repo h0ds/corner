@@ -12,7 +12,7 @@ Lex is a sleek, minimalist chat UI for AI models.
   <img src="https://img.shields.io/github/issues/h0ds/lex?style=flat-square"/>
 </div>
 
-## The Goal
+## Goals
 
 The goal of Lex is to become the de-facto on-ramp for AI models.
 Open, easy-to-use, easy-to-customize, easy-to-extend.
@@ -27,7 +27,7 @@ Extend and contribute to the Lex ecosystem with your own plugins to add support 
 Customize Lex to your liking with themes.
 
 
-## ✨ Features
+## Features
 
 - 🤖 Out-of-the-box support for multiple AI models (Claude, GPT-4, Llama)
 - 🎨 Customizable themes and appearance

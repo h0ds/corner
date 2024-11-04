@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Pencil, GripVertical, FileText, Pin, Palette, X, SmilePlus, ChevronRight, Type } from 'lucide-react';
+import { Plus, Trash2, Pencil, GripVertical, FileText, Pin, Palette, X, SmilePlus, ChevronRight, Type, StickyNote } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Thread } from '@/types';
@@ -63,6 +63,7 @@ interface SortableThreadItemProps {
   onTextColorChange: (threadId: string, color: string) => void;
   dropTarget?: { id: string; position: 'before' | 'after' } | null;
   threads: Thread[];
+  isDragging?: boolean;
 }
 
 const ThreadItem = ({
@@ -593,7 +594,6 @@ export const ThreadList: React.FC<ThreadListProps> = ({
 
   const activeThread = activeId ? threads.find(t => t.id === activeId) : null;
 
-  // Sort threads to show pinned ones at the top
   const sortedThreads = [...threads].sort((a, b) => {
     if (a.isPinned && !b.isPinned) return -1;
     if (!a.isPinned && b.isPinned) return 1;
@@ -601,63 +601,26 @@ export const ThreadList: React.FC<ThreadListProps> = ({
   });
 
   return (
-    <div className="absolute inset-0 border-r border-border bg-card flex flex-col">
-      <div className="p-2 border-b border-border mt-12">
-        <button
-          onClick={onNewThread}
-          className="w-full flex items-center gap-2 p-3 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+    <div className="flex-1 overflow-y-auto p-2 space-y-1">
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
+        modifiers={[]}
+      >
+        <SortableContext
+          items={sortedThreads.map(t => t.id)}
+          strategy={verticalListSortingStrategy}
         >
-          <Plus className="h-4 w-4 shrink-0" />
-          <span className="flex items-center -mb-1">Start a new thread</span>
-        </button>
-      </div>
-      
-      <div className="flex-1 overflow-y-auto p-2 space-y-1">
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragStart={handleDragStart}
-          onDragOver={handleDragOver}
-          onDragEnd={handleDragEnd}
-          onDragCancel={handleDragCancel}
-          modifiers={[]}
-        >
-          <SortableContext
-            items={sortedThreads.map(t => t.id)}
-            strategy={verticalListSortingStrategy}
-          >
-            <AnimatePresence mode="popLayout">
-              {sortedThreads.map((thread) => (
-                <SortableThreadItem
-                  key={thread.id}
-                  thread={thread}
-                  threads={threads}
-                  activeThreadId={activeThreadId}
-                  editingThreadId={editingThreadId}
-                  editingName={editingName}
-                  onStartRename={handleStartRename}
-                  onFinishRename={handleFinishRename}
-                  onEditingNameChange={setEditingName}
-                  onThreadSelect={onThreadSelect}
-                  onDeleteThread={onDeleteThread}
-                  onTogglePin={onTogglePin}
-                  onColorChange={onColorChange}
-                  onIconChange={onIconChange}
-                  onTextColorChange={onTextColorChange}
-                  dropTarget={dropTarget}
-                  isDragging={isDragging}
-                />
-              ))}
-            </AnimatePresence>
-          </SortableContext>
-
-          <DragOverlay dropAnimation={{
-            duration: 200,
-            easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
-          }}>
-            {activeThread ? (
-              <ThreadItem
-                thread={activeThread}
+          <AnimatePresence mode="popLayout">
+            {sortedThreads.map((thread) => (
+              <SortableThreadItem
+                key={thread.id}
+                thread={thread}
+                threads={threads}
                 activeThreadId={activeThreadId}
                 editingThreadId={editingThreadId}
                 editingName={editingName}
@@ -670,12 +633,40 @@ export const ThreadList: React.FC<ThreadListProps> = ({
                 onColorChange={onColorChange}
                 onIconChange={onIconChange}
                 onTextColorChange={onTextColorChange}
-                isOverlay
+                dropTarget={dropTarget}
+                isDragging={isDragging}
               />
-            ) : null}
-          </DragOverlay>
-        </DndContext>
-      </div>
+            ))}
+          </AnimatePresence>
+        </SortableContext>
+
+        <DragOverlay dropAnimation={{
+          duration: 200,
+          easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
+        }}>
+          {activeThread ? (
+            <ThreadItem
+              thread={activeThread}
+              activeThreadId={activeThreadId}
+              editingThreadId={editingThreadId}
+              editingName={editingName}
+              onStartRename={handleStartRename}
+              onFinishRename={handleFinishRename}
+              onEditingNameChange={setEditingName}
+              onThreadSelect={onThreadSelect}
+              onDeleteThread={onDeleteThread}
+              onTogglePin={onTogglePin}
+              onColorChange={onColorChange}
+              onIconChange={onIconChange}
+              onTextColorChange={onTextColorChange}
+              isOverlay
+            />
+          ) : null}
+        </DragOverlay>
+      </DndContext>
     </div>
   );
 }; 
+
+// Export these components
+export { ColorPickerModal, IconPicker };

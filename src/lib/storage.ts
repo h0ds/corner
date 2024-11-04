@@ -6,23 +6,40 @@ const THREAD_ORDER_KEY = 'thread-order';
 
 export function saveThread(thread: Thread): void {
   try {
-    const threads = loadThreads();
-    const index = threads.findIndex(t => t.id === thread.id);
+    // Load existing threads
+    const threadsJson = localStorage.getItem(THREADS_KEY);
+    const threads: Thread[] = threadsJson ? JSON.parse(threadsJson) : [];
     
+    // Find and update or add the thread
+    const index = threads.findIndex(t => t.id === thread.id);
     if (index >= 0) {
+      // Update existing thread
       threads[index] = {
         ...threads[index],
         ...thread,
         updatedAt: Date.now()
       };
     } else {
+      // Add new thread
       threads.push({
         ...thread,
         updatedAt: Date.now()
       });
     }
     
+    // Save back to localStorage
     localStorage.setItem(THREADS_KEY, JSON.stringify(threads));
+    
+    // Update thread order if needed
+    const orderJson = localStorage.getItem(THREAD_ORDER_KEY);
+    if (orderJson) {
+      const order: string[] = JSON.parse(orderJson);
+      if (!order.includes(thread.id)) {
+        order.push(thread.id);
+        localStorage.setItem(THREAD_ORDER_KEY, JSON.stringify(order));
+      }
+    }
+
     console.log('Saved thread:', thread.id, 'Total threads:', threads.length);
   } catch (error) {
     console.error('Failed to save thread:', error);
@@ -54,7 +71,7 @@ export function loadThreads(): Thread[] {
       return [...orderedThreads, ...remainingThreads];
     }
     
-    return threads;
+    return threads.sort((a, b) => b.updatedAt - a.updatedAt);
   } catch (error) {
     console.error('Failed to load threads:', error);
     return [];
@@ -72,9 +89,19 @@ export function saveThreadOrder(threadIds: string[]): void {
 
 export function deleteThread(threadId: string): void {
   try {
-    const threads = loadThreads().filter(t => t.id !== threadId);
-    localStorage.setItem(THREADS_KEY, JSON.stringify(threads));
-    console.log('Deleted thread:', threadId, 'Remaining threads:', threads.length);
+    const threads = loadThreads();
+    const filteredThreads = threads.filter(t => t.id !== threadId);
+    localStorage.setItem(THREADS_KEY, JSON.stringify(filteredThreads));
+    
+    // Also update the order
+    const orderJson = localStorage.getItem(THREAD_ORDER_KEY);
+    if (orderJson) {
+      const order: string[] = JSON.parse(orderJson);
+      const newOrder = order.filter(id => id !== threadId);
+      localStorage.setItem(THREAD_ORDER_KEY, JSON.stringify(newOrder));
+    }
+    
+    console.log('Deleted thread:', threadId, 'Remaining threads:', filteredThreads.length);
   } catch (error) {
     console.error('Failed to delete thread:', error);
   }

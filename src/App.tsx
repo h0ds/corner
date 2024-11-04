@@ -38,6 +38,7 @@ import { Plugin, loadPlugins } from '@/lib/plugins';
 import { Square } from 'lucide-react';
 import { ThreadHeader } from './components/ThreadHeader';
 import { cn } from '@/lib/utils';
+import { ThreadContainer } from './components/ThreadContainer';
 
 interface ApiResponse {
   content?: string;
@@ -124,11 +125,13 @@ function App() {
 
   // Update thread storage when threads change
   useEffect(() => {
-    const activeThread = threads.find(t => t.id === activeThreadId);
-    if (activeThread) {
-      saveThread(activeThread);
+    // Only save if there are actual changes
+    const savedThreads = loadThreads();
+    if (JSON.stringify(savedThreads) !== JSON.stringify(threads)) {
+      threads.forEach(thread => saveThread(thread));
+      saveThreadOrder(threads.map(t => t.id));
     }
-  }, [threads, activeThreadId]);
+  }, [threads]);
 
   // Save active thread ID when it changes
   useEffect(() => {
@@ -143,24 +146,36 @@ function App() {
     return shortcuts.find(s => s.id === 'clear-history')?.currentKey || '⌘/Ctrl + K';
   }, [shortcuts]);
 
-  const handleNewThread = () => {
+  const handleNewThread = (isNote: boolean = false) => {
     const newThread: Thread = {
       id: nanoid(),
-      name: 'New Thread',
+      name: isNote ? 'New Note' : 'New Thread',
       messages: [],
       files: [],
       createdAt: Date.now(),
       updatedAt: Date.now(),
       cachedFiles: [],
-      lastUsedModel: selectedModel
+      lastUsedModel: selectedModel,
+      isNote: isNote,
     };
+    
+    // Save first, then update state
+    saveThread(newThread);
     setThreads(prev => [...prev, newThread]);
     setActiveThreadId(newThread.id);
   };
 
+  const handleNewNote = () => {
+    handleNewThread(true);
+  };
+
   const handleDeleteThread = (threadId: string) => {
-    setThreads(prev => prev.filter(t => t.id !== threadId));
-    deleteThread(threadId);
+    setThreads(prev => {
+      const remaining = prev.filter(t => t.id !== threadId);
+      deleteThread(threadId);
+      return remaining;
+    });
+    
     if (activeThreadId === threadId) {
       const remainingThreads = threads.filter(t => t.id !== threadId);
       setActiveThreadId(remainingThreads[0]?.id || null);
@@ -321,12 +336,11 @@ function App() {
       if (nativeFile.path) {
         content = await invoke('handle_file_drop', { path: nativeFile.path });
       } else {
-        // Fix: getFileHandler returns a Promise<string> directly
         content = await getFileHandler(file);
       }
 
       if (activeThreadId) {
-        handleSendMessage("", file, content);
+        handleSendMessage(content);
       }
     } catch (error) {
       console.error('File read error:', error);
@@ -790,18 +804,18 @@ function App() {
               const width = entry.contentRect.width;
               setSidebarWidth(width);
               
-              // Auto-hide sidebar if width is less than 250px or window width is less than 500px
               if (width < 250 || window.innerWidth < 500) {
                 setSidebarVisible(false);
               }
             }}
           >
             <div className="h-full" style={{ width: '100%' }}>
-              <ThreadList
+              <ThreadContainer
                 threads={threads}
                 activeThreadId={activeThreadId}
                 onThreadSelect={handleThreadSelect}
-                onNewThread={handleNewThread}
+                onNewThread={() => handleNewThread(false)}
+                onNewNote={handleNewNote}
                 onDeleteThread={handleDeleteThread}
                 onRenameThread={handleRenameThread}
                 onReorderThreads={handleReorderThreads}
