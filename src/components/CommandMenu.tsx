@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Command } from 'cmdk';
 import { Trash2, Power, Split, MessageCircle, Square } from 'lucide-react';
 
@@ -54,11 +54,37 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({
   onClose,
 }) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const listRef = useRef<HTMLDivElement>(null);
+  const selectedItemRef = useRef<HTMLDivElement>(null);
 
   const filteredCommands = AVAILABLE_COMMANDS.filter(command =>
     command.name.toLowerCase().includes(query.toLowerCase()) ||
     command.id.toLowerCase().includes(query.toLowerCase())
   );
+
+  useEffect(() => {
+    if (selectedItemRef.current && listRef.current) {
+      const list = listRef.current;
+      const item = selectedItemRef.current;
+      
+      if (selectedIndex === filteredCommands.length - 1) {
+        list.scrollTop = list.scrollHeight;
+        return;
+      }
+
+      const listRect = list.getBoundingClientRect();
+      const itemRect = item.getBoundingClientRect();
+
+      const itemTop = itemRect.top - listRect.top;
+      const itemBottom = itemRect.bottom - listRect.top;
+      
+      if (itemBottom > listRect.height) {
+        list.scrollTop += itemBottom - listRect.height;
+      } else if (itemTop < 0) {
+        list.scrollTop += itemTop;
+      }
+    }
+  }, [selectedIndex, filteredCommands.length]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -92,12 +118,16 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({
 
   return (
     <div className="absolute bottom-full mb-2 bg-popover border border-border 
-                   rounded-sm shadow-md overflow-hidden z-50 min-w-[200px]">
+                    rounded-sm shadow-md overflow-hidden z-50 min-w-[200px]">
       <Command className="border-none bg-transparent p-0">
-        <Command.List className="max-h-[300px] overflow-y-auto p-1">
+        <Command.List 
+          ref={listRef}
+          className="max-h-[300px] overflow-y-auto p-1 scroll-smooth"
+        >
           {filteredCommands.map((command, index) => (
             <Command.Item
               key={command.id}
+              ref={index === selectedIndex ? selectedItemRef : undefined}
               onSelect={() => onSelect(command.id)}
               className={`flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm cursor-default
                        ${index === selectedIndex ? 'bg-accent text-accent-foreground' : ''}
