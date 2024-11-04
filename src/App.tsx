@@ -208,9 +208,10 @@ function App() {
 
       if (clearHistoryShortcut && matchesShortcut(e, clearHistoryShortcut)) {
         e.preventDefault();
-        clearThreads();
-        setThreads([]);
-        setActiveThreadId(null);
+        // Only clear the active thread's messages
+        if (activeThreadId) {
+          clearCurrentThread();
+        }
       }
 
       if (toggleSidebarShortcut && matchesShortcut(e, toggleSidebarShortcut)) {
@@ -221,7 +222,7 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown as any);
     return () => window.removeEventListener('keydown', handleKeyDown as any);
-  }, [sidebarVisible]);
+  }, [sidebarVisible, activeThreadId]); // Add activeThreadId to dependencies
 
   const handleSendMessage = async (message: string, overrideModel?: string) => {
     if (isDiscussing && isDiscussionPaused) {
@@ -449,12 +450,10 @@ function App() {
   const clearCurrentThread = () => {
     if (activeThreadId) {
       setThreads(prev => prev.map(thread => {
-        if (thread.id === activeThreadId) {
+        if (thread.id === activeThreadId && !thread.isNote) { // Add check for non-note threads
           return {
             ...thread,
-            messages: [],
-            files: [],
-            cachedFiles: [],
+            messages: [], // Only clear messages
             updatedAt: Date.now(),
           };
         }

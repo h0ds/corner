@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ThreadList } from './ThreadList';
 import { NoteList } from './NoteList';
 import { ThreadTabs } from './ThreadTabs';
-import { Thread } from '@/types';
+import { Thread, NoteThread, ChatThread } from '@/types';
 import { Plus, StickyNote } from 'lucide-react';
 
 interface ThreadContainerProps {
@@ -32,17 +32,22 @@ export const ThreadContainer: React.FC<ThreadContainerProps> = ({
   const notes = threads.filter((t): t is NoteThread => t.isNote === true);
   const chatThreads = threads.filter((t): t is ChatThread => t.isNote !== true);
 
-  // Auto-select top thread when switching to threads tab
+  // Auto-select top thread/note when switching tabs
   useEffect(() => {
+    const activeThread = threads.find(t => t.id === activeThreadId);
+    
     if (activeTab === 'threads' && chatThreads.length > 0) {
-      const activeThread = threads.find(t => t.id === activeThreadId);
-      // Only select if no thread is selected or current thread is a note
+      // Only select if no thread is selected or current selection is a note
       if (!activeThread || activeThread.isNote) {
-        // Select the first non-note thread
         onThreadSelect(chatThreads[0].id);
       }
+    } else if (activeTab === 'notes' && notes.length > 0) {
+      // Only select if no note is selected or current selection is a thread
+      if (!activeThread || !activeThread.isNote) {
+        onThreadSelect(notes[0].id);
+      }
     }
-  }, [activeTab, chatThreads, activeThreadId, threads, onThreadSelect]);
+  }, [activeTab, chatThreads, notes, activeThreadId, threads, onThreadSelect]);
 
   return (
     <div className="absolute inset-0 border-r border-border bg-card flex flex-col">
