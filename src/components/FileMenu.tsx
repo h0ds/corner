@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Upload, Eye, Trash2 } from 'lucide-react';
+import { FileText, Upload, Eye, Trash2, FolderOpen } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -17,7 +17,6 @@ interface FileMenuProps {
   isOpen: boolean;
   onClose: () => void;
   files: FileAttachment[];
-  onFileSelect: (file: File) => void;
   onFileDelete?: (fileId: string) => void;
 }
 
@@ -25,7 +24,6 @@ export const FileMenu: React.FC<FileMenuProps> = ({
   isOpen,
   onClose,
   files,
-  onFileSelect,
   onFileDelete
 }) => {
   const [previewFile, setPreviewFile] = useState<FileAttachment | null>(null);
@@ -61,27 +59,6 @@ export const FileMenu: React.FC<FileMenuProps> = ({
     }
   };
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop: (acceptedFiles) => {
-      if (acceptedFiles.length > 0) {
-        onFileSelect(acceptedFiles[0]);
-      }
-    },
-    maxFiles: 1,
-    accept: {
-      'text/*': ['.txt', '.md'],
-      'application/json': ['.json'],
-      'text/plain': ['.txt'],
-      'text/markdown': ['.md'],
-      'application/javascript': ['.js', '.jsx', '.ts', '.tsx'],
-      'text/html': ['.html', '.htm'],
-      'text/css': ['.css'],
-      'text/yaml': ['.yml', '.yaml'],
-      'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.bmp'],
-      'application/pdf': ['.pdf']
-    }
-  });
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[500px]">
@@ -98,7 +75,7 @@ export const FileMenu: React.FC<FileMenuProps> = ({
                 <span className="text-sm font-medium">{previewFile.name}</span>
               </div>
             ) : (
-              <span className="font-mono text-md tracking-tighter">Upload Files</span>
+              <span className="font-mono text-md tracking-tighter">Browse Files</span>
             )}
           </DialogTitle>
         </DialogHeader>
@@ -110,76 +87,57 @@ export const FileMenu: React.FC<FileMenuProps> = ({
             showToggle={false}
             defaultExpanded={true}
           />
+        ) : files.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <FolderOpen className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-sm font-medium mb-1">No files yet</h3>
+            <p className="text-xs text-muted-foreground max-w-[200px]">
+              Files you upload will appear here for easy access
+            </p>
+          </div>
         ) : (
-          <>
-            {/* Drop zone */}
-            <div
-              {...getRootProps()}
-              className={`
-                border-2 border-dashed rounded-md p-8 text-center cursor-pointer
-                transition-colors
-                ${isDragActive ? 'border-primary bg-primary/5' : 'border-border'}
-              `}
-            >
-              <input {...getInputProps()} />
-              <Upload className="h-8 w-8 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">
-                Drag & drop a file here, or click to select
-              </p>
-              <p className="text-xs text-muted-foreground mt-2">
-                Supports text, images, PDFs and more (max 10MB)
-              </p>
-            </div>
-
-            {/* File list */}
-            {files.length > 0 && (
-              <div className="mt-4">
-                <h4 className="text-sm font-medium mb-2">Added Files</h4>
-                <div className="space-y-2">
-                  {files.map((file, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-2 rounded-md bg-muted group"
-                    >
-                      <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm truncate max-w-[300px]">
-                          {file.name}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setPreviewFile(file);
-                          }}
-                          title="Preview file"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 text-destructive"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteFile(file);
-                          }}
-                          disabled={deletingFile === file.cacheId}
-                          title="Delete file"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
+          <div className="space-y-2">
+            {files.map((file, index) => (
+              <div
+                key={index}
+                className="flex items-center justify-between p-2 rounded-md bg-muted group"
+              >
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm truncate max-w-[300px]">
+                    {file.name}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPreviewFile(file);
+                    }}
+                    title="Preview file"
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-destructive"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteFile(file);
+                    }}
+                    disabled={deletingFile === file.cacheId}
+                    title="Delete file"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
-            )}
-          </>
+            ))}
+          </div>
         )}
       </DialogContent>
     </Dialog>

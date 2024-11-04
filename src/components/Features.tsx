@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { PanelLeft, PanelLeftClose, Settings, FileText } from 'lucide-react';
+import { PanelLeft, PanelLeftClose, Settings, FileText, Network, Upload } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -7,15 +7,19 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { FileMenu } from './FileMenu';
-import { FileAttachment } from '@/types';
+import { FileUploader } from './FileUploader';
+import { FileAttachment, Thread } from '@/types';
+import { cn } from '@/lib/utils';
 
 interface FeaturesProps {
   sidebarVisible: boolean;
   onSidebarToggle: () => void;
   onOpenShortcuts: () => void;
   files: FileAttachment[];
+  threads: Thread[];
   onFileSelect: (file: File) => void;
   onFileDelete?: (fileId: string) => void;
+  onShowKnowledgeGraph: () => void;
 }
 
 export const Features: React.FC<FeaturesProps> = ({
@@ -23,10 +27,13 @@ export const Features: React.FC<FeaturesProps> = ({
   onSidebarToggle,
   onOpenShortcuts,
   files,
+  threads,
   onFileSelect,
   onFileDelete,
+  onShowKnowledgeGraph,
 }) => {
   const [showFileMenu, setShowFileMenu] = useState(false);
+  const [showFileUploader, setShowFileUploader] = useState(false);
 
   return (
     <>
@@ -60,6 +67,23 @@ export const Features: React.FC<FeaturesProps> = ({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
+                    onClick={() => setShowFileUploader(true)}
+                    className="p-2 bg-background hover:bg-accent 
+                              rounded-sm transition-colors border border-border"
+                  >
+                    <Upload className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="text-xs">
+                  Upload File
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
                     onClick={() => setShowFileMenu(true)}
                     className="p-2 bg-background hover:bg-accent 
                               rounded-sm transition-colors border border-border"
@@ -68,7 +92,23 @@ export const Features: React.FC<FeaturesProps> = ({
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="right" className="text-xs">
-                  Files
+                  Browse Files
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={onShowKnowledgeGraph}
+                    className="p-2 bg-background hover:bg-accent rounded-sm transition-colors border border-border"
+                  >
+                    <Network className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="text-xs">
+                  Knowledge Graph
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -93,11 +133,16 @@ export const Features: React.FC<FeaturesProps> = ({
         )}
       </div>
 
+      <FileUploader
+        isOpen={showFileUploader}
+        onClose={() => setShowFileUploader(false)}
+        onFileSelect={onFileSelect}
+      />
+
       <FileMenu
         isOpen={showFileMenu}
         onClose={() => setShowFileMenu(false)}
         files={files}
-        onFileSelect={onFileSelect}
         onFileDelete={onFileDelete}
       />
     </>

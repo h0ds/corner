@@ -20,10 +20,9 @@ export const Connections: React.FC = () => {
         <div className="flex items-center gap-3">
           <div className="p-2 bg-background rounded-sm">
           <svg width="20" height="20" viewBox="0 0 240 240" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect width="240" height="240" rx="22" fill="black"/>
-<path fill-rule="evenodd" clip-rule="evenodd" d="M180 60H60V180L180 60Z" fill="white"/>
-</svg>
-
+            <rect width="240" height="240" rx="22" fill="black"/>
+              <path fill-rule="evenodd" clip-rule="evenodd" d="M180 60H60V180L180 60Z" fill="white"/>
+            </svg>
           </div>
           <div>
             <h4 className="text-sm font-medium">Corner</h4>

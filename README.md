@@ -14,8 +14,9 @@ Corner is a sleek, minimalist chat UI for AI models.
 
 ## Goals
 
-The goal of Corner is to become the de-facto on-ramp for AI models.
-Open, easy-to-use, easy-to-customize, easy-to-extend.
+The goal of Corner is to become the de-facto on-ramp for conversational AI.
+
+Open, easy-to-use, easy-to-customize, easy-to-extend, system agnostic.
 
 Removing the need for end-users to wait until providers ship their own desktop experiences, whilst offering providers the ability to offer desktop support without needing to reallocate valuable engineering resources.
 

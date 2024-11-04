@@ -3,6 +3,26 @@
 version = 3
 
 [[package]]
+name = "Corner"
+version = "0.1.0"
+dependencies = [
+ "base64 0.21.7",
+ "dirs",
+ "dotenv",
+ "percent-encoding",
+ "reqwest 0.11.27",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-fs",
+ "tauri-plugin-process",
+ "tauri-plugin-shell",
+ "tauri-plugin-upload",
+ "tokio",
+]
+
+[[package]]
 name = "addr2line"
 version = "0.24.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -427,26 +447,6 @@ dependencies = [
  "bitflags 2.6.0",
  "core-foundation 0.10.0",
  "libc",
-]
-
-[[package]]
-name = "corner"
-version = "0.1.0"
-dependencies = [
- "base64 0.21.7",
- "dirs",
- "dotenv",
- "percent-encoding",
- "reqwest 0.11.27",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-fs",
- "tauri-plugin-process",
- "tauri-plugin-shell",
- "tauri-plugin-upload",
- "tokio",
 ]
 
 [[package]]

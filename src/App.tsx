@@ -41,6 +41,7 @@ import { cn } from '@/lib/utils';
 import { ThreadContainer } from './components/ThreadContainer';
 import { NoteEditor } from './components/NoteEditor';
 import { ChatView } from './components/ChatView';
+import { KnowledgeGraph } from './components/KnowledgeGraph';
 
 interface ApiResponse {
   content?: string;
@@ -113,6 +114,8 @@ function App() {
   const [isDiscussionPaused, setIsDiscussionPaused] = useState(false);
   const stopDiscussionRef = useRef(false);
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
+  const [showKnowledgeGraph, setShowKnowledgeGraph] = useState(false);
+  const [view, setView] = useState<'thread' | 'note' | 'graph'>('thread');
 
   // Initialize cache on mount
   useEffect(() => {
@@ -800,6 +803,12 @@ function App() {
     }));
   };
 
+  useEffect(() => {
+    if (activeThreadId) {
+      setView(activeThread?.isNote ? 'note' : 'thread');
+    }
+  }, [activeThreadId, activeThread?.isNote]);
+
   return (
     <div className="flex h-screen bg-background border-t">
       {/* Sidebar with animation */}
@@ -855,14 +864,16 @@ function App() {
           setShowPreferences(true);
         }}
         files={activeThread?.files || []}
+        threads={threads}
         onFileSelect={handleFileUpload}
         onFileDelete={handleFileDelete}
+        onShowKnowledgeGraph={() => setView('graph')}
       />
       
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
         <div className="flex flex-col h-full relative">
-          {activeThread && (
+          {activeThread && view !== 'graph' && (
             <ThreadHeader
               thread={activeThread}
               onRename={(newName) => handleRenameThread(activeThread.id, newName)}
@@ -875,13 +886,15 @@ function App() {
             ref={chatContainerRef}
             className={cn(
               "flex-1 overflow-y-auto min-w-0",
-              isHeaderCollapsed ? "mt-0" : "mt-11",
+              isHeaderCollapsed || view === 'graph' ? "mt-0" : "mt-11",
               "transition-spacing duration-200",
-              !activeThread?.isNote && "flex flex-col h-full"
+              !activeThread?.isNote && view === 'thread' && "flex flex-col h-full"
             )}
             onClick={(e) => e.stopPropagation()}
           >
-            {activeThread ? (
+            {view === 'graph' ? (
+              <KnowledgeGraph threads={threads} />
+            ) : activeThread ? (
               activeThread.isNote ? (
                 <NoteEditor 
                   note={activeThread}
