@@ -18,21 +18,31 @@ export interface FileAttachment {
   cacheId?: string;
 }
 
-export interface Thread {
+export interface BaseThread {
   id: string;
   name: string;
-  messages: Message[];
-  files: FileAttachment[];
   createdAt: number;
   updatedAt: number;
+  files: FileAttachment[];
   cachedFiles: string[];
-  lastUsedModel?: string;
   isPinned?: boolean;
   color?: string;
   textColor?: string;
   icon?: string;
-  isNote?: boolean;
 }
+
+export interface ChatThread extends BaseThread {
+  isNote: false;
+  messages: Message[];
+  lastUsedModel?: string;
+}
+
+export interface NoteThread extends BaseThread {
+  isNote: true;
+  content: string;
+}
+
+export type Thread = ChatThread | NoteThread;
 
 export interface FileInfo {
   name: string;

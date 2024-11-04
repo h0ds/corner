@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Thread } from '@/types';
+import { NoteThread } from '@/types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Input } from './ui/input';
 import { Trash2, Pencil, FileText, Pin, Palette, X, SmilePlus, Type, ChevronRight, GripVertical } from 'lucide-react';
@@ -35,7 +35,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 interface NoteListProps {
-  notes: Thread[];
+  notes: NoteThread[];
   activeNoteId: string | null;
   onNoteSelect: (noteId: string) => void;
   onDeleteNote: (noteId: string) => void;
@@ -43,15 +43,15 @@ interface NoteListProps {
   onColorChange: (noteId: string, color: string) => void;
   onIconChange: (noteId: string, icon: string) => void;
   onTextColorChange: (noteId: string, color: string) => void;
-  onReorderNotes: (notes: Thread[]) => void;
+  onReorderNotes: (notes: NoteThread[]) => void;
 }
 
 const NoteItem: React.FC<{
-  note: Thread;
+  note: NoteThread;
   activeNoteId: string | null;
   editingNoteId: string | null;
   editingName: string;
-  onStartRename: (note: Thread) => void;
+  onStartRename: (note: NoteThread) => void;
   onFinishRename: () => void;
   onEditingNameChange: (value: string) => void;
   onNoteSelect: (noteId: string) => void;
@@ -335,6 +335,11 @@ const SortableNoteItem = ({
               backgroundColor: note.color ? `${note.color}4D` : undefined,
               color: note.textColor || undefined,
             } as React.CSSProperties}
+            onClick={() => onNoteSelect(note.id)}
+            onDoubleClick={(e) => {
+              e.stopPropagation();
+              onStartRename(note);
+            }}
           >
             {activeNoteId === note.id && (
               <div 
@@ -552,7 +557,7 @@ export const NoteList: React.FC<NoteListProps> = ({
     })
   );
 
-  const handleStartRename = (note: Thread) => {
+  const handleStartRename = (note: NoteThread) => {
     setEditingNoteId(note.id);
     setEditingName(note.name);
   };

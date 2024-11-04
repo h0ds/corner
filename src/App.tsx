@@ -39,6 +39,8 @@ import { Square } from 'lucide-react';
 import { ThreadHeader } from './components/ThreadHeader';
 import { cn } from '@/lib/utils';
 import { ThreadContainer } from './components/ThreadContainer';
+import { NoteEditor } from './components/NoteEditor';
+import { ChatView } from './components/ChatView';
 
 interface ApiResponse {
   content?: string;
@@ -147,19 +149,26 @@ function App() {
   }, [shortcuts]);
 
   const handleNewThread = (isNote: boolean = false) => {
-    const newThread: Thread = {
+    const baseThread = {
       id: nanoid(),
       name: isNote ? 'New Note' : 'New Thread',
-      messages: [],
       files: [],
       createdAt: Date.now(),
       updatedAt: Date.now(),
       cachedFiles: [],
+    };
+
+    const newThread: Thread = isNote ? {
+      ...baseThread,
+      isNote: true,
+      content: '',
+    } : {
+      ...baseThread,
+      isNote: false,
+      messages: [],
       lastUsedModel: selectedModel,
-      isNote: isNote,
     };
     
-    // Save first, then update state
     saveThread(newThread);
     setThreads(prev => [...prev, newThread]);
     setActiveThreadId(newThread.id);
@@ -416,28 +425,22 @@ function App() {
     // Find the thread
     const thread = threads.find(t => t.id === threadId);
     if (thread) {
-      // Get the last message with a modelId
-      const lastModelMessage = [...thread.messages]
-        .reverse()
-        .find(m => m.modelId);
+      if (!thread.isNote) {
+        // For chat threads, handle model selection
+        const lastModelMessage = thread.messages
+          .reverse()
+          .find(m => m.modelId);
 
-      if (lastModelMessage?.modelId) {
-        // Make sure the model exists in AVAILABLE_MODELS before setting it
-        const modelExists = AVAILABLE_MODELS.some(m => m.id === lastModelMessage.modelId);
-        if (modelExists) {
-          console.log('Restoring model from last message:', lastModelMessage.modelId, 'for thread:', threadId);
-          setSelectedModel(lastModelMessage.modelId);
-        } else {
-          console.warn('Stored model not found:', lastModelMessage.modelId);
-        }
-      } else if (thread.lastUsedModel) {
-        // Fall back to lastUsedModel if no message has a modelId
-        const modelExists = AVAILABLE_MODELS.some(m => m.id === thread.lastUsedModel);
-        if (modelExists) {
-          console.log('Restoring last used model:', thread.lastUsedModel, 'for thread:', threadId);
-          setSelectedModel(thread.lastUsedModel);
-        } else {
-          console.warn('Stored model not found:', thread.lastUsedModel);
+        if (lastModelMessage?.modelId) {
+          const modelExists = AVAILABLE_MODELS.some(m => m.id === lastModelMessage.modelId);
+          if (modelExists) {
+            setSelectedModel(lastModelMessage.modelId);
+          }
+        } else if (thread.lastUsedModel) {
+          const modelExists = AVAILABLE_MODELS.some(m => m.id === thread.lastUsedModel);
+          if (modelExists) {
+            setSelectedModel(thread.lastUsedModel);
+          }
         }
       }
     }
@@ -783,6 +786,21 @@ function App() {
     }));
   };
 
+  const handleNoteUpdate = (content: string) => {
+    if (!activeThreadId) return;
+
+    setThreads(prev => prev.map(thread => {
+      if (thread.id === activeThreadId && thread.isNote) {
+        return {
+          ...thread,
+          content: content,
+          updatedAt: Date.now(),
+        };
+      }
+      return thread;
+    }));
+  };
+
   return (
     <div className="flex h-screen bg-background border-t">
       {/* Sidebar with animation */}
@@ -857,122 +875,58 @@ function App() {
           <main 
             ref={chatContainerRef}
             className={cn(
-              "flex-1 overflow-y-auto p-6 space-y-6 min-w-0",
-              isHeaderCollapsed ? "mt-0" : "mt-16",
-              "transition-spacing duration-200"
+              "flex-1 overflow-y-auto min-w-0",
+              isHeaderCollapsed ? "mt-0" : "mt-11",
+              "transition-spacing duration-200",
+              !activeThread?.isNote && "flex flex-col h-full"
             )}
             onClick={(e) => e.stopPropagation()}
           >
-            <AnimatePresence>
-              {messages.length === 0 ? (
-                <div className="text-center text-muted-foreground/40 mt-1 text-sm tracking-tighter">
-                  Start a conversation ({clearHistoryShortcut} to clear history)
-                </div>
+            {activeThread ? (
+              activeThread.isNote ? (
+                <NoteEditor 
+                  note={activeThread}
+                  onUpdate={handleNoteUpdate}
+                  initialContent={activeThread.content}
+                />
               ) : (
-                messages.map((message, index) => (
-                  <div key={index} className="space-y-2 min-w-0">
-                    <ChatMessage
-                      role={message.role}
-                      content={message.content}
-                      onErrorClick={() => setShowPreferences(true)}
-                      modelId={message.modelId}
-                      comparison={message.comparison}
-                    />
-                    {message.file && (
-                      <FilePreview
-                        fileName={message.file.name}
-                        content={message.file.content}
-                      />
-                    )}
-                  </div>
-                ))
-              )}
-              {loading && (
-                <div className="flex justify-start">
-                  <TypingIndicator />
-                </div>
-              )}
-            </AnimatePresence>
+                <ChatView
+                  messages={messages}
+                  loading={loading}
+                  clearHistoryShortcut={clearHistoryShortcut}
+                  isDiscussing={isDiscussing}
+                  selectedModel={selectedModel}
+                  isDiscussionPaused={isDiscussionPaused}
+                  onStopDiscussion={handleStopDiscussion}
+                  onOpenModelSelect={() => {
+                    setPreferenceTab('models');
+                    setShowPreferences(true);
+                  }}
+                  onSendMessage={handleSendMessage}
+                  onCompareModels={handleCompareModels}
+                  onStartDiscussion={handleStartDiscussion}
+                  onClearThread={clearCurrentThread}
+                  onShowPreferences={() => setShowPreferences(true)}
+                />
+              )
+            ) : (
+              <div className="text-center text-muted-foreground/40 mt-1 text-sm tracking-tighter">
+                Select a thread or note to begin
+              </div>
+            )}
           </main>
-
-          <footer 
-            className="relative p-4 bg-card border-t border-border"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="absolute right-4 -top-12 flex items-center gap-2">
-              {isDiscussing && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        onClick={handleStopDiscussion}
-                        className="p-2 bg-destructive text-destructive-foreground 
-                                 hover:bg-destructive/90 rounded-sm transition-colors"
-                      >
-                        <Square className="h-4 w-4" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="text-xs">
-                      Stop Discussion
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div 
-                      onClick={() => {
-                        setPreferenceTab('models');
-                        setShowPreferences(true);
-                      }}
-                      className="p-2 bg-background text-muted-foreground hover:text-foreground border border-border/50
-                               hover:bg-accent rounded-sm transition-colors cursor-pointer"
-                    >
-                      <ModelIcon modelId={selectedModel} className="h-5 w-5" />
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="text-xs">
-                    {(() => {
-                      const model = AVAILABLE_MODELS.find(m => m.id === selectedModel);
-                      return model ? (
-                        <div className="flex flex-col gap-0.5">
-                          <span className="font-medium">{model.name}</span>
-                          <span className="text-muted-foreground">
-                            {model.provider === 'anthropic' ? 'Anthropic' : 
-                             model.provider === 'openai' ? 'OpenAI' : 'Perplexity'}
-                          </span>
-                        </div>
-                      ) : selectedModel;
-                    })()}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-            <ChatInput
-              onSendMessage={handleSendMessage}
-              onCompareModels={handleCompareModels}
-              onStartDiscussion={handleStartDiscussion}
-              onStopDiscussion={handleStopDiscussion}
-              onClearThread={clearCurrentThread}
-              disabled={loading}
-              selectedModel={selectedModel}
-              isDiscussing={isDiscussing}
-              isPaused={isDiscussionPaused}
-            />
-          </footer>
-
-          <Preferences
-            isOpen={showPreferences}
-            onClose={() => setShowPreferences(false)}
-            selectedModel={selectedModel}
-            onModelChange={setSelectedModel}
-            initialTab={preferenceTab}
-            plugins={plugins}
-            onPluginChange={setPlugins}
-          />
         </div>
       </div>
+
+      <Preferences
+        isOpen={showPreferences}
+        onClose={() => setShowPreferences(false)}
+        selectedModel={selectedModel}
+        onModelChange={setSelectedModel}
+        initialTab={preferenceTab}
+        plugins={plugins}
+        onPluginChange={setPlugins}
+      />
     </div>
   );
 }

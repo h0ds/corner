@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ThreadList } from './ThreadList';
 import { NoteList } from './NoteList';
 import { ThreadTabs } from './ThreadTabs';
@@ -22,13 +22,27 @@ interface ThreadContainerProps {
 
 export const ThreadContainer: React.FC<ThreadContainerProps> = ({
   threads,
+  activeThreadId,
+  onThreadSelect,
   ...props
 }) => {
   const [activeTab, setActiveTab] = useState<'threads' | 'notes'>('threads');
 
-  // Filter threads and notes
-  const notes = threads.filter(t => t.isNote);
-  const chatThreads = threads.filter(t => !t.isNote);
+  // Type-safe filtering
+  const notes = threads.filter((t): t is NoteThread => t.isNote === true);
+  const chatThreads = threads.filter((t): t is ChatThread => t.isNote !== true);
+
+  // Auto-select top thread when switching to threads tab
+  useEffect(() => {
+    if (activeTab === 'threads' && chatThreads.length > 0) {
+      const activeThread = threads.find(t => t.id === activeThreadId);
+      // Only select if no thread is selected or current thread is a note
+      if (!activeThread || activeThread.isNote) {
+        // Select the first non-note thread
+        onThreadSelect(chatThreads[0].id);
+      }
+    }
+  }, [activeTab, chatThreads, activeThreadId, threads, onThreadSelect]);
 
   return (
     <div className="absolute inset-0 border-r border-border bg-card flex flex-col">
@@ -65,13 +79,15 @@ export const ThreadContainer: React.FC<ThreadContainerProps> = ({
       {activeTab === 'threads' ? (
         <ThreadList
           threads={chatThreads}
+          activeThreadId={activeThreadId}
+          onThreadSelect={onThreadSelect}
           {...props}
         />
       ) : (
         <NoteList
           notes={notes}
-          activeNoteId={props.activeThreadId}
-          onNoteSelect={props.onThreadSelect}
+          activeNoteId={activeThreadId}
+          onNoteSelect={onThreadSelect}
           onDeleteNote={props.onDeleteThread}
           onRenameNote={props.onRenameThread}
           onColorChange={props.onColorChange}

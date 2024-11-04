@@ -89,9 +89,6 @@ export const ThreadHeader: React.FC<ThreadHeaderProps> = ({
 
         {/* Right side with icon and collapse button */}
         <div className="w-8 flex items-center gap-2">
-          {thread.icon && (
-            <span className="text-base">{thread.icon}</span>
-          )}
           <button
             onClick={onToggleCollapse}
             className="text-muted-foreground hover:text-foreground transition-colors"
