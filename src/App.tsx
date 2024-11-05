@@ -431,12 +431,19 @@ function App() {
     loadPlugins().then(setPlugins);
   }, []);
 
+  // Add new state to track active tab
+  const [activeTab, setActiveTab] = useState<'threads' | 'notes'>('threads');
+
+  // Update handleThreadSelect to also set the active tab
   const handleThreadSelect = (threadId: string) => {
     setActiveThreadId(threadId);
     
     // Find the thread
     const thread = threads.find(t => t.id === threadId);
     if (thread) {
+      // Set the active tab based on thread type
+      setActiveTab(thread.isNote ? 'notes' : 'threads');
+      
       if (!thread.isNote) {
         // For chat threads, handle model selection
         const lastModelMessage = thread.messages
@@ -924,6 +931,7 @@ function App() {
                 onColorChange={handleThreadColorChange}
                 onIconChange={handleThreadIconChange}
                 onTextColorChange={handleThreadTextColorChange}
+                initialTab={activeTab}
               />
             </div>
           </ResizeObserver>

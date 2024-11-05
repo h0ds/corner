@@ -54,7 +54,6 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     const nodeMap = new Map<string, GraphNode>();
     const linkSet = new Set<string>();
     const connections = new Map<string, number>();
-    const connectedThreads = new Set<string>();
 
     // First add all threads as nodes
     threads.forEach(thread => {
@@ -67,46 +66,35 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
       });
     });
 
-    function addLink(sourceId: string, targetId: string, type: GraphLink['type'] = 'reference') {
-      // Create bidirectional connection
+    function addLink(sourceId: string, targetId: string) {
       const linkId1 = `${sourceId}-${targetId}`;
       const linkId2 = `${targetId}-${sourceId}`;
       if (!linkSet.has(linkId1) && !linkSet.has(linkId2)) {
         linkSet.add(linkId1);
         connections.set(sourceId, (connections.get(sourceId) || 0) + 1);
         connections.set(targetId, (connections.get(targetId) || 0) + 1);
-        connectedThreads.add(sourceId);
-        connectedThreads.add(targetId);
       }
     }
 
-    // Find connections between notes and threads
+    // Find connections between notes
     threads.forEach(sourceThread => {
       if (!('content' in sourceThread)) return;
       const content = sourceThread.content || '';
       
-      // Find wiki-style links [[Note Name]]
-      const wikiLinkRegex = /\[\[([^\]]+)\]\]/g;
-      let match;
+      // Parse HTML content to find links
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(content, 'text/html');
+      const links = doc.querySelectorAll('a[data-type="note"]');
       
-      while ((match = wikiLinkRegex.exec(content)) !== null) {
-        const linkedNoteName = match[1];
-        // Find target note by name (case-insensitive)
-        const targetThread = threads.find(t => 
-          t.name.toLowerCase() === linkedNoteName.toLowerCase()
-        );
-        
-        if (targetThread && targetThread.id !== sourceThread.id) {
-          addLink(sourceThread.id, targetThread.id, 'reference');
-        }
-      }
-
-      // Check for direct mentions of note names
-      threads.forEach(targetThread => {
-        if (targetThread.id !== sourceThread.id) {
-          const namePattern = new RegExp(`\\b${targetThread.name}\\b`, 'i');
-          if (namePattern.test(content)) {
-            addLink(sourceThread.id, targetThread.id, 'reference');
+      links.forEach(link => {
+        const name = link.getAttribute('data-name');
+        if (name) {
+          const targetThread = threads.find(t => 
+            t.name.toLowerCase() === name.toLowerCase()
+          );
+          
+          if (targetThread && targetThread.id !== sourceThread.id) {
+            addLink(sourceThread.id, targetThread.id);
           }
         }
       });
@@ -115,21 +103,15 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     // Update node sizes based on connection count
     nodeMap.forEach((node, id) => {
       const connectionCount = connections.get(id) || 0;
-      // Scale node size logarithmically based on connections
-      // Base size is 3, max size is around 12 for highly connected nodes
       node.val = 3 + Math.log2(connectionCount + 1) * 2;
     });
 
-    // Create links array from the set
-    const graphLinks = Array.from(linkSet)
-      .map(linkId => {
-        const [source, target] = linkId.split('-');
-        return { source, target };
-      });
-
     return {
       nodes: Array.from(nodeMap.values()),
-      links: graphLinks
+      links: Array.from(linkSet).map(linkId => {
+        const [source, target] = linkId.split('-');
+        return { source, target };
+      })
     };
   }, [threads]);
 

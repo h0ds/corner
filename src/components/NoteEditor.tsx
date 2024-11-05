@@ -5,7 +5,10 @@ import { NoteThread } from '@/types';
 import { Bold, Italic, List, ListOrdered, Quote, Undo, Redo, Hash, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FileLinkMenu } from './FileLinkMenu';
-import { Link } from '@tiptap/extension-link';
+import { CustomLink } from '@/lib/extensions/CustomLink';
+import { Extension } from '@tiptap/core';
+import { Plugin, PluginKey } from 'prosemirror-state';
+import { getMarkRange } from '@tiptap/core';
 
 interface NoteEditorProps {
   note: NoteThread;
@@ -16,6 +19,58 @@ interface NoteEditorProps {
   files: any[];
   onCreateNote: (title: string) => NoteThread;
 }
+
+const NoteLink = Extension.create({
+  name: 'noteLink',
+
+  addOptions() {
+    return {
+      openOnClick: true,
+      allNotes: [] as NoteThread[],
+      onNoteClick: (noteId: string) => {},
+    }
+  },
+
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        key: new PluginKey('noteLink-click'),
+        props: {
+          handleClick: (view, pos, event) => {
+            const { state } = view;
+            const { schema, doc } = state;
+            const range = getMarkRange(doc.resolve(pos), schema.marks.link);
+            
+            if (!range) return false;
+            
+            const $start = doc.resolve(range.from);
+            const link = $start.marks().find(mark => mark.type.name === 'link');
+            
+            if (!link) return false;
+            
+            const type = link.attrs['data-type'];
+            const name = link.attrs['data-name'];
+            
+            if (type === 'note') {
+              const targetNote = this.options.allNotes.find(n => n.name === name);
+              if (targetNote) {
+                window.dispatchEvent(new CustomEvent('switch-tab', {
+                  detail: { tab: 'notes' }
+                }));
+                
+                window.dispatchEvent(new CustomEvent('select-note', {
+                  detail: { noteId: targetNote.id }
+                }));
+                return true;
+              }
+            }
+            return false;
+          },
+        },
+      }),
+    ]
+  },
+});
 
 const MenuBar: React.FC<{ 
   editor: any,
@@ -156,14 +211,42 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   const editor = useEditor({
     extensions: [
       StarterKit,
-      Link.configure({
+      CustomLink.configure({
         openOnClick: false,
+        inclusive: false,
+        selectable: false,
         HTMLAttributes: {
-          class: 'cursor-pointer underline underline-offset-4'
-        },
-        onClick: ({ node }) => {
-          const type = node.attrs.HTMLAttributes?.['data-type'] as 'note' | 'file';
-          const name = node.attrs.HTMLAttributes?.['data-name'];
+          class: 'cursor-pointer',
+          contenteditable: 'false',
+          draggable: 'false'
+        }
+      }),
+      NoteLink.configure({
+        allNotes,
+        onNoteClick: (noteId) => {
+          window.dispatchEvent(new CustomEvent('switch-tab', {
+            detail: { tab: 'notes' }
+          }));
+          
+          window.dispatchEvent(new CustomEvent('select-note', {
+            detail: { noteId }
+          }));
+        }
+      })
+    ],
+    content: initialContent,
+    editorProps: {
+      attributes: {
+        class: 'prose prose-sm dark:prose-invert max-w-none p-4 focus:outline-none min-h-[200px] font-mono',
+      },
+      handleClick: (view, pos, event) => {
+        const target = event.target as HTMLElement;
+        const link = target.closest('a');
+        
+        if (link) {
+          event.preventDefault();
+          const type = link.getAttribute('data-type');
+          const name = link.getAttribute('data-name');
           
           if (type === 'note') {
             const targetNote = allNotes.find(n => n.name === name);
@@ -177,22 +260,10 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
               }));
               return true;
             }
-          } else if (type === 'file') {
-            const file = files.find(f => f.name === name);
-            if (file) {
-              onFileClick(file);
-              return true;
-            }
           }
-          return false;
         }
-      })
-    ],
-    content: initialContent,
-    editorProps: {
-      attributes: {
-        class: 'prose prose-sm dark:prose-invert max-w-none p-4 focus:outline-none min-h-[200px] font-mono',
-      },
+        return false;
+      }
     },
     onUpdate: ({ editor }) => {
       const content = editor.getHTML();
@@ -214,44 +285,13 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   const handleLinkSelect = useCallback((name: string, type: 'file' | 'note') => {
     if (!editorInstance) return;
 
-    const { from, to } = editorInstance.state.selection;
-    const selectedText = editorInstance.state.doc.textBetween(from, to);
-
-    if (selectedText) {
-      // If text is selected, convert it to a link
-      editorInstance
-        .chain()
-        .focus()
-        .extendMarkRange('link')
-        .setLink({ 
-          href: '#',
-          HTMLAttributes: {
-            'data-type': type,
-            'data-name': name,
-            'class': 'note-link'
-          }
-        })
-        .run();
-    } else {
-      // If no text is selected, insert a new link with proper attributes
-      editorInstance
-        .chain()
-        .focus()
-        .insertContent({
-          type: 'text',
-          marks: [{
-            type: 'link',
-            attrs: {
-              href: '#',
-              'data-type': type,
-              'data-name': name,
-              'class': 'note-link'
-            }
-          }],
-          text: name
-        })
-        .run();
-    }
+    const linkContent = `<a href="#" class="note-link" data-type="${type}" data-name="${name}">${name}</a> `;
+    
+    editorInstance
+      .chain()
+      .focus()
+      .insertContent(linkContent)
+      .run();
 
     setShowLinkMenu(false);
   }, [editorInstance]);
@@ -265,20 +305,55 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   return (
     <div className="flex flex-col flex-1 bg-background">
       <style>{`
-        .ProseMirror a {
+        .ProseMirror .note-link {
+          display: inline-flex;
+          align-items: center;
+          padding: 0.25rem 0.5rem;
+          margin: 0 0.125rem;
+          border-radius: 0.25rem;
+          background-color: var(--muted);
           color: var(--muted-foreground);
-          text-decoration: underline;
-          text-decoration-thickness: 1px;
-          text-underline-offset: 4px;
+          font-size: 0.875rem;
+          line-height: 1;
+          white-space: nowrap;
+          text-decoration: none;
           cursor: pointer;
           transition: all 150ms ease;
+          box-shadow: 
+            0 1px 2px rgba(0, 0, 0, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1);
+          user-select: none;
+          pointer-events: all;
+          position: relative;
+          -webkit-user-modify: read-only;
+          -moz-user-modify: read-only;
+          user-modify: read-only;
         }
 
-        .ProseMirror a:hover {
-          color: var(--accent-foreground);
+        .ProseMirror .note-link:hover {
           background-color: var(--accent);
-          border-radius: 0.25rem;
-          padding: 0.125rem 0.25rem;
+          color: var(--accent-foreground);
+          transform: translateY(-1px);
+          box-shadow: 
+            0 2px 4px rgba(0, 0, 0, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+
+        .ProseMirror .note-link:active {
+          transform: translateY(0);
+          box-shadow: 
+            0 1px 1px rgba(0, 0, 0, 0.1),
+            inset 0 1px 1px rgba(0, 0, 0, 0.1);
+        }
+
+        .ProseMirror .note-link[data-type="note"]::before {
+          content: '📝';
+          margin-right: 0.25rem;
+        }
+
+        .ProseMirror .note-link[data-type="file"]::before {
+          content: '📄';
+          margin-right: 0.25rem;
         }
       `}</style>
       <MenuBar 

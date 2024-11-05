@@ -109,7 +109,7 @@ async fn send_message(
             if api_key.is_empty() {
                 return Ok(ApiResponse {
                     content: None,
-                    error: Some("Anthropic API key not configured".to_string()),
+                    error: Some("Claude API key not configured. Please add your API key in settings.".to_string()),
                 });
             }
 
@@ -167,6 +167,12 @@ async fn send_message(
                     error: None,
                 })
             } else {
+                if status.as_u16() == 401 {
+                    return Ok(ApiResponse {
+                        content: None,
+                        error: Some("Claude API key is missing or invalid. Please check your API key in settings.".to_string()),
+                    });
+                }
                 Ok(ApiResponse {
                     content: None,
                     error: Some(format!("API error (Status: {}): {}", status, response_text)),
@@ -188,7 +194,7 @@ async fn send_message(
             if api_key.is_empty() {
                 return Ok(ApiResponse {
                     content: None,
-                    error: Some("Perplexity API key not configured".to_string()),
+                    error: Some("Perplexity API key not configured. Please add your API key in settings.".to_string()),
                 });
             }
 
@@ -245,6 +251,12 @@ async fn send_message(
                     error: None,
                 })
             } else {
+                if response.status().as_u16() == 401 {
+                    return Ok(ApiResponse {
+                        content: None,
+                        error: Some("Perplexity API key is missing or invalid. Please check your API key in settings.".to_string()),
+                    });
+                }
                 let error_text = response.text().await.map_err(|e| e.to_string())?;
                 Ok(ApiResponse {
                     content: None,
@@ -267,7 +279,7 @@ async fn send_message(
             if api_key.is_empty() {
                 return Ok(ApiResponse {
                     content: None,
-                    error: Some("OpenAI API key not configured".to_string()),
+                    error: Some("OpenAI API key not configured. Please add your API key in settings.".to_string()),
                 });
             }
 
@@ -307,6 +319,12 @@ async fn send_message(
                     error: None,
                 })
             } else {
+                if response.status().as_u16() == 401 {
+                    return Ok(ApiResponse {
+                        content: None,
+                        error: Some("OpenAI API key is missing or invalid. Please check your API key in settings.".to_string()),
+                    });
+                }
                 let error_text = response.text().await.map_err(|e| e.to_string())?;
                 Ok(ApiResponse {
                     content: None,

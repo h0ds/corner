@@ -18,6 +18,7 @@ interface ThreadContainerProps {
   onColorChange: (threadId: string, color: string) => void;
   onIconChange: (threadId: string, icon: string) => void;
   onTextColorChange: (threadId: string, color: string) => void;
+  initialTab?: 'threads' | 'notes';
 }
 
 export const ThreadContainer: React.FC<ThreadContainerProps> = ({
@@ -26,7 +27,7 @@ export const ThreadContainer: React.FC<ThreadContainerProps> = ({
   onThreadSelect,
   ...props
 }) => {
-  const [activeTab, setActiveTab] = useState<'threads' | 'notes'>('threads');
+  const [activeTab, setActiveTab] = useState(props.initialTab || 'threads');
 
   // Listen for tab change events from Knowledge Graph clicks
   useEffect(() => {
@@ -58,6 +59,11 @@ export const ThreadContainer: React.FC<ThreadContainerProps> = ({
       }
     }
   }, [activeTab, chatThreads, notes, activeThreadId, threads, onThreadSelect]);
+
+  // Add effect to update active tab when initialTab changes
+  useEffect(() => {
+    setActiveTab(props.initialTab || 'threads');
+  }, [props.initialTab]);
 
   return (
     <div className="absolute inset-0 border-r border-border bg-card flex flex-col">
