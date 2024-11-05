@@ -77,7 +77,7 @@ export const FileLinkMenu: React.FC<FileLinkMenuProps> = ({
         break;
     }
   };
-
+ 
   return (
     <Dialog open={open} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[400px] p-0">

@@ -160,10 +160,21 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         openOnClick: false,
         HTMLAttributes: {
           class: 'cursor-pointer underline underline-offset-4'
-        },
-        onClick: ({ href, node }) => {
-          const type = node.attrs['data-type'];
-          const name = node.attrs['data-name'];
+        }
+      })
+    ],
+    content: initialContent,
+    editorProps: {
+      attributes: {
+        class: 'prose prose-sm dark:prose-invert max-w-none p-4 focus:outline-none min-h-[200px] font-mono',
+      },
+      handleClick: (view, pos, event) => {
+        const target = event.target as HTMLElement;
+        const link = target.closest('a');
+        
+        if (link) {
+          const type = link.getAttribute('data-type') as 'note' | 'file';
+          const name = link.getAttribute('data-name');
           
           if (type === 'note') {
             const targetNote = allNotes.find(n => n.name === name);
@@ -175,22 +186,18 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
               window.dispatchEvent(new CustomEvent('select-note', {
                 detail: { noteId: targetNote.id }
               }));
+              return true;
             }
           } else if (type === 'file') {
             const file = files.find(f => f.name === name);
             if (file) {
               onFileClick(file);
+              return true;
             }
           }
-          return true;
         }
-      })
-    ],
-    content: initialContent,
-    editorProps: {
-      attributes: {
-        class: 'prose prose-sm dark:prose-invert max-w-none p-4 focus:outline-none min-h-[200px] font-mono',
-      },
+        return false;
+      }
     },
     onUpdate: ({ editor }) => {
       const content = editor.getHTML();

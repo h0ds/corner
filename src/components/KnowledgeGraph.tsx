@@ -186,12 +186,63 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
             ref={graphRef}
             graphData={{ nodes, links }}
             nodeLabel={node => (node as GraphNode).name}
+            nodeCanvasObject={(node, ctx, globalScale) => {
+              const n = node as GraphNode;
+              // Count connections for this node
+              const connectionCount = links.filter(link => 
+                link.source === node.id || link.target === node.id
+              ).length;
+
+              // Calculate node size based on connections
+              const minSize = 3;
+              const maxSize = 12;
+              const sizePerConnection = 1;
+              const size = Math.max(minSize, Math.min(minSize + connectionCount * sizePerConnection, maxSize));
+
+              // Draw the node
+              ctx.beginPath();
+              ctx.arc(node.x!, node.y!, size, 0, 2 * Math.PI);
+              ctx.fillStyle = n.color || (n.type === 'note' 
+                ? (isDark ? '#666' : '#999')
+                : (isDark ? '#444' : '#ccc'));
+              ctx.fill();
+            }}
+            nodePointerAreaPaint={(node, color, ctx) => {
+              const connectionCount = links.filter(link => 
+                link.source === node.id || link.target === node.id
+              ).length;
+              const minSize = 3;
+              const maxSize = 12;
+              const sizePerConnection = 1;
+              const size = Math.max(minSize, Math.min(minSize + connectionCount * sizePerConnection, maxSize));
+              
+              ctx.fillStyle = color;
+              ctx.beginPath();
+              ctx.arc(node.x!, node.y!, size + 2, 0, 2 * Math.PI); // Slightly larger hit area
+              ctx.fill();
+            }}
             nodeColor={node => {
               const n = node as GraphNode;
               if (n.color) return n.color;
-              return n.type === 'note' 
-                ? (isDark ? '#666' : '#999')
-                : (isDark ? '#444' : '#ccc');
+
+              // Count connections for this node
+              const connectionCount = links.filter(link => 
+                link.source === node.id || link.target === node.id
+              ).length;
+
+              // Calculate darkness based on connections
+              const maxConnections = 10; // Adjust this based on expected max connections
+              const darkness = Math.min(connectionCount / maxConnections, 1);
+
+              if (n.type === 'note') {
+                return isDark 
+                  ? `rgb(${102 - darkness * 40}, ${102 - darkness * 40}, ${102 - darkness * 40})`
+                  : `rgb(${153 + darkness * 40}, ${153 + darkness * 40}, ${153 + darkness * 40})`;
+              } else {
+                return isDark
+                  ? `rgb(${68 - darkness * 40}, ${68 - darkness * 40}, ${68 - darkness * 40})`
+                  : `rgb(${204 + darkness * 40}, ${204 + darkness * 40}, ${204 + darkness * 40})`;
+              }
             }}
             nodeRelSize={3}
             linkColor={() => isDark ? '#444' : '#ddd'}
@@ -210,8 +261,20 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
             width={dimensions.width}
             height={dimensions.height - 57}
             d3VelocityDecay={0.1}
-            linkOpacity={0.5}
+            linkOpacity={1}
             linkCurvature={0}
+            linkVisibility={true}
+            linkCanvasObject={(link, ctx, scale) => {
+              const start = link.source;
+              const end = link.target;
+              
+              ctx.beginPath();
+              ctx.moveTo(start.x, start.y);
+              ctx.lineTo(end.x, end.y);
+              ctx.strokeStyle = isDark ? '#444' : '#ddd';
+              ctx.lineWidth = 1.5;
+              ctx.stroke();
+            }}
           />
         )}
       </div>
