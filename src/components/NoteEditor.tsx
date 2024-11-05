@@ -1,14 +1,14 @@
-import { useEditor, EditorContent } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
 import React, { useEffect, useState, useCallback } from 'react';
 import { NoteThread } from '@/types';
-import { Bold, Italic, List, ListOrdered, Quote, Undo, Redo, Hash, Plus } from 'lucide-react';
+import { Bold, Italic, List, ListOrdered, Quote, Hash, Eye, Code } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { FileLinkMenu } from './FileLinkMenu';
-import { CustomLink } from '@/lib/extensions/CustomLink';
-import { Extension } from '@tiptap/core';
-import { Plugin, PluginKey } from 'prosemirror-state';
-import { getMarkRange } from '@tiptap/core';
+import { marked } from 'marked';
+
+// Configure marked options
+marked.setOptions({
+  gfm: true,
+  breaks: true,
+});
 
 interface NoteEditorProps {
   note: NoteThread;
@@ -20,177 +20,70 @@ interface NoteEditorProps {
   onCreateNote: (title: string) => NoteThread;
 }
 
-const NoteLink = Extension.create({
-  name: 'noteLink',
-
-  addOptions() {
-    return {
-      openOnClick: true,
-      allNotes: [] as NoteThread[],
-      onNoteClick: (noteId: string) => {},
-    }
-  },
-
-  addProseMirrorPlugins() {
-    return [
-      new Plugin({
-        key: new PluginKey('noteLink-click'),
-        props: {
-          handleClick: (view, pos, event) => {
-            const { state } = view;
-            const { schema, doc } = state;
-            const range = getMarkRange(doc.resolve(pos), schema.marks.link);
-            
-            if (!range) return false;
-            
-            const $start = doc.resolve(range.from);
-            const link = $start.marks().find(mark => mark.type.name === 'link');
-            
-            if (!link) return false;
-            
-            const type = link.attrs['data-type'];
-            const name = link.attrs['data-name'];
-            
-            if (type === 'note') {
-              const targetNote = this.options.allNotes.find(n => n.name === name);
-              if (targetNote) {
-                window.dispatchEvent(new CustomEvent('switch-tab', {
-                  detail: { tab: 'notes' }
-                }));
-                
-                window.dispatchEvent(new CustomEvent('select-note', {
-                  detail: { noteId: targetNote.id }
-                }));
-                return true;
-              }
-            }
-            return false;
-          },
-        },
-      }),
-    ]
-  },
-});
-
 const MenuBar: React.FC<{ 
-  editor: any,
-  onCreateLink: () => void,
+  onInsertMarkdown: (markdown: string) => void,
+  isPreview: boolean,
+  onTogglePreview: () => void,
 }> = ({ 
-  editor,
-  onCreateLink,
+  onInsertMarkdown,
+  isPreview,
+  onTogglePreview,
 }) => {
-  if (!editor) return null;
-
   return (
     <div className="border-b border-border p-2 flex items-center justify-between">
       <div className="flex items-center gap-1">
         <button
-          onClick={() => editor.chain().focus().toggleBold().run()}
-          disabled={!editor.can().chain().focus().toggleBold().run()}
-          className="p-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors group relative"
+          onClick={() => onInsertMarkdown('**')}
+          className="p-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors"
         >
           <Bold className="h-4 w-4" />
           <span className="sr-only">Bold</span>
-          <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-popover 
-                       text-popover-foreground text-xs rounded-sm opacity-0 group-hover:opacity-100 
-                       transition-opacity whitespace-nowrap border border-border">
-            **bold**
-          </span>
         </button>
         <button
-          onClick={() => editor.chain().focus().toggleItalic().run()}
-          disabled={!editor.can().chain().focus().toggleItalic().run()}
-          className="p-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors group relative"
+          onClick={() => onInsertMarkdown('*')}
+          className="p-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors"
         >
           <Italic className="h-4 w-4" />
           <span className="sr-only">Italic</span>
-          <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-popover 
-                       text-popover-foreground text-xs rounded-sm opacity-0 group-hover:opacity-100 
-                       transition-opacity whitespace-nowrap border border-border">
-            *italic*
-          </span>
         </button>
         <div className="w-px h-4 bg-border mx-1" />
         <button
-          onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-          className="p-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors group relative"
+          onClick={() => onInsertMarkdown('# ')}
+          className="p-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors"
         >
           <Hash className="h-4 w-4" />
           <span className="sr-only">Heading</span>
-          <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-popover 
-                       text-popover-foreground text-xs rounded-sm opacity-0 group-hover:opacity-100 
-                       transition-opacity whitespace-nowrap border border-border">
-            # Heading
-          </span>
         </button>
         <div className="w-px h-4 bg-border mx-1" />
         <button
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
-          className="p-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors group relative"
+          onClick={() => onInsertMarkdown('* ')}
+          className="p-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors"
         >
           <List className="h-4 w-4" />
           <span className="sr-only">Bullet List</span>
-          <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-popover 
-                       text-popover-foreground text-xs rounded-sm opacity-0 group-hover:opacity-100 
-                       transition-opacity whitespace-nowrap border border-border">
-            * list item
-          </span>
         </button>
         <button
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          className="p-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors group relative"
+          onClick={() => onInsertMarkdown('1. ')}
+          className="p-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors"
         >
           <ListOrdered className="h-4 w-4" />
           <span className="sr-only">Numbered List</span>
-          <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-popover 
-                       text-popover-foreground text-xs rounded-sm opacity-0 group-hover:opacity-100 
-                       transition-opacity whitespace-nowrap border border-border">
-            1. numbered list
-          </span>
         </button>
         <button
-          onClick={() => editor.chain().focus().toggleBlockquote().run()}
-          className="p-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors group relative"
+          onClick={() => onInsertMarkdown('> ')}
+          className="p-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors"
         >
           <Quote className="h-4 w-4" />
           <span className="sr-only">Quote</span>
-          <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-popover 
-                       text-popover-foreground text-xs rounded-sm opacity-0 group-hover:opacity-100 
-                       transition-opacity whitespace-nowrap border border-border">
-            {'> quote'}
-          </span>
-        </button>
-        <div className="w-px h-4 bg-border mx-1" />
-        <button
-          onClick={() => editor.chain().focus().undo().run()}
-          disabled={!editor.can().chain().focus().undo().run()}
-          className="p-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors"
-        >
-          <Undo className="h-4 w-4" />
-          <span className="sr-only">Undo</span>
-        </button>
-        <button
-          onClick={() => editor.chain().focus().redo().run()}
-          disabled={!editor.can().chain().focus().redo().run()}
-          className="p-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors"
-        >
-          <Redo className="h-4 w-4" />
-          <span className="sr-only">Redo</span>
-        </button>
-        <div className="w-px h-4 bg-border mx-1" />
-        <button
-          onClick={onCreateLink}
-          className="p-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors group relative"
-        >
-          <Plus className="h-4 w-4" />
-          <span className="sr-only">Connect Notes</span>
-          <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-popover 
-                       text-popover-foreground text-xs rounded-sm opacity-0 group-hover:opacity-100 
-                       transition-opacity whitespace-nowrap border border-border">
-            Connect notes
-          </span>
         </button>
       </div>
+      <button
+        onClick={onTogglePreview}
+        className="p-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+      >
+        {isPreview ? <Code className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+        <span className="sr-only">{isPreview ? 'Show Editor' : 'Show Preview'}</span>
+      </button>
     </div>
   );
 };
@@ -199,181 +92,166 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   note, 
   onUpdate,
   initialContent,
-  allNotes,
-  onFileClick,
-  files,
-  onCreateNote,
 }) => {
-  const [editorInstance, setEditorInstance] = useState<any>(null);
-  const [showLinkMenu, setShowLinkMenu] = useState(false);
-  const [linkQuery, setLinkQuery] = useState('');
+  const [content, setContent] = useState('');
+  const [isPreview, setIsPreview] = useState(false);
 
-  const editor = useEditor({
-    extensions: [
-      StarterKit,
-      CustomLink.configure({
-        openOnClick: false,
-        inclusive: false,
-        selectable: false,
-        HTMLAttributes: {
-          class: 'cursor-pointer',
-          contenteditable: 'false',
-          draggable: 'false'
-        }
-      }),
-      NoteLink.configure({
-        allNotes,
-        onNoteClick: (noteId) => {
-          window.dispatchEvent(new CustomEvent('switch-tab', {
-            detail: { tab: 'notes' }
-          }));
-          
-          window.dispatchEvent(new CustomEvent('select-note', {
-            detail: { noteId }
-          }));
-        }
-      })
-    ],
-    content: initialContent,
-    editorProps: {
-      attributes: {
-        class: 'prose prose-sm dark:prose-invert max-w-none p-4 focus:outline-none min-h-[200px] font-mono',
-      },
-      handleClick: (view, pos, event) => {
-        const target = event.target as HTMLElement;
-        const link = target.closest('a');
-        
-        if (link) {
-          event.preventDefault();
-          const type = link.getAttribute('data-type');
-          const name = link.getAttribute('data-name');
-          
-          if (type === 'note') {
-            const targetNote = allNotes.find(n => n.name === name);
-            if (targetNote) {
-              window.dispatchEvent(new CustomEvent('switch-tab', {
-                detail: { tab: 'notes' }
-              }));
-              
-              window.dispatchEvent(new CustomEvent('select-note', {
-                detail: { noteId: targetNote.id }
-              }));
-              return true;
-            }
-          }
-        }
-        return false;
-      }
-    },
-    onUpdate: ({ editor }) => {
-      const content = editor.getHTML();
-      onUpdate(content);
-    },
-  });
-
+  // Update content when note changes
   useEffect(() => {
-    if (editor) {
-      setEditorInstance(editor);
+    // For new notes, use empty content
+    if (!note.content && note.createdAt === note.updatedAt) {
+      setContent('');
+    } else {
+      setContent(note.content || '');
     }
-  }, [editor]);
+  }, [note.id]); // Only depend on note.id to prevent unnecessary updates
 
-  const handleCreateLink = useCallback(() => {
-    setShowLinkMenu(true);
-    setLinkQuery('');
-  }, []);
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newContent = e.target.value;
+    setContent(newContent);
+    onUpdate(newContent);
+  };
 
-  const handleLinkSelect = useCallback((name: string, type: 'file' | 'note') => {
-    if (!editorInstance) return;
+  const insertMarkdown = useCallback((markdown: string) => {
+    const textArea = document.querySelector('textarea');
+    if (!textArea) return;
 
-    const linkContent = `<a href="#" class="note-link" data-type="${type}" data-name="${name}">${name}</a> `;
+    const start = textArea.selectionStart;
+    const end = textArea.selectionEnd;
+    const text = textArea.value;
     
-    editorInstance
-      .chain()
-      .focus()
-      .insertContent(linkContent)
-      .run();
+    const before = text.substring(0, start);
+    const selection = text.substring(start, end);
+    const after = text.substring(end);
 
-    setShowLinkMenu(false);
-  }, [editorInstance]);
+    let newText;
+    let newCursorPos;
 
-  useEffect(() => {
-    if (editor && note.content) {
-      editor.commands.setContent(note.content);
+    if (markdown === '*' || markdown === '**') {
+      // For italic and bold
+      if (selection) {
+        newText = before + markdown + selection + markdown + after;
+        newCursorPos = start + selection.length + (markdown.length * 2);
+      } else {
+        newText = before + markdown + after;
+        newCursorPos = start + markdown.length;
+      }
+    } else {
+      // For lists, quotes, and headings
+      const isStartOfLine = start === 0 || text[start - 1] === '\n';
+      if (!isStartOfLine) {
+        newText = before + '\n' + markdown + selection + after;
+        newCursorPos = start + markdown.length + 1;
+      } else {
+        newText = before + markdown + selection + after;
+        newCursorPos = start + markdown.length;
+      }
     }
-  }, [editor, note.id, note.content]);
+
+    setContent(newText);
+    onUpdate(newText);
+
+    // Set cursor position
+    setTimeout(() => {
+      textArea.focus();
+      textArea.setSelectionRange(newCursorPos, newCursorPos);
+    }, 0);
+  }, [onUpdate]);
+
+  const togglePreview = useCallback(() => {
+    setIsPreview(prev => !prev);
+  }, []);
 
   return (
     <div className="flex flex-col flex-1 bg-background">
-      <style>{`
-        .ProseMirror .note-link {
-          display: inline-flex;
-          align-items: center;
-          padding: 0.25rem 0.5rem;
-          margin: 0 0.125rem;
-          border-radius: 0.25rem;
-          background-color: var(--muted);
-          color: var(--muted-foreground);
-          font-size: 0.875rem;
-          line-height: 1;
-          white-space: nowrap;
-          text-decoration: none;
-          cursor: pointer;
-          transition: all 150ms ease;
-          box-shadow: 
-            0 1px 2px rgba(0, 0, 0, 0.1),
-            inset 0 1px 0 rgba(255, 255, 255, 0.1);
-          user-select: none;
-          pointer-events: all;
-          position: relative;
-          -webkit-user-modify: read-only;
-          -moz-user-modify: read-only;
-          user-modify: read-only;
-        }
-
-        .ProseMirror .note-link:hover {
-          background-color: var(--accent);
-          color: var(--accent-foreground);
-          transform: translateY(-1px);
-          box-shadow: 
-            0 2px 4px rgba(0, 0, 0, 0.1),
-            inset 0 1px 0 rgba(255, 255, 255, 0.1);
-        }
-
-        .ProseMirror .note-link:active {
-          transform: translateY(0);
-          box-shadow: 
-            0 1px 1px rgba(0, 0, 0, 0.1),
-            inset 0 1px 1px rgba(0, 0, 0, 0.1);
-        }
-
-        .ProseMirror .note-link[data-type="note"]::before {
-          content: '📝';
-          margin-right: 0.25rem;
-        }
-
-        .ProseMirror .note-link[data-type="file"]::before {
-          content: '📄';
-          margin-right: 0.25rem;
-        }
-      `}</style>
       <MenuBar 
-        editor={editor}
-        onCreateLink={handleCreateLink}
+        onInsertMarkdown={insertMarkdown}
+        isPreview={isPreview}
+        onTogglePreview={togglePreview}
       />
       <div className="relative flex-1">
-        <FileLinkMenu
-          query={linkQuery}
-          files={files}
-          notes={allNotes.filter(n => n.id !== note.id)}
-          onSelect={handleLinkSelect}
-          onClose={() => setShowLinkMenu(false)}
-          open={showLinkMenu}
+        <textarea
+          value={content}
+          onChange={handleChange}
+          className={cn(
+            "w-full h-full p-4 bg-transparent border-none focus:outline-none resize-none font-mono",
+            isPreview && "hidden"
+          )}
+          style={{ 
+            minHeight: '200px',
+            color: 'inherit',
+            lineHeight: '1.5'
+          }}
+          placeholder="Start writing in markdown..."
+          spellCheck="false"
         />
-        <EditorContent 
-          editor={editor} 
-          className="flex-1 overflow-y-auto"
-        />
+        {isPreview && (
+          <div 
+            className="prose prose-sm dark:prose-invert max-w-none p-4 overflow-auto h-full"
+            dangerouslySetInnerHTML={{ __html: marked(content) }}
+          />
+        )}
       </div>
+      <style>{`
+        .prose {
+          max-width: none;
+          width: 100%;
+        }
+        .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
+          margin-top: 1.5em;
+          margin-bottom: 0.5em;
+          font-weight: 600;
+        }
+        .prose h1:first-child, .prose h2:first-child, .prose h3:first-child {
+          margin-top: 0;
+        }
+        .prose p {
+          margin-top: 0.75em;
+          margin-bottom: 0.75em;
+        }
+        .prose ul, .prose ol {
+          margin-top: 0.5em;
+          margin-bottom: 0.5em;
+          padding-left: 1.5em;
+        }
+        .prose li {
+          margin-top: 0.25em;
+          margin-bottom: 0.25em;
+        }
+        .prose a {
+          color: var(--primary);
+          text-decoration: underline;
+          text-underline-offset: 2px;
+        }
+        .prose a:hover {
+          text-decoration-thickness: 2px;
+        }
+        .prose pre {
+          background: var(--accent);
+          padding: 1rem;
+          border-radius: 0.5rem;
+          overflow-x: auto;
+          margin: 1em 0;
+        }
+        .prose code {
+          background: var(--accent);
+          padding: 0.2rem 0.4rem;
+          border-radius: 0.25rem;
+          font-size: 0.875em;
+        }
+        .prose pre code {
+          background: none;
+          padding: 0;
+          border-radius: 0;
+        }
+        .prose blockquote {
+          border-left: 2px solid var(--border);
+          padding-left: 1em;
+          margin: 1em 0;
+          font-style: italic;
+          color: var(--muted-foreground);
+        }
+      `}</style>
     </div>
   );
 }; 
