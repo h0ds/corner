@@ -44,6 +44,7 @@ import { ChatView } from './components/ChatView';
 import { KnowledgeGraph } from './components/KnowledgeGraph';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FileLinkMenu } from './components/FileLinkMenu';
+import { SearchPanel } from './components/SearchPanel';
 
 interface ApiResponse {
   content?: string;
@@ -122,6 +123,7 @@ function App() {
   const [previewFile, setPreviewFile] = useState<FileAttachment | null>(null);
   const [showFileLinkMenu, setShowFileLinkMenu] = useState(false);
   const [fileLinkQuery, setFileLinkQuery] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
 
   // Initialize cache on mount
   useEffect(() => {
@@ -870,6 +872,18 @@ function App() {
     return () => window.removeEventListener('select-note', handleSelectNote as any);
   }, []);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+        e.preventDefault();
+        setShowSearch(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   return (
     <div className="flex h-screen bg-background border-t">
       {/* Sidebar with animation */}
@@ -929,6 +943,7 @@ function App() {
         onFileSelect={handleFileUpload}
         onFileDelete={handleFileDelete}
         onShowKnowledgeGraph={() => setView('graph')}
+        onShowSearch={() => setShowSearch(true)}
       />
       
       {/* Main content */}
@@ -1043,6 +1058,21 @@ function App() {
             />
           </DialogContent>
         </Dialog>
+      )}
+
+      {showSearch && (
+        <SearchPanel
+          threads={threads}
+          onClose={() => setShowSearch(false)}
+          onThreadSelect={(threadId) => {
+            const thread = threads.find(t => t.id === threadId);
+            if (thread) {
+              setActiveThreadId(threadId);
+              setView(thread.isNote ? 'note' : 'thread');
+            }
+            setShowSearch(false);
+          }}
+        />
       )}
     </div>
   );

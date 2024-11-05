@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { PanelLeft, PanelLeftClose, Settings, FileText, Network, Upload } from 'lucide-react';
+import { PanelLeft, PanelLeftClose, Settings, FileText, Network, Upload, Search } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -9,7 +9,6 @@ import {
 import { FileMenu } from './FileMenu';
 import { FileUploader } from './FileUploader';
 import { FileAttachment, Thread } from '@/types';
-import { cn } from '@/lib/utils';
 
 interface FeaturesProps {
   sidebarVisible: boolean;
@@ -20,6 +19,7 @@ interface FeaturesProps {
   onFileSelect: (file: File) => void;
   onFileDelete?: (fileId: string) => void;
   onShowKnowledgeGraph: () => void;
+  onShowSearch: () => void;
 }
 
 export const Features: React.FC<FeaturesProps> = ({
@@ -27,10 +27,10 @@ export const Features: React.FC<FeaturesProps> = ({
   onSidebarToggle,
   onOpenShortcuts,
   files,
-  threads,
   onFileSelect,
   onFileDelete,
   onShowKnowledgeGraph,
+  onShowSearch,
 }) => {
   const [showFileMenu, setShowFileMenu] = useState(false);
   const [showFileUploader, setShowFileUploader] = useState(false);
@@ -63,6 +63,24 @@ export const Features: React.FC<FeaturesProps> = ({
         {/* Only show additional buttons when sidebar is visible */}
         {sidebarVisible && (
           <>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={onShowSearch}
+                    className="p-2 bg-background hover:bg-accent rounded-sm transition-colors border border-border"
+                  >
+                    <Search className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="text-xs">
+                  Search
+                  <span className="ml-2 text-muted-foreground">⌘F</span>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -129,6 +147,7 @@ export const Features: React.FC<FeaturesProps> = ({
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+
           </>
         )}
       </div>

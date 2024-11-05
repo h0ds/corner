@@ -186,7 +186,7 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
             ref={graphRef}
             graphData={{ nodes, links }}
             nodeLabel={node => (node as GraphNode).name}
-            nodeCanvasObject={(node, ctx, globalScale) => {
+            nodeCanvasObject={(node, ctx) => {
               const n = node as GraphNode;
               // Count connections for this node
               const connectionCount = links.filter(link => 
@@ -206,6 +206,31 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
                 ? (isDark ? '#666' : '#999')
                 : (isDark ? '#444' : '#ccc'));
               ctx.fill();
+
+              // Draw label on hover
+              if (node === graphRef.current?.centerAt) {
+                const label = n.name;
+                ctx.font = '12px monospace';
+                const textWidth = ctx.measureText(label).width;
+                const bckgDimensions = [textWidth + 8, 20];
+                
+                ctx.fillStyle = '#000';
+                ctx.fillRect(
+                  node.x! - bckgDimensions[0] / 2,
+                  node.y! - bckgDimensions[1] - 12,
+                  bckgDimensions[0],
+                  bckgDimensions[1]
+                );
+
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = '#fff';
+                ctx.fillText(
+                  label,
+                  node.x!,
+                  node.y! - bckgDimensions[1] / 2 - 12
+                );
+              }
             }}
             nodePointerAreaPaint={(node, color, ctx) => {
               const connectionCount = links.filter(link => 

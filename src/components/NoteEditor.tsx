@@ -160,21 +160,10 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         openOnClick: false,
         HTMLAttributes: {
           class: 'cursor-pointer underline underline-offset-4'
-        }
-      })
-    ],
-    content: initialContent,
-    editorProps: {
-      attributes: {
-        class: 'prose prose-sm dark:prose-invert max-w-none p-4 focus:outline-none min-h-[200px] font-mono',
-      },
-      handleClick: (view, pos, event) => {
-        const target = event.target as HTMLElement;
-        const link = target.closest('a');
-        
-        if (link) {
-          const type = link.getAttribute('data-type') as 'note' | 'file';
-          const name = link.getAttribute('data-name');
+        },
+        onClick: ({ node }) => {
+          const type = node.attrs.HTMLAttributes?.['data-type'] as 'note' | 'file';
+          const name = node.attrs.HTMLAttributes?.['data-name'];
           
           if (type === 'note') {
             const targetNote = allNotes.find(n => n.name === name);
@@ -195,9 +184,15 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
               return true;
             }
           }
+          return false;
         }
-        return false;
-      }
+      })
+    ],
+    content: initialContent,
+    editorProps: {
+      attributes: {
+        class: 'prose prose-sm dark:prose-invert max-w-none p-4 focus:outline-none min-h-[200px] font-mono',
+      },
     },
     onUpdate: ({ editor }) => {
       const content = editor.getHTML();
