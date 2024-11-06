@@ -23,10 +23,61 @@ const MenuBar: React.FC<{
   return (
     <div className="border-b border-border p-2 flex items-center justify-between">
       <div className="flex items-center gap-1">
-        {/* ... other buttons stay the same ... */}
+        <button
+          onClick={() => onInsertMarkdown('**')}
+          className="p-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+          title="Bold (Ctrl+B)"
+        >
+          <Bold className="h-4 w-4" />
+          <span className="sr-only">Bold</span>
+        </button>
+        <button
+          onClick={() => onInsertMarkdown('*')}
+          className="p-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+          title="Italic (Ctrl+I)"
+        >
+          <Italic className="h-4 w-4" />
+          <span className="sr-only">Italic</span>
+        </button>
+        <div className="w-px h-4 bg-border mx-1" /> {/* Separator */}
+        <button
+          onClick={() => onInsertMarkdown('# ')}
+          className="p-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+          title="Heading"
+        >
+          <Hash className="h-4 w-4" />
+          <span className="sr-only">Heading</span>
+        </button>
+        <button
+          onClick={() => onInsertMarkdown('> ')}
+          className="p-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+          title="Quote"
+        >
+          <Quote className="h-4 w-4" />
+          <span className="sr-only">Quote</span>
+        </button>
+        <div className="w-px h-4 bg-border mx-1" /> {/* Separator */}
+        <button
+          onClick={() => onInsertMarkdown('- ')}
+          className="p-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+          title="Bullet List"
+        >
+          <List className="h-4 w-4" />
+          <span className="sr-only">Bullet List</span>
+        </button>
+        <button
+          onClick={() => onInsertMarkdown('1. ')}
+          className="p-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+          title="Numbered List"
+        >
+          <ListOrdered className="h-4 w-4" />
+          <span className="sr-only">Numbered List</span>
+        </button>
+        <div className="w-px h-4 bg-border mx-1" /> {/* Separator */}
         <button
           onClick={() => onInsertMarkdown('[[', true)}
           className="p-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+          title="Note Link"
         >
           <Link className="h-4 w-4" />
           <span className="sr-only">Note Link</span>
@@ -35,6 +86,7 @@ const MenuBar: React.FC<{
       <button
         onClick={onTogglePreview}
         className="p-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+        title={isPreview ? "Show Editor" : "Show Preview"}
       >
         {isPreview ? <Code className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
         <span className="sr-only">{isPreview ? 'Show Editor' : 'Show Preview'}</span>
@@ -198,26 +250,57 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     }
   }, [allNotes]);
 
+  const handleTextClick = useCallback((e: React.MouseEvent<HTMLTextAreaElement>) => {
+    const textarea = e.currentTarget;
+    const text = textarea.value;
+    const cursorPosition = textarea.selectionStart;
+    
+    // Find any wiki-links that contain the cursor position
+    const wikiLinkRegex = /\[\[([^\]]+)\]\]/g;
+    let match;
+    
+    while ((match = wikiLinkRegex.exec(text)) !== null) {
+      const linkStart = match.index;
+      const linkEnd = linkStart + match[0].length;
+      
+      if (cursorPosition >= linkStart && cursorPosition <= linkEnd) {
+        const noteName = match[1].trim();
+        const targetNote = allNotes.find(n => n.name === noteName);
+        
+        if (targetNote) {
+          e.preventDefault();
+          // Switch to notes tab
+          window.dispatchEvent(new CustomEvent('switch-tab', {
+            detail: { tab: 'notes' }
+          }));
+          
+          // Select the note
+          window.dispatchEvent(new CustomEvent('select-note', {
+            detail: { noteId: targetNote.id }
+          }));
+        }
+        break;
+      }
+    }
+  }, [allNotes]);
+
   return (
-    <div className="flex flex-col flex-1 bg-background">
+    <div className="flex flex-col h-full bg-background">
       <MenuBar 
         onInsertMarkdown={insertMarkdown}
         isPreview={isPreview}
         onTogglePreview={() => setIsPreview(prev => !prev)}
       />
-      <div className="relative flex-1">
+      <div className="flex-1 relative min-h-0">
         <textarea
           value={content}
           onChange={handleChange}
+          onClick={handleTextClick}
           className={cn(
             "w-full h-full p-4 bg-transparent border-none focus:outline-none resize-none font-mono",
+            "absolute inset-0",
             isPreview && "hidden"
           )}
-          style={{ 
-            minHeight: '200px',
-            color: 'inherit',
-            lineHeight: '1.5'
-          }}
           placeholder="Start writing in markdown..."
           spellCheck="false"
         />
@@ -236,7 +319,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         )}
         {isPreview && (
           <div 
-            className="prose prose-sm dark:prose-invert max-w-none p-4 overflow-auto h-full"
+            className="prose prose-sm dark:prose-invert max-w-none p-4 overflow-auto absolute inset-0"
             dangerouslySetInnerHTML={{ __html: marked(content || '') }}
             onClick={handlePreviewClick}
           />

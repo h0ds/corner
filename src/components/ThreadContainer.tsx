@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ThreadList } from './ThreadList';
 import { NoteList } from './NoteList';
 import { ThreadTabs } from './ThreadTabs';
@@ -21,10 +21,33 @@ interface ThreadContainerProps {
   initialTab?: 'threads' | 'notes';
 }
 
+function generateUniqueName(baseName: string, existingThreads: Thread[]): string {
+  // First check if "New note" exists
+  if (!existingThreads.some(t => t.name === "New note")) {
+    return "New note";
+  }
+
+  // Find all notes that start with "New note" and have a number suffix
+  const newNoteRegex = /^New note( \d+)?$/;
+  const existingNewNotes = existingThreads
+    .filter(t => newNoteRegex.test(t.name))
+    .map(t => {
+      const match = t.name.match(/\d+$/);
+      return match ? parseInt(match[0]) : 0;
+    });
+
+  // Find the highest number used
+  const maxNumber = Math.max(0, ...existingNewNotes);
+
+  // Use the next number in sequence
+  return `New note ${maxNumber + 1}`;
+}
+
 export const ThreadContainer: React.FC<ThreadContainerProps> = ({
   threads,
   activeThreadId,
   onThreadSelect,
+  onNewNote,
   ...props
 }) => {
   const [activeTab, setActiveTab] = useState(props.initialTab || 'threads');
@@ -65,6 +88,18 @@ export const ThreadContainer: React.FC<ThreadContainerProps> = ({
     setActiveTab(props.initialTab || 'threads');
   }, [props.initialTab]);
 
+  const handleCreateNote = useCallback(() => {
+    const newNoteName = generateUniqueName('New note', threads);
+    
+    // Create event to pass the generated name
+    const event = new CustomEvent('create-note', {
+      detail: { name: newNoteName }
+    });
+    window.dispatchEvent(event);
+    
+    onNewNote(); // Call the original handler
+  }, [threads, onNewNote]);
+
   return (
     <div className="absolute inset-0 border-r border-border bg-card flex flex-col">
       <div className="mt-12">
@@ -77,7 +112,7 @@ export const ThreadContainer: React.FC<ThreadContainerProps> = ({
         
         <div className="p-2 border-b border-border">
           <button
-            onClick={activeTab === 'threads' ? props.onNewThread : props.onNewNote}
+            onClick={activeTab === 'threads' ? props.onNewThread : handleCreateNote}
             className="w-full flex items-center gap-2 p-2 text-sm rounded-md 
                      bg-primary text-primary-foreground hover:bg-primary/90 transition-colors
                      justify-start pl-3"

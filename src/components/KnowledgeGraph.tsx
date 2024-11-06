@@ -1,7 +1,8 @@
 import React, { useMemo, useCallback, useState, useEffect, useRef } from 'react';
-import { Thread, NoteThread } from '@/types';
+import { Thread } from '@/types';
 import ForceGraph2D from 'react-force-graph-2d';
 import { useTheme } from 'next-themes';
+import marked from 'marked';
 
 interface KnowledgeGraphProps {
   threads: Thread[];
@@ -23,7 +24,8 @@ interface GraphNode {
 interface GraphLink {
   source: string;
   target: string;
-  type: 'reference' | 'backlink' | 'file-mention';
+  type: 'reference';
+  strength?: number;
 }
 
 export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
@@ -50,12 +52,21 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     return () => window.removeEventListener('resize', updateDimensions);
   }, [updateDimensions]);
 
+  // Create a dependency string that changes when any note content changes
+  const noteContentDependency = useMemo(() => {
+    return threads
+      .filter((t): t is NoteThread => 'content' in t)
+      .map(note => `${note.id}:${note.content}`)
+      .join('|');
+  }, [threads]);
+
   const { nodes, links } = useMemo(() => {
     const nodeMap = new Map<string, GraphNode>();
     const linkSet = new Set<string>();
     const connections = new Map<string, number>();
+    const referencedThreadIds = new Set<string>();
 
-    // First add all threads as nodes
+    // First add all threads as nodes (both notes and chat threads)
     threads.forEach(thread => {
       nodeMap.set(thread.id, {
         id: thread.id,
@@ -67,37 +78,48 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     });
 
     function addLink(sourceId: string, targetId: string) {
-      const linkId1 = `${sourceId}-${targetId}`;
-      const linkId2 = `${targetId}-${sourceId}`;
-      if (!linkSet.has(linkId1) && !linkSet.has(linkId2)) {
-        linkSet.add(linkId1);
+      const linkId = `${sourceId}-${targetId}`;
+      if (!linkSet.has(linkId)) {
+        linkSet.add(linkId);
         connections.set(sourceId, (connections.get(sourceId) || 0) + 1);
         connections.set(targetId, (connections.get(targetId) || 0) + 1);
+        referencedThreadIds.add(targetId);
       }
     }
 
-    // Find connections between notes
+    // Find connections between notes using wiki-style links
     threads.forEach(sourceThread => {
       if (!('content' in sourceThread)) return;
+      
       const content = sourceThread.content || '';
       
-      // Parse HTML content to find links
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(content, 'text/html');
-      const links = doc.querySelectorAll('a[data-type="note"]');
+      // Find all wiki-style links [[note name]]
+      const wikiLinkRegex = /\[\[([^\]]+)\]\]/g;
+      let match;
       
-      links.forEach(link => {
-        const name = link.getAttribute('data-name');
-        if (name) {
-          const targetThread = threads.find(t => 
-            t.name.toLowerCase() === name.toLowerCase()
-          );
-          
-          if (targetThread && targetThread.id !== sourceThread.id) {
-            addLink(sourceThread.id, targetThread.id);
-          }
+      while ((match = wikiLinkRegex.exec(content)) !== null) {
+        const linkedNoteName = match[1].trim();
+        console.log(`Found link in ${sourceThread.name}: [[${linkedNoteName}]]`);
+        
+        // Find target thread, case-insensitive comparison
+        const targetThread = threads.find(t => 
+          t.name.toLowerCase() === linkedNoteName.toLowerCase()
+        );
+        
+        if (targetThread && targetThread.id !== sourceThread.id) {
+          console.log(`Found matching thread: ${targetThread.name}`);
+          addLink(sourceThread.id, targetThread.id);
+        } else {
+          console.log(`No matching thread found for: ${linkedNoteName}`);
         }
-      });
+      }
+    });
+
+    // Remove nodes that aren't referenced and aren't notes
+    nodeMap.forEach((node, id) => {
+      if (node.type !== 'note' && !referencedThreadIds.has(id)) {
+        nodeMap.delete(id);
+      }
     });
 
     // Update node sizes based on connection count
@@ -106,14 +128,32 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
       node.val = 3 + Math.log2(connectionCount + 1) * 2;
     });
 
+    const graphLinks = Array.from(linkSet)
+      .map(linkId => {
+        const [source, target] = linkId.split('-');
+        if (nodeMap.has(source) && nodeMap.has(target)) {
+          return { 
+            source, 
+            target, 
+            type: 'reference' as const,
+            strength: 1
+          };
+        }
+        return null;
+      })
+      .filter((link): link is NonNullable<typeof link> => link !== null);
+
+    console.log('Graph data:', {
+      nodes: Array.from(nodeMap.values()),
+      links: graphLinks,
+      connections: Object.fromEntries(connections)
+    });
+
     return {
       nodes: Array.from(nodeMap.values()),
-      links: Array.from(linkSet).map(linkId => {
-        const [source, target] = linkId.split('-');
-        return { source, target };
-      })
+      links: graphLinks
     };
-  }, [threads]);
+  }, [threads, noteContentDependency]);
 
   const handleNodeDragStart = useCallback((node: GraphNode) => {
     setDraggedNode(node);
@@ -272,15 +312,61 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
             linkCurvature={0}
             linkVisibility={true}
             linkCanvasObject={(link, ctx, scale) => {
-              const start = link.source;
-              const end = link.target;
+              const start = link.source as any;
+              const end = link.target as any;
               
+              // Draw curved connection line
+              ctx.beginPath();
+              ctx.strokeStyle = isDark ? 'rgba(150,150,150,0.2)' : 'rgba(100,100,100,0.2)';
+              ctx.lineWidth = 1.5;
+              
+              // Calculate control point for curve
+              const dx = end.x - start.x;
+              const dy = end.y - start.y;
+              const curveOffset = Math.sqrt(dx * dx + dy * dy) * 0.2;
+              
+              // Calculate perpendicular offset for curve
+              const angle = Math.atan2(dy, dx);
+              const perpX = -Math.sin(angle) * curveOffset;
+              const perpY = Math.cos(angle) * curveOffset;
+              
+              // Draw quadratic curve
               ctx.beginPath();
               ctx.moveTo(start.x, start.y);
-              ctx.lineTo(end.x, end.y);
-              ctx.strokeStyle = isDark ? '#444' : '#ddd';
-              ctx.lineWidth = 1.5;
+              ctx.quadraticCurveTo(
+                (start.x + end.x) / 2 + perpX,
+                (start.y + end.y) / 2 + perpY,
+                end.x,
+                end.y
+              );
               ctx.stroke();
+
+              // Draw arrow
+              const arrowLength = 8;
+              const arrowWidth = 4;
+              const arrowPos = 0.8;
+              
+              const t = arrowPos;
+              const pointX = (1-t)*(1-t)*start.x + 2*(1-t)*t*((start.x + end.x)/2 + perpX) + t*t*end.x;
+              const pointY = (1-t)*(1-t)*start.y + 2*(1-t)*t*((start.y + end.y)/2 + perpY) + t*t*end.y;
+              
+              const dx2 = end.x - pointX;
+              const dy2 = end.y - pointY;
+              const angle2 = Math.atan2(dy2, dx2);
+              
+              ctx.beginPath();
+              ctx.moveTo(pointX, pointY);
+              ctx.lineTo(
+                pointX - arrowLength * Math.cos(angle2) + arrowWidth * Math.sin(angle2),
+                pointY - arrowLength * Math.sin(angle2) - arrowWidth * Math.cos(angle2)
+              );
+              ctx.lineTo(
+                pointX - arrowLength * Math.cos(angle2) - arrowWidth * Math.sin(angle2),
+                pointY - arrowLength * Math.sin(angle2) + arrowWidth * Math.cos(angle2)
+              );
+              ctx.closePath();
+              ctx.fillStyle = isDark ? 'rgba(150,150,150,0.2)' : 'rgba(100,100,100,0.2)';
+              ctx.fill();
             }}
           />
         )}

@@ -82,7 +82,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
       </div>
 
       <footer 
-        className="flex-shrink-0 p-4 bg-card border-t border-border"
+        className="flex-shrink-0 p-4 bg-card border-t border-border relative"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="absolute right-4 -top-12 flex items-center gap-2">
@@ -107,13 +107,14 @@ export const ChatView: React.FC<ChatViewProps> = ({
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <div 
+                <button
                   onClick={onOpenModelSelect}
-                  className="p-2 bg-background text-muted-foreground hover:text-foreground border border-border/50
-                          hover:bg-accent rounded-sm transition-colors cursor-pointer"
+                  className="p-2 bg-background text-muted-foreground hover:text-foreground 
+                           border border-border/50 hover:bg-accent rounded-sm transition-colors 
+                           cursor-pointer"
                 >
                   <ModelIcon modelId={selectedModel} className="h-5 w-5" />
-                </div>
+                </button>
               </TooltipTrigger>
               <TooltipContent side="top" className="text-xs">
                 {(() => {
