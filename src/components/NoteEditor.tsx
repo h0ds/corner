@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { NoteThread } from '@/types';
-import { Bold, Italic, List, ListOrdered, Quote, Hash, Eye, Code, Link } from 'lucide-react';
+import { Bold, Italic, List, ListOrdered, Quote, Hash, Eye, Code, Link, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { marked } from 'marked';
 
@@ -9,16 +9,22 @@ interface NoteEditorProps {
   onUpdate: (content: string) => void;
   initialContent: string;
   allNotes: NoteThread[];
+  onNavigateBack?: () => void;
+  navigationStack?: NoteThread[];
 }
 
 const MenuBar: React.FC<{ 
   onInsertMarkdown: (markdown: string) => void,
   isPreview: boolean,
   onTogglePreview: () => void,
+  onNavigateBack?: () => void,
+  showBackButton?: boolean,
 }> = ({ 
   onInsertMarkdown,
   isPreview,
   onTogglePreview,
+  onNavigateBack,
+  showBackButton,
 }) => {
   return (
     <div className="border-b border-border p-2 flex items-center justify-between">
@@ -83,14 +89,27 @@ const MenuBar: React.FC<{
           <span className="sr-only">Note Link</span>
         </button>
       </div>
-      <button
-        onClick={onTogglePreview}
-        className="p-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors"
-        title={isPreview ? "Show Editor" : "Show Preview"}
-      >
-        {isPreview ? <Code className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-        <span className="sr-only">{isPreview ? 'Show Editor' : 'Show Preview'}</span>
-      </button>
+      <div className="flex items-center gap-2">
+        {showBackButton && onNavigateBack && (
+          <button
+            onClick={onNavigateBack}
+            className="p-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+            title="Go back to previous note"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span>Back</span>
+          </button>
+        )}
+        <div className="w-px h-4 bg-border mx-1" /> {/* Separator */}
+        <button
+          onClick={onTogglePreview}
+          className="p-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+          title={isPreview ? "Show Editor" : "Show Preview"}
+        >
+          {isPreview ? <Code className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          <span className="sr-only">{isPreview ? 'Show Editor' : 'Show Preview'}</span>
+        </button>
+      </div>
     </div>
   );
 };
@@ -100,6 +119,8 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   onUpdate,
   initialContent,
   allNotes,
+  onNavigateBack,
+  navigationStack = [],
 }) => {
   const [content, setContent] = useState('');
   const [isPreview, setIsPreview] = useState(false);
@@ -284,12 +305,17 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     }
   }, [allNotes]);
 
+  // Show back button only if we have navigation history
+  const showBackButton = navigationStack.length > 0;
+
   return (
     <div className="flex flex-col h-full bg-background">
       <MenuBar 
         onInsertMarkdown={insertMarkdown}
         isPreview={isPreview}
         onTogglePreview={() => setIsPreview(prev => !prev)}
+        onNavigateBack={onNavigateBack}
+        showBackButton={showBackButton}
       />
       <div className="flex-1 relative min-h-0">
         <textarea

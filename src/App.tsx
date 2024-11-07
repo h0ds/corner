@@ -957,7 +957,7 @@ function App() {
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
         <div className="flex flex-col h-full relative">
-          {activeThread && view !== 'graph' && (
+          {activeThread && !activeThread.isNote && view !== 'graph' && (
             <ThreadHeader
               thread={activeThread}
               onRename={(newName) => handleRenameThread(activeThread.id, newName)}
@@ -970,8 +970,8 @@ function App() {
             ref={chatContainerRef}
             className={cn(
               "flex-1 overflow-y-auto min-w-0",
-              isHeaderCollapsed || view === 'graph' ? "mt-0" : "mt-11",
-              "transition-spacing duration-200",
+              activeThread?.isNote ? "mt-0" : (isHeaderCollapsed || view === 'graph' ? "mt-0" : "mt-11"),
+              "transition-spacing duration-200", 
               !activeThread?.isNote && view === 'thread' && "flex flex-col h-full"
             )}
             onClick={(e) => e.stopPropagation()}
