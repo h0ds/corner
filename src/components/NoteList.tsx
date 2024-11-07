@@ -243,7 +243,7 @@ const NoteItem: React.FC<{
         >
           <div 
             className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 
-                     bg-background border border-border rounded-sm shadow-lg p-4"
+                     bg-background border border-border rounded-md shadow-lg p-4"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex flex-col gap-4">
@@ -501,7 +501,7 @@ const SortableNoteItem = ({
         >
           <div 
             className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 
-                     bg-background border border-border rounded-sm shadow-lg p-4"
+                     bg-background border border-border rounded-md shadow-lg p-4"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex flex-col gap-4">

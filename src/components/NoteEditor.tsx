@@ -31,7 +31,7 @@ const MenuBar: React.FC<{
       <div className="flex items-center gap-1">
         <button
           onClick={() => onInsertMarkdown('**')}
-          className="p-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+          className="p-1.5 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
           title="Bold (Ctrl+B)"
         >
           <Bold className="h-4 w-4" />
@@ -39,7 +39,7 @@ const MenuBar: React.FC<{
         </button>
         <button
           onClick={() => onInsertMarkdown('*')}
-          className="p-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+          className="p-1.5 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
           title="Italic (Ctrl+I)"
         >
           <Italic className="h-4 w-4" />
@@ -48,7 +48,7 @@ const MenuBar: React.FC<{
         <div className="w-px h-4 bg-border mx-1" /> {/* Separator */}
         <button
           onClick={() => onInsertMarkdown('# ')}
-          className="p-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+          className="p-1.5 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
           title="Heading"
         >
           <Hash className="h-4 w-4" />
@@ -56,7 +56,7 @@ const MenuBar: React.FC<{
         </button>
         <button
           onClick={() => onInsertMarkdown('> ')}
-          className="p-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+          className="p-1.5 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
           title="Quote"
         >
           <Quote className="h-4 w-4" />
@@ -65,7 +65,7 @@ const MenuBar: React.FC<{
         <div className="w-px h-4 bg-border mx-1" /> {/* Separator */}
         <button
           onClick={() => onInsertMarkdown('- ')}
-          className="p-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+          className="p-1.5 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
           title="Bullet List"
         >
           <List className="h-4 w-4" />
@@ -73,7 +73,7 @@ const MenuBar: React.FC<{
         </button>
         <button
           onClick={() => onInsertMarkdown('1. ')}
-          className="p-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+          className="p-1.5 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
           title="Numbered List"
         >
           <ListOrdered className="h-4 w-4" />
@@ -82,7 +82,7 @@ const MenuBar: React.FC<{
         <div className="w-px h-4 bg-border mx-1" /> {/* Separator */}
         <button
           onClick={() => onInsertMarkdown('[[')}
-          className="p-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+          className="p-1.5 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
           title="Note Link"
         >
           <Link className="h-4 w-4" />
@@ -94,7 +94,7 @@ const MenuBar: React.FC<{
         {showBackButton && onNavigateBack && (
           <button
             onClick={onNavigateBack}
-          className="p-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+          className="p-1.5 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
             title="Go back to previous note"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -102,7 +102,7 @@ const MenuBar: React.FC<{
         )}
         <button
           onClick={onTogglePreview}
-          className="p-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+          className="p-1.5 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
           title={isPreview ? "Show Editor" : "Show Preview"}
         >
           {isPreview ? <Code className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -330,7 +330,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
           spellCheck="false"
         />
         {showNoteSuggestions && noteSuggestions.length > 0 && (
-          <div className="absolute z-10 w-64 max-h-48 overflow-y-auto bg-popover border border-border rounded-sm shadow-md">
+          <div className="absolute z-10 w-64 max-h-48 overflow-y-auto bg-popover border border-border rounded-md shadow-none">
             {noteSuggestions.map(note => (
               <button
                 key={note.id}

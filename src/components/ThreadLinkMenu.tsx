@@ -96,7 +96,7 @@ export const ThreadLinkMenu: React.FC<ThreadLinkMenuProps> = ({
 
   return (
     <div className="absolute bottom-full mb-2 bg-popover border border-border 
-                    rounded-sm shadow-md overflow-hidden z-50 min-w-[300px]">
+                    rounded-md shadow-none overflow-hidden z-50 min-w-[300px]">
       <div className="p-2 border-b border-border">
         <Input
           ref={inputRef}
@@ -122,7 +122,7 @@ export const ThreadLinkMenu: React.FC<ThreadLinkMenuProps> = ({
                 key={thread.id}
                 ref={index === selectedIndex ? selectedItemRef : undefined}
                 onSelect={() => onSelect(thread.name)}
-                className={`flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm cursor-default
+                className={`flex items-center gap-2 px-2 py-1.5 text-sm rounded-md cursor-default
                          ${index === selectedIndex ? 'bg-accent text-accent-foreground' : ''}
                          hover:bg-accent hover:text-accent-foreground`}
               >

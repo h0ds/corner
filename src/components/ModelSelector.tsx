@@ -64,7 +64,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
       onValueChange={onModelChange}
       disabled={disabled}
     >
-      <SelectTrigger className="w-[180px] rounded-sm text-sm">
+      <SelectTrigger className="w-[180px] rounded-md text-sm">
         <SelectValue>
           <div className="flex items-center gap-2">
             <ModelIcon modelId={selectedModel} className="w-4 h-4" />

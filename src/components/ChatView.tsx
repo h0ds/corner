@@ -93,7 +93,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   <button
                     onClick={onStopDiscussion}
                     className="p-2 bg-destructive text-destructive-foreground 
-                            hover:bg-destructive/90 rounded-sm transition-colors"
+                            hover:bg-destructive/90 rounded-md transition-colors"
                   >
                     <Square className="h-4 w-4" />
                   </button>
@@ -110,7 +110,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 <button
                   onClick={onOpenModelSelect}
                   className="p-2 bg-background text-muted-foreground hover:text-foreground 
-                           border border-border/50 hover:bg-accent rounded-sm transition-colors 
+                           border border-border/50 hover:bg-accent rounded-md transition-colors 
                            cursor-pointer"
                 >
                   <ModelIcon modelId={selectedModel} className="h-5 w-5" />

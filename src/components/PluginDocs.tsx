@@ -13,7 +13,7 @@ interface PluginDocsProps {
 }
 
 const CodeBlock = ({ children, className }: { children: string, className?: string }) => (
-  <div className="relative group bg-[#282c34] rounded-sm">
+  <div className="relative group bg-[#282c34] rounded-md">
     <SyntaxHighlighter
       language="typescript"
       style={oneDark}

@@ -5,7 +5,7 @@ import { ThreadTabs } from './ThreadTabs';
 import { Thread, NoteThread, ChatThread } from '@/types';
 import { Plus, StickyNote } from 'lucide-react';
 
-interface ThreadContainerProps {
+interface SidebarProps {
   threads: Thread[];
   activeThreadId: string | null;
   onThreadSelect: (threadId: string) => void;
@@ -43,7 +43,7 @@ function generateUniqueName(baseName: string, existingThreads: Thread[]): string
   return `New note ${maxNumber + 1}`;
 }
 
-export const ThreadContainer: React.FC<ThreadContainerProps> = ({
+export const Sidebar: React.FC<SidebarProps> = ({
   threads,
   activeThreadId,
   onThreadSelect,
@@ -101,8 +101,8 @@ export const ThreadContainer: React.FC<ThreadContainerProps> = ({
   }, [threads, onNewNote]);
 
   return (
-    <div className="absolute inset-0 border-r border-border bg-card flex flex-col rounded-xl">
-      <div className="mt-12">
+    <div className="absolute inset-0 bg-card flex flex-col rounded-xl">
+      <div className="mt-1">
         <ThreadTabs
           activeTab={activeTab}
           onTabChange={setActiveTab}

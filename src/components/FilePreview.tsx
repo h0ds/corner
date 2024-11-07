@@ -66,7 +66,7 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
             <img 
               src={content} 
               alt={fileName}
-              className="rounded-sm max-h-[300px] object-contain"
+              className="rounded-md max-h-[300px] object-contain"
             />
           </div>
         ) : isPdf ? (
@@ -74,12 +74,12 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
             <iframe
               src={content}
               title={fileName}
-              className="w-full h-full rounded-sm"
+              className="w-full h-full rounded-md"
             />
           </div>
         ) : (
           <div className="relative">
-            <pre className="text-sm whitespace-pre-wrap overflow-auto max-h-[300px] bg-background p-4 rounded-sm">
+            <pre className="text-sm whitespace-pre-wrap overflow-auto max-h-[300px] bg-background p-4 rounded-md">
               {content}
             </pre>
             <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-background to-transparent pointer-events-none" />

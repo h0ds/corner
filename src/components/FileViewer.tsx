@@ -83,9 +83,9 @@ export const FileViewer: React.FC<FileViewerProps> = ({
                   {sortedFiles.map((file, index) => (
                     <div
                       key={index}
-                      className="flex items-center gap-3 p-3 rounded-sm hover:bg-accent group"
+                      className="flex items-center gap-3 p-3 rounded-md hover:bg-accent group"
                     >
-                      <div className="p-2 bg-primary/10 rounded-sm">
+                      <div className="p-2 bg-primary/10 rounded-md">
                         {getFileIcon(file.name)}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -105,7 +105,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({
                             e.stopPropagation();
                             setPreviewFile(file);
                           }}
-                          className="p-1 hover:bg-background rounded-sm"
+                          className="p-1 hover:bg-background rounded-md"
                           title="Preview file"
                         >
                           <Eye className="h-4 w-4" />

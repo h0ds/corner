@@ -86,7 +86,7 @@ export function ThemeToggle() {
             {Object.values(customTheme.colors).slice(0, 2).map((color, i) => (
               <div
                 key={i}
-                className="w-2 h-2 rounded-sm"
+                className="w-2 h-2 rounded-md"
                 style={{ backgroundColor: color }}
               />
             ))}
@@ -165,7 +165,7 @@ export function ThemeToggle() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="default" className="rounded-sm w-[200px] justify-start">
+        <Button variant="outline" size="default" className="rounded-md w-[200px] justify-start">
           {getIcon()}
           <span className="-mb-1 ml-2">
             {customThemes.find(t => sanitizeCssVar(t.name) === theme)?.name || 
@@ -175,7 +175,7 @@ export function ThemeToggle() {
           </span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="rounded-sm">
+      <DropdownMenuContent align="end" className="rounded-md">
         <DropdownMenuItem onClick={() => handleThemeChange("light")} className="text-sm">
           <Sun className="h-4 w-4 mr-2" />
           <span className="-mb-1">Light</span>
@@ -203,7 +203,7 @@ export function ThemeToggle() {
                     {Object.values(customTheme.colors).map((color, i) => (
                       <div
                         key={i}
-                        className="w-2 h-2 rounded-sm"
+                        className="w-2 h-2 rounded-md"
                         style={{ backgroundColor: color }}
                       />
                     ))}

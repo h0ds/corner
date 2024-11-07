@@ -220,7 +220,7 @@ const ColorPickerModal: React.FC<{
     >
       <div 
         className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 
-                 bg-background border border-border rounded-sm shadow-lg p-6 min-w-[280px]"
+                 bg-background border border-border rounded-md shadow-lg p-6 min-w-[280px]"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex flex-col gap-4">
@@ -248,7 +248,7 @@ const ColorPickerModal: React.FC<{
                   key={name}
                   onClick={() => onColorSelect(color)}
                   className={cn(
-                    "w-10 h-10 rounded-sm relative group",
+                    "w-10 h-10 rounded-md relative group",
                     "hover:scale-110 transition-transform",
                     !color && "bg-background",
                     name === 'white' && "border border-border",
@@ -259,7 +259,7 @@ const ColorPickerModal: React.FC<{
                   <span className="sr-only">{name} color</span>
                   <span className="absolute inset-0 flex items-center justify-center opacity-0 
                                  group-hover:opacity-100 transition-opacity bg-background/80 
-                                 text-xs font-medium rounded-sm">
+                                 text-xs font-medium rounded-md">
                     {name.charAt(0).toUpperCase() + name.slice(1)}
                   </span>
                 </button>
@@ -269,7 +269,7 @@ const ColorPickerModal: React.FC<{
             <button
               onClick={() => onColorSelect('')}
               className="w-full py-2 text-xs text-muted-foreground hover:text-foreground 
-                       transition-colors border border-border rounded-sm hover:bg-accent"
+                       transition-colors border border-border rounded-md hover:bg-accent"
             >
               Reset Color
             </button>
@@ -367,7 +367,7 @@ const SortableThreadItem = ({
             <div className="absolute -bottom-0.5 left-0 right-0 h-0.5 bg-primary rounded-full" />
           )}
           {isThisItemDragging && (
-            <div className="absolute inset-0 bg-primary/10 border-2 border-primary rounded-sm pointer-events-none" />
+            <div className="absolute inset-0 bg-primary/10 border-2 border-primary rounded-md pointer-events-none" />
           )}
         </motion.div>
       </ContextMenuTrigger>
@@ -435,7 +435,7 @@ const SortableThreadItem = ({
         >
           <div 
             className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 
-                     bg-background border border-border rounded-sm shadow-lg p-4"
+                     bg-background border border-border rounded-md shadow-lg p-4"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex flex-col gap-4">
@@ -486,7 +486,7 @@ const IconPicker: React.FC<{
           key={icon}
           onClick={() => onIconSelect(icon)}
           className={cn(
-            "w-8 h-8 rounded-sm flex items-center justify-center",
+            "w-8 h-8 rounded-md flex items-center justify-center",
             "hover:bg-accent hover:text-accent-foreground transition-colors",
             currentIcon === icon && "bg-accent text-accent-foreground"
           )}

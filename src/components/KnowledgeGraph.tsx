@@ -188,12 +188,9 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
   } as const;
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-background" ref={containerRef}>
+    <div className="flex-1 flex flex-col h-full" ref={containerRef}>
       <div className="border-b border-border p-3">
         <h2 className="text-sm font-medium">Knowledge Graph</h2>
-        <p className="text-xs text-muted-foreground mt-1">
-          {nodes.length} {nodes.length === 1 ? 'node' : 'nodes'}, {edges.length} {edges.length === 1 ? 'connection' : 'connections'}
-        </p>
       </div>
       <div className="flex-1 relative">
         {dimensions.width > 0 && dimensions.height > 0 && (
@@ -215,6 +212,11 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
             }}
           />
         )}
+      </div>
+      <div className="border-t border-border p-3">
+        <p className="text-xs text-muted-foreground">
+          {nodes.length} {nodes.length === 1 ? 'node' : 'nodes'}, {edges.length} {edges.length === 1 ? 'connection' : 'connections'}
+        </p>
       </div>
     </div>
   );

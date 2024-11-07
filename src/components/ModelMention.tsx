@@ -87,7 +87,7 @@ export const ModelMention: React.FC<ModelMentionProps> = ({
 
   return (
     <div className="absolute bottom-full mb-2 bg-popover border border-border 
-                   rounded-sm shadow-md overflow-hidden z-50 min-w-[200px]">
+                   rounded-md shadow-none overflow-hidden z-50 min-w-[200px]">
       <Command className="border-none bg-transparent p-0">
         <Command.List 
           ref={listRef}
@@ -98,7 +98,7 @@ export const ModelMention: React.FC<ModelMentionProps> = ({
               key={model.id}
               ref={index === selectedIndex ? selectedItemRef : undefined}
               onSelect={() => onSelect(model.id)}
-              className={`flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm cursor-default
+              className={`flex items-center gap-2 px-2 py-1.5 text-sm rounded-md cursor-default
                        ${index === selectedIndex ? 'bg-accent text-accent-foreground' : ''}
                        hover:bg-accent hover:text-accent-foreground`}
             >

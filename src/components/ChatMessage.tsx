@@ -77,21 +77,21 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             
             if (inline) {
               return (
-                <code className="bg-muted px-1.5 py-0.5 rounded-sm text-sm" {...props}>
+                <code className="bg-muted px-1.5 py-0.5 rounded-md text-sm" {...props}>
                   {children}
                 </code>
               );
             }
 
             return (
-              <div className="relative group my-4 bg-[#282c34] rounded-sm">
+              <div className="relative group my-4 bg-[#282c34] rounded-md">
                 <div 
                   className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 
                             transition-opacity"
                 >
                   <button
                     onClick={() => navigator.clipboard.writeText(String(children))}
-                    className="p-1.5 hover:bg-accent/10 rounded-sm text-muted-foreground 
+                    className="p-1.5 hover:bg-accent/10 rounded-md text-muted-foreground 
                               hover:text-accent-foreground"
                   >
                     <Copy className="h-4 w-4" />
@@ -218,7 +218,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
           Comparing responses for: "{comparison.message}"
         </div>
         <div className="flex gap-4">
-          <div className="flex-1 border border-border rounded-sm p-4">
+          <div className="flex-1 border border-border rounded-md p-4">
             <div className="flex items-center gap-2 mb-2">
               <ModelIcon modelId={comparison.model1.id} className="h-4 w-4" />
               <span className="text-sm font-medium">
@@ -236,7 +236,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
               </ReactMarkdown>
             </div>
           </div>
-          <div className="flex-1 border border-border rounded-sm p-4">
+          <div className="flex-1 border border-border rounded-md p-4">
             <div className="flex items-center gap-2 mb-2">
               <ModelIcon modelId={comparison.model2.id} className="h-4 w-4" />
               <span className="text-sm font-medium">
@@ -269,7 +269,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
           <Tooltip>
             <TooltipTrigger asChild>
               <div className={cn(
-                "w-8 h-8 flex items-center justify-center rounded-sm shrink-0",
+                "w-8 h-8 flex items-center justify-center rounded-md shrink-0",
                 role === 'assistant' ? "bg-accent text-accent-foreground" : "bg-accent text-accent-foreground"
               )}>
                 {role === 'assistant' && modelId && (
@@ -306,7 +306,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
               <TooltipTrigger asChild>
                 <button
                   onClick={copyToClipboard}
-                  className="p-1.5 hover:bg-accent rounded-sm text-muted-foreground
+                  className="p-1.5 hover:bg-accent rounded-md text-muted-foreground
                             transition-colors opacity-0 group-hover/message:opacity-100"
                 >
                   {copied ? (
@@ -328,7 +328,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         "flex-0 space-y-2 overflow-hidden text-sm selectable-text",
         "max-w-[80%] w-fit",
         role === 'user' && "text-right ml-auto",
-        role === 'user' ? "bg-primary text-primary-foreground px-3 py-2 rounded-sm" : "border border-border/50 rounded-sm px-3 py-2 "
+        role === 'user' ? "bg-primary text-primary-foreground px-3 py-2 rounded-md" : "border border-border/50 rounded-md px-3 py-2 "
       )}>
         {renderContent()}
       </div>

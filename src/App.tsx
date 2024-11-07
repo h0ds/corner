@@ -32,13 +32,13 @@ import { nanoid } from 'nanoid';
 import { Message, Thread, NoteThread } from '@/types';
 import { initializeCache, cacheFile, CachedFile } from '@/lib/fileCache';
 import { KeyboardShortcut, loadShortcuts, matchesShortcut } from '@/lib/shortcuts';
-import { Features } from './components/Features';
+import { Footer } from './components/Footer';
 import { ResizeObserver } from './components/ResizeObserver';
 import { Plugin, loadPlugins } from '@/lib/plugins';
 import { Square } from 'lucide-react';
 import { ThreadHeader } from './components/ThreadHeader';
 import { cn } from '@/lib/utils';
-import { ThreadContainer } from './components/ThreadContainer';
+import { Sidebar } from './components/Sidebar';
 import { NoteEditor } from './components/NoteEditor';
 import { ChatView } from './components/ChatView';
 import { KnowledgeGraph } from './components/KnowledgeGraph';
@@ -69,7 +69,7 @@ const ComparisonView: React.FC<{
         Comparing responses for: "{message}"
       </div>
       <div className="flex gap-4">
-        <div className="flex-1 border border-border rounded-sm p-4">
+        <div className="flex-1 border border-border rounded-md p-4">
           <div className="flex items-center gap-2 mb-2">
             <ModelIcon modelId={model1Id} className="h-4 w-4" />
             <span className="text-sm font-medium">
@@ -80,7 +80,7 @@ const ComparisonView: React.FC<{
             {model1Response}
           </div>
         </div>
-        <div className="flex-1 border border-border rounded-sm p-4">
+        <div className="flex-1 border border-border rounded-md p-4">
           <div className="flex items-center gap-2 mb-2">
             <ModelIcon modelId={model2Id} className="h-4 w-4" />
             <span className="text-sm font-medium">
@@ -928,213 +928,202 @@ function App() {
   }, []);
 
   return (
-    <div className="flex h-screen bg-gray-500 border-t">
-      {/* Sidebar with animation */}
-      <motion.div
-        initial={false}
-        animate={{
-          width: sidebarVisible ? Math.max(250, sidebarWidth) : '0px',
-          opacity: sidebarVisible ? 1 : 0,
-        }}
-        transition={{ duration: 0.2 }}
-        className="relative shrink-0 m-4 mr-2"
-        style={{
-          minWidth: sidebarVisible ? '250px' : '0px',
-        }}
-      >
-        {sidebarVisible && (
-          <ResizeObserver
-            onResize={(entry) => {
-              const width = entry.contentRect.width;
-              setSidebarWidth(width);
-              
-              if (width < 250 || window.innerWidth < 500) {
-                setSidebarVisible(false);
-              }
-            }}
-          >
-            <div className="h-full" style={{ width: '100%' }}>
-              <ThreadContainer
-                threads={threads}
-                activeThreadId={activeThreadId}
-                onThreadSelect={handleThreadSelect}
-                onNewThread={() => handleNewThread(false)}
-                onNewNote={handleNewNote}
-                onDeleteThread={handleDeleteThread}
-                onRenameThread={handleRenameThread}
-                onReorderThreads={handleReorderThreads}
-                onTogglePin={handleTogglePin}
-                onColorChange={handleThreadColorChange}
-                onIconChange={handleThreadIconChange}
-                onTextColorChange={handleThreadTextColorChange}
-                initialTab={activeTab}
-              />
-            </div>
-          </ResizeObserver>
-        )}
-      </motion.div>
-
-      {/* Toggle button with keyboard shortcut tooltip and Shortcuts */}
-      <Features 
-        sidebarVisible={sidebarVisible}
-        onSidebarToggle={handleSidebarToggle}
-        onOpenShortcuts={() => {
-          setPreferenceTab('shortcuts');
-          setShowPreferences(true);
-        }}
-        files={activeThread?.files || []}
-        threads={threads}
-        onFileSelect={handleFileUpload}
-        onFileDelete={handleFileDelete}
-        onShowKnowledgeGraph={() => setView('graph')}
-        onShowSearch={() => setShowSearch(true)}
-      />
-      
-      {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0 m-4 ml-2 bg-white rounded-xl">
-        <div className="flex flex-col h-full relative">
-          {activeThread && !activeThread.isNote && view !== 'graph' && (
-            <ThreadHeader
-              thread={activeThread}
-              onRename={(newName) => handleRenameThread(activeThread.id, newName)}
-              onIconChange={(newIcon) => handleThreadIconChange(activeThread.id, newIcon)}
-              isCollapsed={isHeaderCollapsed}
-              onToggleCollapse={() => setIsHeaderCollapsed(!isHeaderCollapsed)}
-            />
-          )}
-          <main 
-            ref={chatContainerRef}
-            className={cn(
-              "flex-1 overflow-y-auto min-w-0",
-              activeThread?.isNote ? "mt-0" : (isHeaderCollapsed || view === 'graph' ? "mt-0" : "mt-11"),
-              "transition-spacing duration-200", 
-              !activeThread?.isNote && view === 'thread' && "flex flex-col h-full"
-            )}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {view === 'graph' ? (
-              <KnowledgeGraph 
-                threads={threads} 
-                onNodeClick={handleKnowledgeGraphNodeClick}
-              />
-            ) : activeThread ? (
-              activeThread.isNote ? (
-                <NoteEditor 
-                  note={activeThread}
-                  onUpdate={handleNoteUpdate}
-                  initialContent={activeThread.content}
-                  allNotes={threads.filter((t): t is NoteThread => t.isNote === true)}
-                  onNavigateBack={handleNavigateBack}
-                  navigationStack={noteNavigationStack}
-                />
-              ) : (
-                <ChatView
-                  messages={messages}
-                  loading={loading}
-                  clearHistoryShortcut={clearHistoryShortcut}
-                  isDiscussing={isDiscussing}
-                  selectedModel={selectedModel}
-                  isDiscussionPaused={isDiscussionPaused}
-                  onStopDiscussion={handleStopDiscussion}
-                  onOpenModelSelect={() => {
-                    setPreferenceTab('models');
-                    setShowPreferences(true);
-                  }}
-                  onSendMessage={handleSendMessage}
-                  onCompareModels={handleCompareModels}
-                  onStartDiscussion={handleStartDiscussion}
-                  onClearThread={clearCurrentThread}
-                  onShowPreferences={() => setShowPreferences(true)}
-                />
-              )
-            ) : (
-              <div className="text-center text-muted-foreground/40 mt-1 text-sm tracking-tighter">
-                Select a thread or note to begin
-              </div>
-            )}
-          </main>
-        </div>
+    <div className="relative flex h-screen">
+      {/* Background image */}
+      <div className="fixed inset-0 z-0">
+        <img
+          src="https://images.unsplash.com/photo-1726610930930-0e1af5f2d038?q=80&w=2342&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+          alt="Background"
+          className="object-cover w-full h-full"
+        />
       </div>
 
-      <Preferences
-        isOpen={showPreferences}
-        onClose={() => setShowPreferences(false)}
-        selectedModel={selectedModel}
-        onModelChange={setSelectedModel}
-        initialTab={preferenceTab}
-        plugins={plugins}
-        onPluginChange={setPlugins}
+      {/* Frosted glass overlay */}
+      <div 
+        className="fixed inset-0 z-10 backdrop-blur-md bg-white/30"
       />
 
-      {/* Add FilePreview dialog */}
-      {showFilePreview && previewFile && (
-        <Dialog open={showFilePreview} onOpenChange={setShowFilePreview}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{previewFile.name}</DialogTitle>
-            </DialogHeader>
-            <FilePreview
-              fileName={previewFile.name}
-              content={previewFile.content}
-              showToggle={false}
-              defaultExpanded={true}
-            />
-          </DialogContent>
-        </Dialog>
-      )}
-
-      {/* Add FileLinkMenu dialog */}
-      {showFileLinkMenu && activeThread?.isNote && (
-        <Dialog open={showFileLinkMenu} onOpenChange={setShowFileLinkMenu}>
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle>Link File</DialogTitle>
-            </DialogHeader>
-            <FileLinkMenu
-              query={fileLinkQuery}
-              files={activeThread.files}
-              onSelect={handleFileLinkSelect}
-              onClose={() => setShowFileLinkMenu(false)}
-            />
-          </DialogContent>
-        </Dialog>
-      )}
-
-      {showSearch && (
-        <SearchPanel
-          threads={threads}
-          onClose={() => setShowSearch(false)}
-          onThreadSelect={(threadId) => {
-            const thread = threads.find(t => t.id === threadId);
-            if (thread) {
-              setActiveThreadId(threadId);
-              setView(thread.isNote ? 'note' : 'thread');
-            }
-            setShowSearch(false);
+      {/* Main content */}
+      <div className="relative z-20 flex w-full h-screen border-t">
+        {/* Sidebar with animation */}
+        <motion.div
+          initial={false}
+          animate={{
+            width: sidebarVisible ? Math.max(250, sidebarWidth) : '0px',
+            opacity: sidebarVisible ? 1 : 0,
           }}
-        />
-      )}
+          transition={{ duration: 0.2 }}
+          className={`relative shrink-0 ${sidebarVisible ? 'm-4 mr-2' : ''}`}
+          style={{
+            minWidth: sidebarVisible ? '250px' : '0px',
+          }}
+        >
+          {sidebarVisible && (
+            <ResizeObserver
+              onResize={(entry) => {
+                const width = entry.contentRect.width;
+                setSidebarWidth(width);
+                
+                if (width < 250 || window.innerWidth < 500) {
+                  setSidebarVisible(false);
+                }
+              }}
+            >
+              <div className="h-full relative" style={{ width: '100%' }}>
+                <Sidebar
+                  threads={threads}
+                  activeThreadId={activeThreadId}
+                  onThreadSelect={handleThreadSelect}
+                  onNewThread={() => handleNewThread(false)}
+                  onNewNote={handleNewNote}
+                  onDeleteThread={handleDeleteThread}
+                  onRenameThread={handleRenameThread}
+                  onReorderThreads={handleReorderThreads}
+                  onTogglePin={handleTogglePin}
+                  onColorChange={handleThreadColorChange}
+                  onIconChange={handleThreadIconChange}
+                  onTextColorChange={handleThreadTextColorChange}
+                  initialTab={activeTab}
+                />
+                <Footer 
+                  files={activeThread?.files || []}
+                  threads={threads}
+                  onFileSelect={handleFileUpload}
+                  onFileDelete={handleFileDelete}
+                  onShowKnowledgeGraph={() => setView('graph')}
+                  onShowSearch={() => setShowSearch(true)}
+                  onShowPreferences={() => setShowPreferences(true)}
+                />
+              </div>
+            </ResizeObserver>
+          )}
+        </motion.div>
 
-      {/* Settings button in bottom left */}
-      {sidebarVisible && (
-        <div className="fixed bottom-8 left-8 z-50">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => setShowPreferences(true)}
-                  className="p-2 bg-background hover:bg-accent rounded-sm transition-colors border border-border"
-                >
-                  <Settings className="h-4 w-4" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="right" className="text-xs">
-                Settings
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+        {/* Main content */}
+        <div className="flex-1 flex flex-col min-w-0 m-4 bg-white rounded-xl backdrop-blur-sm">
+          <div className="flex flex-col h-full relative">
+            {activeThread && !activeThread.isNote && view !== 'graph' && (
+              <ThreadHeader
+                thread={activeThread}
+                onRename={(newName) => handleRenameThread(activeThread.id, newName)}
+                onIconChange={(newIcon) => handleThreadIconChange(activeThread.id, newIcon)}
+                isCollapsed={isHeaderCollapsed}
+                onToggleCollapse={() => setIsHeaderCollapsed(!isHeaderCollapsed)}
+              />
+            )}
+            <main 
+              ref={chatContainerRef}
+              className={cn(
+                "flex-1 overflow-y-auto min-w-0",
+                activeThread?.isNote ? "mt-0" : (isHeaderCollapsed || view === 'graph' ? "mt-0" : "mt-11"),
+                "transition-spacing duration-200", 
+                !activeThread?.isNote && view === 'thread' && "flex flex-col h-full"
+              )}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {view === 'graph' ? (
+                <KnowledgeGraph 
+                  threads={threads} 
+                  onNodeClick={handleKnowledgeGraphNodeClick}
+                />
+              ) : activeThread ? (
+                activeThread.isNote ? (
+                  <NoteEditor 
+                    note={activeThread}
+                    onUpdate={handleNoteUpdate}
+                    initialContent={activeThread.content}
+                    allNotes={threads.filter((t): t is NoteThread => t.isNote === true)}
+                    onNavigateBack={handleNavigateBack}
+                    navigationStack={noteNavigationStack}
+                  />
+                ) : (
+                  <ChatView
+                    messages={messages}
+                    loading={loading}
+                    clearHistoryShortcut={clearHistoryShortcut}
+                    isDiscussing={isDiscussing}
+                    selectedModel={selectedModel}
+                    isDiscussionPaused={isDiscussionPaused}
+                    onStopDiscussion={handleStopDiscussion}
+                    onOpenModelSelect={() => {
+                      setPreferenceTab('models');
+                      setShowPreferences(true);
+                    }}
+                    onSendMessage={handleSendMessage}
+                    onCompareModels={handleCompareModels}
+                    onStartDiscussion={handleStartDiscussion}
+                    onClearThread={clearCurrentThread}
+                    onShowPreferences={() => setShowPreferences(true)}
+                  />
+                )
+              ) : (
+                <div className="text-center text-muted-foreground/40 mt-1 text-sm tracking-tighter">
+                  Select a thread or note to begin
+                </div>
+              )}
+            </main>
+          </div>
         </div>
-      )}
+
+        <Preferences
+          isOpen={showPreferences}
+          onClose={() => setShowPreferences(false)}
+          selectedModel={selectedModel}
+          onModelChange={setSelectedModel}
+          initialTab={preferenceTab}
+          plugins={plugins}
+          onPluginChange={setPlugins}
+        />
+
+        {/* Add FilePreview dialog */}
+        {showFilePreview && previewFile && (
+          <Dialog open={showFilePreview} onOpenChange={setShowFilePreview}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{previewFile.name}</DialogTitle>
+              </DialogHeader>
+              <FilePreview
+                fileName={previewFile.name}
+                content={previewFile.content}
+                showToggle={false}
+                defaultExpanded={true}
+              />
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {/* Add FileLinkMenu dialog */}
+        {showFileLinkMenu && activeThread?.isNote && (
+          <Dialog open={showFileLinkMenu} onOpenChange={setShowFileLinkMenu}>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Link File</DialogTitle>
+              </DialogHeader>
+              <FileLinkMenu
+                query={fileLinkQuery}
+                files={activeThread.files}
+                onSelect={handleFileLinkSelect}
+                onClose={() => setShowFileLinkMenu(false)}
+              />
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {showSearch && (
+          <SearchPanel
+            threads={threads}
+            onClose={() => setShowSearch(false)}
+            onThreadSelect={(threadId) => {
+              const thread = threads.find(t => t.id === threadId);
+              if (thread) {
+                setActiveThreadId(threadId);
+                setView(thread.isNote ? 'note' : 'thread');
+              }
+              setShowSearch(false);
+            }}
+          />
+        )}
+      </div>
     </div>
   );
 }
