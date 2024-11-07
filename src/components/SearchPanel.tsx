@@ -110,7 +110,7 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({
   return (
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[550px] p-0 gap-0 bg-background backdrop-blur-xl shadow-2xl border border-border/50">
-        <div className="p-3 border-b border-border/50">
+        <div className={cn("p-3", query && "border-b border-border/50")}>
           <div className="flex items-center gap-2 px-2">
             <Command className="h-4 w-4 text-muted-foreground" />
             <Input
@@ -124,39 +124,43 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({
           </div>
         </div>
 
-        <div className="max-h-[400px] overflow-y-auto py-2">
-          {results.length === 0 && query && (
-            <div className="text-center text-sm text-muted-foreground py-8">
-              No results found
-            </div>
-          )}
-
-          {results.map((result, index) => (
-            <button
-              key={`${result.threadId}-${result.messageIndex || index}`}
-              onClick={() => handleResultClick(result.threadId)}
-              onMouseEnter={() => setSelectedIndex(index)}
-              className={cn(
-                "w-full text-left px-3 py-2 text-sm",
-                "transition-colors",
-                selectedIndex === index ? "bg-accent text-accent-foreground" : "hover:bg-accent/50"
-              )}
-            >
-              <div className="flex items-center gap-2">
-                {result.type === 'note' ? (
-                  <FileText className="h-4 w-4 shrink-0" />
-                ) : (
-                  <MessageSquare className="h-4 w-4 shrink-0" />
-                )}
-                <div className="flex flex-col min-w-0">
-                  <span className="font-medium truncate">{result.threadName}</span>
-                  <span className="text-xs text-muted-foreground truncate">
-                    {result.content}
-                  </span>
+        <div className={cn("max-h-[400px] overflow-y-auto", query && "py-2")}>
+          {query ? (
+            <>
+              {results.length === 0 ? (
+                <div className="text-center text-sm text-muted-foreground py-8">
+                  No results found
                 </div>
-              </div>
-            </button>
-          ))}
+              ) : (
+                results.map((result, index) => (
+                  <button
+                    key={`${result.threadId}-${result.messageIndex || index}`}
+                    onClick={() => handleResultClick(result.threadId)}
+                    onMouseEnter={() => setSelectedIndex(index)}
+                    className={cn(
+                      "w-full text-left px-3 py-2 text-sm",
+                      "transition-colors", 
+                      selectedIndex === index ? "bg-accent text-accent-foreground" : "hover:bg-accent/50"
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      {result.type === 'note' ? (
+                        <FileText className="h-4 w-4 shrink-0" />
+                      ) : (
+                        <MessageSquare className="h-4 w-4 shrink-0" />
+                      )}
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-medium truncate">{result.threadName}</span>
+                        <span className="text-xs text-muted-foreground truncate">
+                          {result.content}
+                        </span>
+                      </div>
+                    </div>
+                  </button>
+                ))
+              )}
+            </>
+          ) : null}
         </div>
 
         {results.length > 0 && (

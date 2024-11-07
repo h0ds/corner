@@ -1116,7 +1116,7 @@ function App() {
       )}
 
       {/* Settings button in bottom left */}
-      <div className="fixed bottom-4 left-4 z-50">
+      <div className="fixed bottom-2 left-2 z-50">
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
