@@ -45,6 +45,7 @@ import { KnowledgeGraph } from './components/KnowledgeGraph';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FileLinkMenu } from './components/FileLinkMenu';
 import { SearchPanel } from './components/SearchPanel';
+import { Settings } from 'lucide-react';
 
 interface ApiResponse {
   content?: string;
@@ -124,6 +125,7 @@ function App() {
   const [showFileLinkMenu, setShowFileLinkMenu] = useState(false);
   const [fileLinkQuery, setFileLinkQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
+  const [noteNavigationStack, setNoteNavigationStack] = useState<string[]>([]);
 
   // Initialize cache on mount
   useEffect(() => {
@@ -868,16 +870,43 @@ function App() {
     setShowFileLinkMenu(false);
   };
 
-  // Add this effect near other useEffect hooks
+  // Handle note navigation from wiki-links
   useEffect(() => {
     const handleSelectNote = (event: CustomEvent<{ noteId: string }>) => {
       const { noteId } = event.detail;
+      
+      // Add current note to history before switching
+      if (activeThreadId && threads.find(t => t.id === activeThreadId)?.isNote) {
+        setNoteNavigationStack(prev => [...prev, activeThreadId]);
+      }
+      
       setActiveThreadId(noteId);
     };
 
     window.addEventListener('select-note', handleSelectNote as any);
     return () => window.removeEventListener('select-note', handleSelectNote as any);
-  }, []);
+  }, [activeThreadId, threads]);
+
+  // Clear navigation stack when closing notes
+  useEffect(() => {
+    if (!activeThreadId || !threads.find(t => t.id === activeThreadId)?.isNote) {
+      setNoteNavigationStack([]);
+    }
+  }, [activeThreadId, threads]);
+
+  // Handle back navigation
+  const handleNavigateBack = () => {
+    if (noteNavigationStack.length > 0) {
+      // Get the last note from history
+      const newStack = [...noteNavigationStack];
+      const lastNoteId = newStack.pop();
+      setNoteNavigationStack(newStack);
+      
+      if (lastNoteId) {
+        setActiveThreadId(lastNoteId);
+      }
+    }
+  };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -988,12 +1017,8 @@ function App() {
                   onUpdate={handleNoteUpdate}
                   initialContent={activeThread.content}
                   allNotes={threads.filter((t): t is NoteThread => t.isNote === true)}
-                  onFileClick={(file) => {
-                    setShowFilePreview(true);
-                    setPreviewFile(file);
-                  }}
-                  files={activeThread.files}
-                  onCreateNote={handleCreateNote}
+                  onNavigateBack={handleNavigateBack}
+                  navigationStack={noteNavigationStack}
                 />
               ) : (
                 <ChatView
@@ -1082,6 +1107,25 @@ function App() {
           }}
         />
       )}
+
+      {/* Settings button in bottom left */}
+      <div className="fixed bottom-4 left-4 z-50">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setShowPreferences(true)}
+                className="p-2 bg-background hover:bg-accent rounded-sm transition-colors border border-border"
+              >
+                <Settings className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="text-xs">
+              Settings
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
     </div>
   );
 }

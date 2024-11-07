@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { PanelLeft, PanelLeftClose, Settings, FileText, Network, Upload, Search } from 'lucide-react';
+import { PanelLeft, PanelLeftClose, FileText, Network, Search } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -7,13 +7,11 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { FileMenu } from './FileMenu';
-import { FileUploader } from './FileUploader';
 import { FileAttachment, Thread } from '@/types';
 
 interface FeaturesProps {
   sidebarVisible: boolean;
   onSidebarToggle: () => void;
-  onOpenShortcuts: () => void;
   files: FileAttachment[];
   threads: Thread[];
   onFileSelect: (file: File) => void;
@@ -25,7 +23,6 @@ interface FeaturesProps {
 export const Features: React.FC<FeaturesProps> = ({
   sidebarVisible,
   onSidebarToggle,
-  onOpenShortcuts,
   files,
   onFileSelect,
   onFileDelete,
@@ -33,7 +30,6 @@ export const Features: React.FC<FeaturesProps> = ({
   onShowSearch,
 }) => {
   const [showFileMenu, setShowFileMenu] = useState(false);
-  const [showFileUploader, setShowFileUploader] = useState(false);
 
   return (
     <>
@@ -80,24 +76,6 @@ export const Features: React.FC<FeaturesProps> = ({
               </Tooltip>
             </TooltipProvider>
 
-
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => setShowFileUploader(true)}
-                    className="p-2 bg-background hover:bg-accent 
-                              rounded-sm transition-colors border border-border"
-                  >
-                    <Upload className="h-4 w-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="right" className="text-xs">
-                  Upload File
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -130,39 +108,16 @@ export const Features: React.FC<FeaturesProps> = ({
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={onOpenShortcuts}
-                    className="p-2 bg-background hover:bg-accent 
-                              rounded-sm transition-colors border border-border"
-                  >
-                    <Settings className="h-4 w-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="right" className="text-xs">
-                  Settings
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-
           </>
         )}
       </div>
-
-      <FileUploader
-        isOpen={showFileUploader}
-        onClose={() => setShowFileUploader(false)}
-        onFileSelect={onFileSelect}
-      />
 
       <FileMenu
         isOpen={showFileMenu}
         onClose={() => setShowFileMenu(false)}
         files={files}
         onFileDelete={onFileDelete}
+        onFileSelect={onFileSelect}
       />
     </>
   );

@@ -10,7 +10,7 @@ interface NoteEditorProps {
   initialContent: string;
   allNotes: NoteThread[];
   onNavigateBack?: () => void;
-  navigationStack?: NoteThread[];
+  navigationStack?: string[];
 }
 
 const MenuBar: React.FC<{ 
@@ -90,17 +90,16 @@ const MenuBar: React.FC<{
         </button>
       </div>
       <div className="flex items-center gap-2">
+        <div className="w-px h-4 bg-border mx-1" /> {/* Separator */}
         {showBackButton && onNavigateBack && (
           <button
             onClick={onNavigateBack}
-            className="p-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          className="p-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors"
             title="Go back to previous note"
           >
             <ArrowLeft className="h-4 w-4" />
-            <span>Back</span>
           </button>
         )}
-        <div className="w-px h-4 bg-border mx-1" /> {/* Separator */}
         <button
           onClick={onTogglePreview}
           className="p-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors"
