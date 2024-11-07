@@ -1116,23 +1116,25 @@ function App() {
       )}
 
       {/* Settings button in bottom left */}
-      <div className="fixed bottom-2 left-2 z-50">
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => setShowPreferences(true)}
-                className="p-2 bg-background hover:bg-accent rounded-sm transition-colors border border-border"
-              >
-                <Settings className="h-4 w-4" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="text-xs">
-              Settings
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      </div>
+      {sidebarVisible && (
+        <div className="fixed bottom-2 left-2 z-50">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setShowPreferences(true)}
+                  className="p-2 bg-background hover:bg-accent rounded-sm transition-colors border border-border"
+                >
+                  <Settings className="h-4 w-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="text-xs">
+                Settings
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      )}
     </div>
   );
 }

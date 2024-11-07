@@ -118,7 +118,7 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Search notes and messages..."
-              className="h-7 px-0 border-0 focus-visible:ring-0 bg-transparent placeholder:text-muted-foreground"
+              className="h-7 px-0 border-0 focus-visible:ring-0 bg-transparent placeholder:text-muted-foreground shadow-none"
               autoFocus
             />
           </div>

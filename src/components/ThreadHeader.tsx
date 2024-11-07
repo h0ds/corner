@@ -48,8 +48,7 @@ export const ThreadHeader: React.FC<ThreadHeaderProps> = ({
         className={cn(
           "absolute top-0 left-0 right-0 flex items-center justify-between p-3",
           "bg-background/50 backdrop-blur-sm border-b border-border z-10",
-          "transition-all duration-200",
-          isCollapsed && "-translate-y-full"
+          isCollapsed && "transition-transform duration-200 -translate-y-full"
         )}
       >
         {/* Empty div for left side */}
