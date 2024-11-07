@@ -82,7 +82,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
       </div>
 
       <footer 
-        className="flex-shrink-0 p-4 bg-card border-t border-border relative"
+        className="flex-shrink-0 p-4 border-t border-border relative"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="absolute right-4 -top-12 flex items-center gap-2">

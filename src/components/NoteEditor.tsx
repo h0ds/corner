@@ -308,7 +308,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   const showBackButton = navigationStack.length > 0;
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex flex-col h-full">
       <MenuBar 
         onInsertMarkdown={insertMarkdown}
         isPreview={isPreview}

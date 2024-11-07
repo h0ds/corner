@@ -928,7 +928,7 @@ function App() {
   }, []);
 
   return (
-    <div className="flex h-screen bg-background border-t">
+    <div className="flex h-screen bg-gray-500 border-t">
       {/* Sidebar with animation */}
       <motion.div
         initial={false}
@@ -937,7 +937,7 @@ function App() {
           opacity: sidebarVisible ? 1 : 0,
         }}
         transition={{ duration: 0.2 }}
-        className="relative shrink-0"
+        className="relative shrink-0 m-4 mr-2"
         style={{
           minWidth: sidebarVisible ? '250px' : '0px',
         }}
@@ -991,7 +991,7 @@ function App() {
       />
       
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 m-4 ml-2 bg-white rounded-xl">
         <div className="flex flex-col h-full relative">
           {activeThread && !activeThread.isNote && view !== 'graph' && (
             <ThreadHeader
@@ -1117,7 +1117,7 @@ function App() {
 
       {/* Settings button in bottom left */}
       {sidebarVisible && (
-        <div className="fixed bottom-2 left-2 z-50">
+        <div className="fixed bottom-8 left-8 z-50">
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>

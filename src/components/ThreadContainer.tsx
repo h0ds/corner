@@ -101,7 +101,7 @@ export const ThreadContainer: React.FC<ThreadContainerProps> = ({
   }, [threads, onNewNote]);
 
   return (
-    <div className="absolute inset-0 border-r border-border bg-card flex flex-col">
+    <div className="absolute inset-0 border-r border-border bg-card flex flex-col rounded-xl">
       <div className="mt-12">
         <ThreadTabs
           activeTab={activeTab}
