@@ -81,7 +81,7 @@ const MenuBar: React.FC<{
         </button>
         <div className="w-px h-4 bg-border mx-1" /> {/* Separator */}
         <button
-          onClick={() => onInsertMarkdown('[[', true)}
+          onClick={() => onInsertMarkdown('[[')}
           className="p-1.5 rounded-sm hover:bg-accent hover:text-accent-foreground transition-colors"
           title="Note Link"
         >

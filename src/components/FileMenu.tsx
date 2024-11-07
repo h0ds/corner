@@ -7,7 +7,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from './ui/button';
-import { useDropzone } from 'react-dropzone';
 import { FileAttachment } from '@/types';
 import { FilePreview } from './FilePreview';
 import { invoke } from '@tauri-apps/api/core';
@@ -81,17 +80,19 @@ export const FileMenu: React.FC<FileMenuProps> = ({
                     <span className="text-sm font-medium">{previewFile.name}</span>
                   </div>
                 ) : (
-                  <span className="font-mono text-md tracking-tighter">Browse Files</span>
+                  <span className="font-mono text-md tracking-tighter">
+                    <span>Browse Files</span>
+                    <Button
+                      onClick={() => setShowUploader(true)}
+                      variant="outline"
+                      size="icon"
+                      className="ml-8 h-8 w-8"
+                    >
+                      <Upload className="h-4 w-4" />
+                    </Button>
+                  </span>
                 )}
               </DialogTitle>
-              <Button
-                onClick={() => setShowUploader(true)}
-                variant="outline"
-                size="icon"
-                className="h-8 w-8"
-              >
-                <Upload className="h-4 w-4" />
-              </Button>
             </div>
           </DialogHeader>
 

@@ -109,7 +109,7 @@ export const SearchPanel: React.FC<SearchPanelProps> = ({
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[550px] p-0 gap-0 bg-background backdrop-blur-xl shadow-2xl border border-border/50">
+      <DialogContent className="sm:max-w-[550px] p-0 gap-0 bg-background !rounded-xl backdrop-blur-xl shadow-2xl border border-border/50">
         <div className={cn("p-3", query && "border-b border-border/50")}>
           <div className="flex items-center gap-2 px-2">
             <Command className="h-4 w-4 text-muted-foreground" />
