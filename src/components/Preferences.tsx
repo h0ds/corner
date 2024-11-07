@@ -267,11 +267,10 @@ export const Preferences: React.FC<PreferencesProps> = ({
 
   const handleShortcutChange = (shortcut: KeyboardShortcut) => {
     setEditingShortcutId(shortcut.id);
-    let currentCombination: string[] = [];
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      e.stopPropagation();
       e.preventDefault();
+      e.stopPropagation();
 
       if (e.key === 'Escape') {
         setEditingShortcutId(null);
@@ -279,28 +278,25 @@ export const Preferences: React.FC<PreferencesProps> = ({
         return;
       }
 
-      const modifiers = [];
-      if (e.metaKey) modifiers.push('⌘');
-      if (e.ctrlKey) modifiers.push('Ctrl');
-      if (e.altKey) modifiers.push('Alt');
-      if (e.shiftKey) modifiers.push('Shift');
+      // Build the shortcut combination
+      const parts: string[] = [];
+      if (e.metaKey) parts.push('⌘');
+      if (e.ctrlKey && !e.metaKey) parts.push('Ctrl');
+      if (e.altKey) parts.push('Alt');
+      if (e.shiftKey) parts.push('Shift');
 
-      let mainKey = e.key;
-      if (!['Meta', 'Control', 'Alt', 'Shift', 'Enter'].includes(mainKey)) {
-        mainKey = e.key.length === 1 ? e.key.toUpperCase() : e.key;
-        currentCombination = [...modifiers, mainKey];
+      // Only add the main key if it's not a modifier
+      if (!['Meta', 'Control', 'Alt', 'Shift'].includes(e.key)) {
+        // Capitalize single letters
+        const mainKey = e.key.length === 1 ? e.key.toUpperCase() : e.key;
+        parts.push(mainKey);
 
-        const updatedShortcuts = shortcuts.map(s => 
-          s.id === shortcut.id ? { ...s, currentKey: currentCombination.join(' + ') } : s
-        );
-        setShortcuts(updatedShortcuts);
-      }
-
-      if (e.key === 'Enter' && currentCombination.length > 0) {
-        const newShortcut = currentCombination.join(' + ');
+        // Update the shortcut
+        const newShortcut = parts.join(' + ');
         const updatedShortcuts = shortcuts.map(s => 
           s.id === shortcut.id ? { ...s, currentKey: newShortcut } : s
         );
+
         setShortcuts(updatedShortcuts);
         saveShortcuts(updatedShortcuts);
         setEditingShortcutId(null);
@@ -308,6 +304,7 @@ export const Preferences: React.FC<PreferencesProps> = ({
       }
     };
 
+    // Add the event listener
     window.addEventListener('keydown', handleKeyDown);
   };
 

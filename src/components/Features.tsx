@@ -59,22 +59,6 @@ export const Features: React.FC<FeaturesProps> = ({
         {/* Only show additional buttons when sidebar is visible */}
         {sidebarVisible && (
           <>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={onShowSearch}
-                    className="p-2 bg-background hover:bg-accent rounded-sm transition-colors border border-border"
-                  >
-                    <Search className="h-4 w-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="right" className="text-xs">
-                  Search
-                  <span className="ml-2 text-muted-foreground">⌘F</span>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
 
             <TooltipProvider>
               <Tooltip>
@@ -105,6 +89,23 @@ export const Features: React.FC<FeaturesProps> = ({
                 </TooltipTrigger>
                 <TooltipContent side="right" className="text-xs">
                   Knowledge Graph
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={onShowSearch}
+                    className="p-2 bg-background hover:bg-accent rounded-sm transition-colors border border-border"
+                  >
+                    <Search className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="text-xs">
+                  Search
+                  <span className="ml-2 text-muted-foreground">⌘F</span>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>

@@ -908,9 +908,16 @@ function App() {
     }
   };
 
+  // Add effect to handle search shortcut
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+    const handleKeyDown = async (e: KeyboardEvent) => {
+      // Load current shortcuts
+      const currentShortcuts = await loadShortcuts();
+      
+      // Find search shortcut
+      const searchShortcut = currentShortcuts.find(s => s.id === 'search');
+      
+      if (searchShortcut && matchesShortcut(e, searchShortcut)) {
         e.preventDefault();
         setShowSearch(true);
       }

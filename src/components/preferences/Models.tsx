@@ -14,7 +14,7 @@ export const Models: React.FC<ModelsProps> = ({
   return (
     <div className="space-y-4">
       <div>
-        <Label className="text-sm mb-2 block">Foundation Model</Label>
+        <Label className="text-sm mb-2 block">Frontier/Foundation Model</Label>
         <ModelSelector
           selectedModel={selectedModel}
           onModelChange={onModelChange}
