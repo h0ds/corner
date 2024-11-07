@@ -51,6 +51,7 @@ struct ApiKeys {
     anthropic: Mutex<Option<String>>,
     perplexity: Mutex<Option<String>>,
     openai: Mutex<Option<String>>,
+    xai: Mutex<Option<String>>,
 }
 
 #[derive(Serialize)]
@@ -329,6 +330,69 @@ async fn send_message(
                 Ok(ApiResponse {
                     content: None,
                     error: Some(format!("OpenAI API error: {}", error_text)),
+                })
+            }
+        }
+        "xai" => {
+            let stored_keys = load_stored_keys(&app_handle)?;
+            let api_key = if let Some(key) = stored_keys["xai"].as_str() {
+                key.to_string()
+            } else {
+                let state_key = state.xai.lock().unwrap();
+                match state_key.clone() {
+                    Some(key) if !key.is_empty() => key,
+                    _ => env::var("XAI_API_KEY").unwrap_or_default(),
+                }
+            };
+
+            if api_key.is_empty() {
+                return Ok(ApiResponse {
+                    content: None,
+                    error: Some("xAI API key not configured. Please add your API key in settings.".to_string()),
+                });
+            }
+
+            let request_body = serde_json::json!({
+                "messages": [{
+                    "role": "user",
+                    "content": message_with_file
+                }],
+                "model": request.model,
+                "stream": false,
+                "temperature": 0.7
+            });
+
+            let response = client
+                .post("https://api.x.ai/v1/chat/completions")
+                .header("Content-Type", "application/json")
+                .header("Authorization", format!("Bearer {}", api_key))
+                .json(&request_body)
+                .send()
+                .await
+                .map_err(|e| e.to_string())?;
+
+            if response.status().is_success() {
+                let json: serde_json::Value = response.json().await.map_err(|e| e.to_string())?;
+                Ok(ApiResponse {
+                    content: Some(
+                        json["choices"][0]["message"]["content"]
+                            .as_str()
+                            .unwrap_or_default()
+                            .to_string(),
+                    ),
+                    error: None,
+                })
+            } else {
+                if response.status().as_u16() == 401 {
+                    return Ok(ApiResponse {
+                        content: None,
+                        error: Some("xAI API key is missing or invalid. Please check your API key in settings.".to_string()),
+                    });
+                }
+                let error_text = response.text().await.map_err(|e| e.to_string())?;
+                Ok(ApiResponse {
+                    content: None,
+                    error: Some(format!("xAI API error: {}", error_text)),
                 })
             }
         }
@@ -851,6 +915,7 @@ fn main() {
             anthropic: Mutex::new(None),
             perplexity: Mutex::new(None),
             openai: Mutex::new(None),
+            xai: Mutex::new(None),
         })
         .invoke_handler(tauri::generate_handler![
             send_message,

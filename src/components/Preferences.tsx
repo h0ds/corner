@@ -36,6 +36,7 @@ interface ApiKeys {
   anthropic: string;
   perplexity: string;
   openai: string;
+  xai: string;
 }
 
 type PreferenceTab = 'api-keys' | 'appearance' | 'models' | 'shortcuts' | 'plugins' | 'connections';
@@ -52,7 +53,8 @@ export const Preferences: React.FC<PreferencesProps> = ({
   const [keys, setKeys] = useState<ApiKeys>({ 
     anthropic: '', 
     perplexity: '', 
-    openai: '' 
+    openai: '',
+    xai: ''
   });
   const [isSaving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,10 +63,12 @@ export const Preferences: React.FC<PreferencesProps> = ({
     anthropic: VerificationStatus;
     perplexity: VerificationStatus;
     openai: VerificationStatus;
+    xai: VerificationStatus;
   }>({
     anthropic: 'idle',
     perplexity: 'idle',
-    openai: 'idle'
+    openai: 'idle',
+    xai: 'idle'
   });
   const [shortcuts, setShortcuts] = useState<KeyboardShortcut[]>([]);
   const [editingShortcutId, setEditingShortcutId] = useState<string | null>(null);
@@ -75,24 +79,27 @@ export const Preferences: React.FC<PreferencesProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      invoke<{ anthropic: string | null; perplexity: string | null; openai: string | null }>('get_api_keys')
+      invoke<{ anthropic: string | null; perplexity: string | null; openai: string | null; xai: string | null }>('get_api_keys')
         .then((storedKeys) => {
           console.log('Loaded stored keys:', {
             anthropic: storedKeys.anthropic ? '***' : 'none',
             perplexity: storedKeys.perplexity ? '***' : 'none',
-            openai: storedKeys.openai ? '***' : 'none'
+            openai: storedKeys.openai ? '***' : 'none',
+            xai: storedKeys.xai ? '***' : 'none'
           });
           
           setKeys({
             anthropic: storedKeys.anthropic || '',
             perplexity: storedKeys.perplexity || '',
-            openai: storedKeys.openai || ''
+            openai: storedKeys.openai || '',
+            xai: storedKeys.xai || ''
           });
 
           setVerificationStatus(prev => ({
             anthropic: storedKeys.anthropic ? 'success' : prev.anthropic,
             perplexity: storedKeys.perplexity ? 'success' : prev.perplexity,
-            openai: storedKeys.openai ? 'success' : prev.openai
+            openai: storedKeys.openai ? 'success' : prev.openai,
+            xai: storedKeys.xai ? 'success' : prev.xai
           }));
         })
         .catch(err => {
@@ -179,6 +186,7 @@ export const Preferences: React.FC<PreferencesProps> = ({
         anthropic: keys.anthropic || null,
         perplexity: keys.perplexity || null,
         openai: keys.openai || null,
+        xai: keys.xai || null,
       });
 
       const verifyPromises: Promise<void>[] = [];
@@ -362,10 +370,11 @@ export const Preferences: React.FC<PreferencesProps> = ({
                 <Button 
                   onClick={handleSave} 
                   disabled={isSaving || 
-                    (!keys.anthropic && !keys.perplexity && !keys.openai) || 
+                    (!keys.anthropic && !keys.perplexity && !keys.openai && !keys.xai) || 
                     verificationStatus.anthropic === 'verifying' || 
                     verificationStatus.perplexity === 'verifying' || 
-                    verificationStatus.openai === 'verifying'}
+                    verificationStatus.openai === 'verifying' || 
+                    verificationStatus.xai === 'verifying'}
                   className="rounded-sm text-sm"
                 >
                   {isSaving ? 'Saving...' : 'Save'}

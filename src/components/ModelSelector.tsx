@@ -10,7 +10,7 @@ import {
 export interface Model {
   id: string;
   name: string;
-  provider: 'anthropic' | 'perplexity' | 'openai';
+  provider: 'anthropic' | 'perplexity' | 'openai' | 'xai';
 }
 
 export const AVAILABLE_MODELS: Model[] = [
@@ -35,7 +35,10 @@ export const AVAILABLE_MODELS: Model[] = [
   
   // Perplexity Open Source Models
   { id: 'llama-3.1-8b-instruct', name: 'Llama 3.1 8B', provider: 'perplexity' },
-  { id: 'llama-3.1-70b-instruct', name: 'Llama 3.1 70B', provider: 'perplexity' }
+  { id: 'llama-3.1-70b-instruct', name: 'Llama 3.1 70B', provider: 'perplexity' },
+
+  // xAI Models
+  { id: 'grok-beta', name: 'Grok Beta', provider: 'xai' },
 ];
 
 interface ModelSelectorProps {
@@ -53,6 +56,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   const anthropicModels = AVAILABLE_MODELS.filter(m => m.provider === 'anthropic');
   const openaiModels = AVAILABLE_MODELS.filter(m => m.provider === 'openai');
   const perplexityModels = AVAILABLE_MODELS.filter(m => m.provider === 'perplexity');
+  const xaiModels = AVAILABLE_MODELS.filter(m => m.provider === 'xai');
 
   return (
     <Select
@@ -69,7 +73,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         </SelectValue>
       </SelectTrigger>
       <SelectContent>
-        <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+        <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground mt-2">
           Anthropic
         </div>
         {anthropicModels.map((model) => (
@@ -105,6 +109,22 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
           Perplexity
         </div>
         {perplexityModels.map((model) => (
+          <SelectItem
+            key={model.id}
+            value={model.id}
+            className="text-sm"
+          >
+            <div className="flex items-center gap-2">
+              <ModelIcon modelId={model.id} className="w-4 h-4" />
+              <span className="-mb-1">{model.name}</span>
+            </div>
+          </SelectItem>
+        ))}
+
+        <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+          xAI
+        </div>
+        {xaiModels.map((model) => (
           <SelectItem
             key={model.id}
             value={model.id}
