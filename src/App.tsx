@@ -1,52 +1,39 @@
-import { useState, useRef, useEffect, useMemo, KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { ChatMessage } from "./components/ChatMessage";
-import { ChatInput } from "./components/ChatInput";
 import { Preferences } from "./components/Preferences";
 import { AVAILABLE_MODELS } from "./components/ModelSelector";
-import { TypingIndicator } from "./components/TypingIndicator";
 import { FilePreview } from "./components/FilePreview";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { getFileHandler } from '@/lib/fileHandlers';
-import { 
-  saveThread, 
-  loadThreads, 
-  deleteThread, 
-  saveActiveThreadId, 
-  loadActiveThreadId, 
-  clearThreads,
-  saveSelectedModel,
+import {
+  saveThread,
+  loadThreads,
+  deleteThread,
+  saveActiveThreadId,
+  loadActiveThreadId, saveSelectedModel,
   loadSelectedModel,
   saveThreadOrder
 } from '@/lib/storage';
 import { ModelIcon } from './components/ModelIcon';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { ThreadList } from './components/ThreadList';
 import { nanoid } from 'nanoid';
 import { Message, Thread, NoteThread } from '@/types';
-import { initializeCache, cacheFile, CachedFile } from '@/lib/fileCache';
+import { initializeCache } from '@/lib/fileCache';
 import { KeyboardShortcut, loadShortcuts, matchesShortcut } from '@/lib/shortcuts';
 import { Footer } from './components/Footer';
 import { ResizeObserver } from './components/ResizeObserver';
 import { Plugin, loadPlugins } from '@/lib/plugins';
-import { Square } from 'lucide-react';
 import { ThreadHeader } from './components/ThreadHeader';
 import { cn } from '@/lib/utils';
 import { Sidebar } from './components/Sidebar';
 import { ChatView } from './components/ChatView';
 import { KnowledgeGraph } from './components/KnowledgeGraph';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { FileLinkMenu } from './components/FileLinkMenu';
 import { SearchPanel } from './components/SearchPanel';
-import { Settings } from 'lucide-react';
 import { TitleBar } from './components/TitleBar';
 import { NoteEditor } from "./components/NoteEditor";
+import { Button } from "@/components/ui/button";
 
 interface ApiResponse {
   content?: string;
@@ -127,8 +114,8 @@ function App() {
   const [fileLinkQuery, setFileLinkQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const [noteNavigationStack, setNoteNavigationStack] = useState<string[]>([]);
-  const [preferencesOpen, setPreferencesOpen] = useState(false);
-  const [preferencesTab, setPreferencesTab] = useState<string>('api-keys');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [threadToDelete, setThreadToDelete] = useState<string | null>(null);
 
   // Initialize cache on mount
   useEffect(() => {
@@ -164,7 +151,8 @@ function App() {
     return shortcuts.find(s => s.id === 'clear-history')?.currentKey || '⌘/Ctrl + K';
   }, [shortcuts]);
 
-  const handleNewThread = (isNote: boolean = false) => {
+  // Create a memoized version of handleNewThread
+  const handleNewThread = useCallback((isNote: boolean = false) => {
     const baseThread = {
       id: nanoid(),
       name: isNote ? 'New Note' : 'New Thread',
@@ -185,14 +173,21 @@ function App() {
       lastUsedModel: selectedModel,
     };
     
-    saveThread(newThread);
-    setThreads(prev => [...prev, newThread]);
+    // Update state first
+    setThreads(prev => [newThread, ...prev]); // Add to beginning of list
     setActiveThreadId(newThread.id);
-  };
+    setView('thread');
 
-  const handleNewNote = () => {
+    // Then save to storage
+    saveThread(newThread);
+
+    return newThread.id; // Return the new thread ID
+  }, [selectedModel]);
+
+  // Create a memoized version of handleNewNote
+  const handleNewNote = useCallback(() => {
     handleNewThread(true);
-  };
+  }, [handleNewThread]);
 
   const handleDeleteThread = (threadId: string) => {
     setThreads(prev => {
@@ -213,48 +208,92 @@ function App() {
     }
   }, [messages]);
 
+  // Update the keyboard shortcut effect
   useEffect(() => {
-    const handleKeyDown = async (e: ReactKeyboardEvent<Element>) => {
-      // Load current shortcuts
-      const currentShortcuts = await loadShortcuts();
-      
-      // Find shortcuts
-      const clearHistoryShortcut = currentShortcuts.find(s => s.id === 'clear-history');
-      const toggleSidebarShortcut = currentShortcuts.find(s => s.id === 'toggle-sidebar');
-      const searchShortcut = currentShortcuts.find(s => s.id === 'search');
-      const newNoteShortcut = currentShortcuts.find(s => s.id === 'new-note');
-
-      if (clearHistoryShortcut && matchesShortcut(e, clearHistoryShortcut)) {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check for delete shortcut (Cmd/Ctrl + Backspace)
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Backspace') {
         e.preventDefault();
+        e.stopPropagation();
+        
         if (activeThreadId) {
-          clearCurrentThread();
+          const thread = threads.find(t => t.id === activeThreadId);
+          if (thread) {
+            setThreadToDelete(activeThreadId);
+            setShowDeleteConfirm(true);
+          }
         }
+        return;
       }
 
-      if (toggleSidebarShortcut && matchesShortcut(e, toggleSidebarShortcut)) {
-        e.preventDefault();
-        setSidebarVisible(!sidebarVisible);
-      }
+      // Handle other shortcuts
+      loadShortcuts().then(currentShortcuts => {
+        const clearHistoryShortcut = currentShortcuts.find(s => s.id === 'clear-history');
+        const toggleSidebarShortcut = currentShortcuts.find(s => s.id === 'toggle-sidebar');
+        const searchShortcut = currentShortcuts.find(s => s.id === 'search');
+        const newNoteShortcut = currentShortcuts.find(s => s.id === 'new-note');
+        const newThreadShortcut = currentShortcuts.find(s => s.id === 'new-thread');
 
-      if (searchShortcut && matchesShortcut(e, searchShortcut)) {
-        e.preventDefault();
-        setShowSearch(true);
-      }
+        if (clearHistoryShortcut && matchesShortcut(e, clearHistoryShortcut)) {
+          e.preventDefault();
+          if (activeThreadId) {
+            clearCurrentThread();
+          }
+        }
 
-      // Add handler for new note shortcut
-      if (newNoteShortcut && matchesShortcut(e, newNoteShortcut)) {
-        e.preventDefault();
-        handleNewNote();
-        // Switch to notes tab
-        window.dispatchEvent(new CustomEvent('switch-tab', {
-          detail: { tab: 'notes' }
-        }));
-      }
+        if (toggleSidebarShortcut && matchesShortcut(e, toggleSidebarShortcut)) {
+          e.preventDefault();
+          setSidebarVisible(!sidebarVisible);
+        }
+
+        if (searchShortcut && matchesShortcut(e, searchShortcut)) {
+          e.preventDefault();
+          setShowSearch(true);
+        }
+
+        // Add handler for new note shortcut
+        if (newNoteShortcut && matchesShortcut(e, newNoteShortcut)) {
+          e.preventDefault();
+          handleNewNote();
+          // Switch to notes tab
+          window.dispatchEvent(new CustomEvent('switch-tab', {
+            detail: { tab: 'notes' }
+          }));
+        }
+
+        // Add handler for new thread shortcut
+        if (newThreadShortcut && matchesShortcut(e, newThreadShortcut)) {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          // Create new thread and get its ID
+          const newThreadId = handleNewThread(false);
+          
+          // Switch to threads tab
+          window.dispatchEvent(new CustomEvent('switch-tab', {
+            detail: { tab: 'threads' }
+          }));
+          
+          // Set view and active thread
+          setView('thread');
+          setActiveThreadId(newThreadId);
+        }
+      });
     };
 
-    window.addEventListener('keydown', handleKeyDown as any);
-    return () => window.removeEventListener('keydown', handleKeyDown as any);
-  }, [sidebarVisible, activeThreadId, handleNewNote]); // Add handleNewNote to dependencies
+    // Add the event listener to the window
+    window.addEventListener('keydown', handleKeyDown, { capture: true });
+    return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
+  }, [
+    activeThreadId,
+    threads,
+    handleNewThread,
+    handleNewNote,
+    setView,
+    setActiveThreadId,
+    setThreadToDelete,
+    setShowDeleteConfirm
+  ]); // Add all necessary dependencies
 
   const handleSendMessage = async (message: string, overrideModel?: string) => {
     if (isDiscussing && isDiscussionPaused) {
@@ -946,10 +985,37 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const handleShowPreferencesTab = (tab: string) => {
-    setPreferencesTab(tab);
-    setPreferencesOpen(true);
-  };
+  // Simplify delete handler
+  const handleDeleteKeyPress = useCallback((e: KeyboardEvent) => {
+    console.log('Key pressed:', e.key, 'Ctrl/Cmd:', e.metaKey || e.ctrlKey); // Debug log
+
+    if (e.key === 'Backspace' && (e.metaKey || e.ctrlKey)) {
+      console.log('Delete shortcut triggered'); // Debug log
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (activeThreadId) {
+        console.log('Active thread found:', activeThreadId); // Debug log
+        setThreadToDelete(activeThreadId);
+        setShowDeleteConfirm(true);
+      }
+    }
+  }, [activeThreadId]);
+
+  // Add keyboard shortcut effect
+  useEffect(() => {
+    window.addEventListener('keydown', handleDeleteKeyPress);
+    return () => window.removeEventListener('keydown', handleDeleteKeyPress);
+  }, [handleDeleteKeyPress]);
+
+  // Add delete confirmation handler
+  const handleDeleteConfirm = useCallback(() => {
+    if (threadToDelete) {
+      handleDeleteThread(threadToDelete);
+      setThreadToDelete(null);
+      setShowDeleteConfirm(false);
+    }
+  }, [threadToDelete, handleDeleteThread]);
 
   return (
     <div className="flex h-screen bg-background/50 backdrop-blur-sm overflow-hidden">
@@ -1002,8 +1068,7 @@ function App() {
                   onFileDelete={handleFileDelete}
                   onShowKnowledgeGraph={() => setView('graph')}
                   onShowSearch={() => setShowSearch(true)}
-                  onShowPreferences={() => setPreferencesOpen(true)}
-                  onShowPreferencesTab={handleShowPreferencesTab}
+                  onShowPreferences={() => setShowPreferences(true)}
                 />
               </div>
             </ResizeObserver>
@@ -1055,14 +1120,14 @@ function App() {
                     isDiscussionPaused={isDiscussionPaused}
                     onStopDiscussion={handleStopDiscussion}
                     onOpenModelSelect={() => {
-                      setPreferencesTab('models');
-                      setPreferencesOpen(true);
+                      setPreferenceTab('models');
+                      setShowPreferences(true);
                     }}
                     onSendMessage={handleSendMessage}
                     onCompareModels={handleCompareModels}
                     onStartDiscussion={handleStartDiscussion}
                     onClearThread={clearCurrentThread}
-                    onShowPreferences={() => setPreferencesOpen(true)}
+                    onShowPreferences={() => setShowPreferences(true)}
                   />
                 )
               ) : (
@@ -1075,11 +1140,11 @@ function App() {
         </div>
 
         <Preferences
-          isOpen={preferencesOpen}
-          onClose={() => setPreferencesOpen(false)}
-          initialTab={preferencesTab}
+          isOpen={showPreferences}
+          onClose={() => setShowPreferences(false)}
           selectedModel={selectedModel}
           onModelChange={setSelectedModel}
+          initialTab={preferenceTab}
           plugins={plugins}
           onPluginChange={setPlugins}
         />
@@ -1132,6 +1197,46 @@ function App() {
             }}
           />
         )}
+
+        {/* Delete confirmation dialog */}
+        <Dialog 
+          open={showDeleteConfirm} 
+          onOpenChange={(open) => {
+            if (!open) {
+              setThreadToDelete(null);
+              setShowDeleteConfirm(false);
+            }
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                Delete {threads.find(t => t.id === threadToDelete)?.isNote ? 'Note' : 'Thread'}
+              </DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground">
+              Are you sure you want to delete this {threads.find(t => t.id === threadToDelete)?.isNote ? 'note' : 'thread'}? 
+              This action cannot be undone.
+            </p>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setThreadToDelete(null);
+                  setShowDeleteConfirm(false);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleDeleteConfirm}
+              >
+                Delete
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

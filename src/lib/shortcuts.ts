@@ -39,6 +39,20 @@ export const DEFAULT_SHORTCUTS: KeyboardShortcut[] = [
     description: 'Create a new note',
     defaultKey: '⌘/Ctrl + N',
     currentKey: '⌘/Ctrl + N'
+  },
+  {
+    id: 'new-thread',
+    name: 'New Thread',
+    description: 'Create a new chat thread',
+    defaultKey: '⌘/Ctrl + T',
+    currentKey: '⌘/Ctrl + T'
+  },
+  {
+    id: 'delete-thread',
+    name: 'Delete Thread/Note',
+    description: 'Delete the current thread or note',
+    defaultKey: 'Backspace',
+    currentKey: 'Backspace'
   }
 ];
 
@@ -66,7 +80,11 @@ export async function resetShortcuts(): Promise<KeyboardShortcut[]> {
   return DEFAULT_SHORTCUTS;
 }
 
-export function matchesShortcut(e: KeyboardEvent, shortcut: KeyboardShortcut): boolean {
+export function matchesShortcut(e: KeyboardEvent<Element>, shortcut: KeyboardShortcut): boolean {
+  if (shortcut.id === 'delete-thread') {
+    return (e.key === 'Backspace' && (e.metaKey || e.ctrlKey));
+  }
+
   const key = shortcut.currentKey.toLowerCase();
   const isCmd = key.includes('⌘') || key.includes('cmd') || key.includes('ctrl');
   const isAlt = key.includes('alt');
