@@ -1208,7 +1208,12 @@ function App() {
             }
           }}
         >
-          <DialogContent>
+          <DialogContent onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              handleDeleteConfirm();
+            }
+          }}>
             <DialogHeader>
               <DialogTitle>
                 Delete {threads.find(t => t.id === threadToDelete)?.isNote ? 'Note' : 'Thread'}
@@ -1231,6 +1236,7 @@ function App() {
               <Button
                 variant="destructive"
                 onClick={handleDeleteConfirm}
+                autoFocus
               >
                 Delete
               </Button>
