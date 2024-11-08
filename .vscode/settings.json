@@ -1,0 +1,29 @@
+{
+  "editor.formatOnSave": true,
+  "exportall.config.folderListener": ["/components/ui"],
+  "exportall.config.semis": true,
+  "exportall.config.namedExports": false,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "workbench.editor.customLabels.enabled": true,
+  // Better tab labelling for NextJS project structure
+  "workbench.editor.customLabels.patterns": {
+    "**/app/**/[[]*[]]/[[]*[]]/{page,layout,loading,not-found,error,global-error,route,template,default}.{js,jsx,ts,tsx}": "${dirname(2)}/${dirname(1)}/${dirname} (${filename})",
+    "**/app/**/[[]*[]]/{page,layout,loading,not-found,error,global-error,route,template,default}.{js,jsx,ts,tsx}": "${dirname(1)}/${dirname} (${filename})",
+    "**/app/**/{page,layout,loading,not-found,error,global-error,route,template,default}.{js,jsx,ts,tsx}": "${dirname} (${filename})"
+  },
+  "editor.codeActionsOnSave": {
+    // "source.sortImports": "explicit",
+    // "source.organizeImports": "explicit",
+    "source.removeUnusedImports": "explicit",
+    "source.fixAll.eslint": "explicit"
+  },
+  "cSpell.words": ["waitlist", "tiktok"],
+  "typescript.preferences.autoImportSpecifierExcludeRegexes": [
+    "db/introspect/.*",
+    "facebook-nodejs-business-sdk",
+    "next/router",
+    "^lodash",
+    "^drizzle-orm\\/mysql", // we're using postgres
+    "@supabase/ssr" // we re-export with some config
+  ]
+}

@@ -1,27 +1,35 @@
-import React, { useState } from 'react';
-import { NoteThread } from '@/types';
-import { cn } from '@/lib/utils';
-import { 
-  GripVertical, 
-  Pin, 
-  Pencil, 
-  Trash2, 
-  X, 
+import React, { useState } from "react";
+import { NoteThread } from "@/types";
+import { cn } from "@/lib/utils";
+import {
+  GripVertical,
+  Pencil,
+  Trash2,
+  X,
   SmilePlus,
   Palette,
   Type,
   ChevronRight,
-} from 'lucide-react';
+} from "lucide-react";
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { THREAD_COLORS, THREAD_ICONS } from '@/types';
-import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { motion } from 'framer-motion';
+import { THREAD_COLORS, THREAD_ICONS } from "@/types";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { motion } from "framer-motion";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 interface NoteListProps {
   notes: NoteThread[];
@@ -49,14 +57,14 @@ const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
   onClose,
 }) => {
   return (
-    <div 
+    <div
       className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50"
       onClick={onClose}
     >
-      <div 
+      <div
         className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 
                  bg-background border border-border rounded-md shadow-lg p-6 min-w-[280px]"
-        onClick={e => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
@@ -66,7 +74,7 @@ const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
                 Choose a color or click reset to remove
               </p>
             </div>
-            <button 
+            <button
               onClick={onClose}
               className="absolute -top-2 -right-2 p-1.5 rounded-full bg-background 
                        border border-border text-muted-foreground hover:text-foreground"
@@ -85,15 +93,18 @@ const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
                     "w-10 h-10 rounded-md relative group",
                     "hover:scale-110 transition-transform",
                     !color && "bg-background",
-                    name === 'white' && "border border-border",
-                    currentColor === color && "ring-2 ring-primary ring-offset-2",
+                    name === "white" && "border border-border",
+                    currentColor === color &&
+                      "ring-2 ring-primary ring-offset-2"
                   )}
                   style={color ? { backgroundColor: color } : undefined}
                 >
                   <span className="sr-only">{name} color</span>
-                  <span className="absolute inset-0 flex items-center justify-center opacity-0 
+                  <span
+                    className="absolute inset-0 flex items-center justify-center opacity-0 
                                  group-hover:opacity-100 transition-opacity bg-background/80 
-                                 text-xs font-medium rounded-md">
+                                 text-xs font-medium rounded-md"
+                  >
                     {name.charAt(0).toUpperCase() + name.slice(1)}
                   </span>
                 </button>
@@ -101,7 +112,7 @@ const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
             </div>
 
             <button
-              onClick={() => onColorSelect('')}
+              onClick={() => onColorSelect("")}
               className="w-full py-2 text-xs text-muted-foreground hover:text-foreground 
                        transition-colors border border-border rounded-md hover:bg-accent"
             >
@@ -161,6 +172,7 @@ const SortableNoteItem: React.FC<{
   const [showTextColorPicker, setShowTextColorPicker] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(note.name);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const {
     attributes,
@@ -193,10 +205,7 @@ const SortableNoteItem: React.FC<{
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
-          className={cn(
-            "relative",
-            isDragging && "z-50"
-          )}
+          className={cn("relative", isDragging && "z-50")}
         >
           <div
             className={cn(
@@ -204,34 +213,42 @@ const SortableNoteItem: React.FC<{
               "hover:bg-accent hover:text-accent-foreground transition-colors",
               isDragging && "opacity-50"
             )}
-            style={{
-              backgroundColor: note.color ? `${note.color}4D` : undefined,
-              color: note.textColor || undefined,
-            } as React.CSSProperties}
+            style={
+              {
+                backgroundColor: note.color ? `${note.color}4D` : undefined,
+                color: note.textColor || undefined,
+              } as React.CSSProperties
+            }
             onClick={() => onNoteSelect(note.id)}
           >
             {activeNoteId === note.id && (
-              <div 
+              <div
                 className="absolute inset-0 rounded-md pointer-events-none !bg-gray-200"
-                style={note.color ? {
-                  borderColor: note.color
-                } : {
-                  borderColor: 'rgb(209 213 219)'
-                }}
+                style={
+                  note.color
+                    ? {
+                        borderColor: note.color,
+                      }
+                    : {
+                        borderColor: "rgb(209 213 219)",
+                      }
+                }
               />
             )}
 
             <div className="relative z-10 flex items-center gap-2 w-full">
               {note.icon ? (
-                <div 
+                <div
                   {...listeners}
                   {...attributes}
                   className="touch-none cursor-grab transition-opacity"
                 >
-                  <div className="h-4 w-4 shrink-0 text-muted-foreground mr-2">{note.icon}</div>
+                  <div className="h-4 w-4 shrink-0 text-muted-foreground mr-2">
+                    {note.icon}
+                  </div>
                 </div>
               ) : (
-                <div 
+                <div
                   {...listeners}
                   {...attributes}
                   className="touch-none cursor-grab opacity-0 group-hover:opacity-100 transition-opacity"
@@ -247,8 +264,8 @@ const SortableNoteItem: React.FC<{
                     onChange={(e) => setEditValue(e.target.value)}
                     onBlur={handleFinishEdit}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleFinishEdit();
-                      if (e.key === 'Escape') setIsEditing(false);
+                      if (e.key === "Enter") handleFinishEdit();
+                      if (e.key === "Escape") setIsEditing(false);
                     }}
                     className="w-full bg-transparent border-none focus:outline-none text-sm"
                     autoFocus
@@ -258,9 +275,20 @@ const SortableNoteItem: React.FC<{
                 )}
               </div>
 
-              {activeNoteId === note.id && (
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              )}
+              <div className="flex items-center gap-1">
+                {activeNoteId === note.id && (
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                )}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowDeleteDialog(true);
+                  }}
+                  className="opacity-0 group-hover:opacity-100 p-1 hover:bg-accent rounded-md transition-all"
+                >
+                  <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                </button>
+              </div>
             </div>
           </div>
         </motion.div>
@@ -296,7 +324,7 @@ const SortableNoteItem: React.FC<{
           <span>Text Color</span>
         </ContextMenuItem>
         <ContextMenuItem
-          onClick={() => onDeleteNote(note.id)}
+          onClick={() => setShowDeleteDialog(true)}
           className="flex items-center gap-2 cursor-pointer text-destructive focus:text-destructive"
         >
           <Trash2 className="h-4 w-4" />
@@ -317,19 +345,19 @@ const SortableNoteItem: React.FC<{
       )}
 
       {showIconPicker && (
-        <div 
+        <div
           className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50"
           onClick={() => setShowIconPicker(false)}
         >
-          <div 
+          <div
             className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 
                      bg-background border border-border rounded-md shadow-lg p-4"
-            onClick={e => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
           >
             <div className="flex flex-col gap-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Note Icon</span>
-                <button 
+                <button
                   onClick={() => setShowIconPicker(false)}
                   className="absolute -top-2 -right-2 p-1 rounded-full bg-background border border-border text-muted-foreground hover:text-foreground"
                 >
@@ -359,6 +387,35 @@ const SortableNoteItem: React.FC<{
           onClose={() => setShowTextColorPicker(false)}
         />
       )}
+
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Note</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this note? This action cannot be
+              undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteDialog(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                onDeleteNote(note.id);
+                setShowDeleteDialog(false);
+              }}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </ContextMenu>
   );
 };
@@ -392,4 +449,4 @@ export const NoteList: React.FC<NoteListProps> = ({
       ))}
     </div>
   );
-}; 
+};

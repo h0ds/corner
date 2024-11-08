@@ -1,0 +1,66 @@
+{
+    "parser": "@typescript-eslint/parser",
+    "env": {
+      "browser": true,
+      "es2021": true,
+      "node": true
+    },
+    "extends": [
+      "prettier",
+      "plugin:tailwindcss/recommended",
+      "eslint:recommended",
+      "plugin:@typescript-eslint/recommended",
+      "plugin:react-hooks/recommended",
+      "plugin:@next/next/recommended",
+      "plugin:react/jsx-runtime",
+      "plugin:react/recommended"
+    ],
+    "plugins": ["react", "react-hooks", "simple-import-sort", "import"],
+    "rules": {
+      "no-useless-escape": "off",
+      "object-curly-spacing": ["error", "always"],
+      "simple-import-sort/imports": "error",
+      "simple-import-sort/exports": "error",
+      "react/react-in-jsx-scope": "off",
+      "@typescript-eslint/consistent-type-imports": "error",
+      "@typescript-eslint/no-empty-object-type": "off",
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          "args": "all",
+          "argsIgnorePattern": "^_",
+          "caughtErrors": "all",
+          "caughtErrorsIgnorePattern": "^_",
+          "destructuredArrayIgnorePattern": "^_",
+          "varsIgnorePattern": "^_",
+          "ignoreRestSiblings": true
+        }
+      ],
+      "react/prop-types": "off",
+      "tailwindcss/no-custom-classname": "off"
+    },
+    "overrides": [
+      // the barrel files generated conflict with simple-import-sort
+      {
+        "files": ["components/ui/index.ts"],
+        "rules": {
+          "simple-import-sort/exports": "off"
+        }
+      },
+      {
+        "files": ["kysely/migrations/*"],
+        "rules": {
+          "@typescript-eslint/no-explicit-any": "off"
+        }
+      }
+    ],
+    "settings": {
+      "react": {
+        "version": "detect"
+      },
+      "import/resolver": {
+        "typescript": {} // fixes resolving TS custom paths
+      }
+    }
+  }
+  
