@@ -1,3 +1,3 @@
 #!/bin/sh
 
-echo "\033[1;33m⚠️  If any code remotely related to our Trigger.dev task was changed, it may require a redeploy to prod (after testing, of course)! (pnpm trigger:deploy) ⚠️\033[0m"
+echo "\033[1;33m⚠️  Thank you for contributing to the project! ⚠️\033[0m"

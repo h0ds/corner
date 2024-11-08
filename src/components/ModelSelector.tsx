@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { ModelIcon } from './ModelIcon';
 import {
   Select,
@@ -58,6 +58,9 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   disabled,
   availableProviders = []
 }) => {
+  const [triggerWidth, setTriggerWidth] = useState(180);
+  const measureRef = useRef<HTMLSpanElement>(null);
+  
   // Get available models based on providers
   const availableModels = AVAILABLE_MODELS.filter(m => availableProviders.includes(m.provider));
 
@@ -79,47 +82,77 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
     onModelChange(modelId);
   };
 
-  return (
-    <Select 
-      defaultValue={selectedModel}
-      value={selectedModel}
-      onValueChange={handleModelChange}
-      disabled={disabled || availableModels.length === 0}
-    >
-      <SelectTrigger className="w-[180px] rounded-md text-sm">
-        <div className="flex items-center gap-2">
-          <ModelIcon modelId={selectedModel} className="w-4 h-4" />
-          <span>{currentModel?.name || 'Select Model'}</span>
-        </div>
-      </SelectTrigger>
-      
-      <SelectContent align="end">
-        {Object.entries(modelsByProvider).map(([provider, models]) => (
-          <React.Fragment key={provider}>
-            <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground capitalize">
-              {provider}
-            </div>
-            {models.map(model => (
-              <SelectItem 
-                key={model.id} 
-                value={model.id}
-                className="cursor-pointer"
-              >
-                <div className="flex items-center gap-2">
-                  <ModelIcon modelId={model.id} className="w-4 h-4" />
-                  <span>{model.name}</span>
-                </div>
-              </SelectItem>
-            ))}
-          </React.Fragment>
-        ))}
+  // Update width based on all model names
+  useEffect(() => {
+    if (measureRef.current) {
+      // Measure all model names to find the longest one
+      const widths = availableModels.map(model => {
+        measureRef.current!.textContent = model.name;
+        return measureRef.current!.offsetWidth;
+      });
+      const maxWidth = Math.max(...widths, measureRef.current.offsetWidth);
+      setTriggerWidth(Math.max(180, maxWidth + 56)); // 56px for padding and icon
+    }
+  }, [availableModels, currentModel?.name]);
 
-        {availableModels.length === 0 && (
-          <div className="px-2 py-4 text-sm text-muted-foreground text-center">
-            No models available. Please add API keys in settings.
+  return (
+    <>
+      {/* Hidden element to measure text width */}
+      <span 
+        ref={measureRef} 
+        className="absolute invisible whitespace-nowrap text-sm"
+        aria-hidden="true"
+      >
+        {currentModel?.name || 'Select Model'}
+      </span>
+
+      <Select 
+        defaultValue={selectedModel}
+        value={selectedModel}
+        onValueChange={handleModelChange}
+        disabled={disabled || availableModels.length === 0}
+      >
+        <SelectTrigger 
+          className="rounded-md text-sm"
+          style={{ width: `${triggerWidth}px` }}
+        >
+          <div className="flex items-center gap-2 truncate">
+            <ModelIcon modelId={selectedModel} className="w-4 h-4 flex-shrink-0" />
+            <span className="truncate">{currentModel?.name || 'Select Model'}</span>
           </div>
-        )}
-      </SelectContent>
-    </Select>
+        </SelectTrigger>
+        
+        <SelectContent 
+          align="end"
+          style={{ width: `${triggerWidth}px` }}
+        >
+          {Object.entries(modelsByProvider).map(([provider, models]) => (
+            <React.Fragment key={provider}>
+              <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground capitalize">
+                {provider}
+              </div>
+              {models.map(model => (
+                <SelectItem 
+                  key={model.id} 
+                  value={model.id}
+                  className="cursor-pointer"
+                >
+                  <div className="flex items-center gap-2 w-full truncate">
+                    <ModelIcon modelId={model.id} className="w-4 h-4 flex-shrink-0" />
+                    <span className="truncate">{model.name}</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </React.Fragment>
+          ))}
+
+          {availableModels.length === 0 && (
+            <div className="px-2 py-4 text-sm text-muted-foreground text-center">
+              No models available. Please add API keys in settings.
+            </div>
+          )}
+        </SelectContent>
+      </Select>
+    </>
   );
 };
