@@ -20,6 +20,8 @@ import { Shortcuts } from './preferences/Shortcuts';
 import { Connections } from './preferences/Connections';
 import { Plugins } from './preferences/Plugins';
 import { Actions, Action } from './preferences/Actions';
+import { Storage } from './preferences/Storage';
+import { Database } from 'lucide-react';
 
 interface PreferencesProps {
   isOpen: boolean;
@@ -43,7 +45,7 @@ interface ApiKeys {
   google: string;
 }
 
-type PreferenceTab = 'api-keys' | 'appearance' | 'models' | 'shortcuts' | 'plugins' | 'connections' | 'actions';
+type PreferenceTab = 'api-keys' | 'appearance' | 'models' | 'shortcuts' | 'plugins' | 'connections' | 'actions' | 'storage';
 
 export const Preferences: React.FC<PreferencesProps> = ({ 
   isOpen, 
@@ -229,6 +231,7 @@ export const Preferences: React.FC<PreferencesProps> = ({
     { id: 'shortcuts', label: 'Shortcuts', icon: <Keyboard className="h-4 w-4" /> },
     { id: 'plugins', label: 'Plugins', icon: <Code className="h-4 w-4" /> },
     { id: 'actions', label: 'Actions', icon: <Zap className="h-4 w-4" /> },
+    { id: 'storage', label: 'Storage', icon: <Database className="h-4 w-4" /> },
   ];
 
   const renderContent = () => {
@@ -285,6 +288,8 @@ export const Preferences: React.FC<PreferencesProps> = ({
             onActionChange={onActionsChange}
           />
         );
+      case 'storage':
+        return <Storage />;
       default:
         return null;
     }

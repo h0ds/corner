@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { FileText, Network, Search, Settings, Zap } from 'lucide-react';
 import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { FileMenu } from './FileMenu';
 import { FileAttachment, Thread } from '@/types';
@@ -33,88 +33,90 @@ export const Footer: React.FC<FooterProps> = ({
 
   return (
     <>
-      <div className="absolute bottom-0 left-0 right-0 border-t border-border h-[50px] flex items-center">
-        <div className="flex items-center justify-center gap-2 p-2 w-full">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => setShowFileMenu(true)}
-                  className="p-2 bg-background hover:bg-accent rounded-md transition-colors border border-border"
-                >
-                  <FileText className="h-4 w-4" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="text-xs">
-                Browse Files
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+      <div className="absolute bottom-0 left-0 right-0 flex justify-center z-50">
+        <div className="bg-gray-50 m-4 rounded-lg h-[50px] flex items-center">
+          <div className="flex items-center justify-center gap-2 p-2 px-3">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setShowFileMenu(true)}
+                    className="p-2 bg-background hover:bg-accent rounded-md transition-colors border border-border"
+                  >
+                    <FileText className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">
+                  Browse Files
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
 
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={onShowKnowledgeGraph}
-                  className="p-2 bg-background hover:bg-accent rounded-md transition-colors border border-border"
-                >
-                  <Network className="h-4 w-4" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="text-xs">
-                Knowledge Graph
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={onShowSearch}
-                  className="p-2 bg-background hover:bg-accent rounded-md transition-colors border border-border"
-                >
-                  <Search className="h-4 w-4" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="text-xs">
-                Search
-                <span className="ml-2 text-muted-foreground">⌘F</span>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={onShowKnowledgeGraph}
+                    className="p-2 bg-background hover:bg-accent rounded-md transition-colors border border-border"
+                  >
+                    <Network className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">
+                  Knowledge Graph
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={onShowSearch}
+                    className="p-2 bg-background hover:bg-accent rounded-md transition-colors border border-border"
+                  >
+                    <Search className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">
+                  Search
+                  <span className="ml-2 text-muted-foreground">⌘F</span>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
 
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => onShowPreferencesTab?.('actions')}
-                  className="p-2 bg-background hover:bg-accent rounded-md transition-colors border border-border"
-                >
-                  <Zap className="h-4 w-4" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="text-xs">
-                Quick Actions
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => onShowPreferencesTab?.('actions')}
+                    className="p-2 bg-background hover:bg-accent rounded-md transition-colors border border-border"
+                  >
+                    <Zap className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">
+                  Quick Actions
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
 
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={onShowPreferences}
-                  className="p-2 bg-background hover:bg-accent rounded-md transition-colors border border-border"
-                >
-                  <Settings className="h-4 w-4" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="text-xs">
-                Settings
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={onShowPreferences}
+                    className="p-2 bg-background hover:bg-accent rounded-md transition-colors border border-border"
+                  >
+                    <Settings className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">
+                  Settings
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
         </div>
       </div>
 

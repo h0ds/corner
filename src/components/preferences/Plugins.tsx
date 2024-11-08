@@ -31,7 +31,7 @@ export const Plugins: React.FC<PluginsProps> = ({
       <div className="flex gap-2">
         <div className="relative flex-1">
           <Input
-            placeholder="Search for Lex plugins"
+            placeholder="Search for Corner plugins"
             className="pl-10 -mb-0.5"
           />
           <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground ml-1" />

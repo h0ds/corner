@@ -1,0 +1,13 @@
+[data-color-mode="dark"] {
+  --color-canvas-default: transparent;
+  --color-bg-primary: transparent;
+  --color-bg-secondary: transparent;
+  --color-bg-tertiary: transparent;
+}
+
+[data-color-mode="light"] {
+  --color-canvas-default: transparent;
+  --color-bg-primary: transparent;
+  --color-bg-secondary: transparent;
+  --color-bg-tertiary: transparent;
+} 
