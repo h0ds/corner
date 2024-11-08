@@ -7,9 +7,7 @@ import {
   Pin,
   Palette,
   X,
-  SmilePlus,
-  ChevronRight,
-  Type,
+  SmilePlus, Type
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -145,7 +143,7 @@ const ThreadItem = ({
             {...dragHandleProps}
             className="touch-none cursor-grab transition-opacity"
           >
-            <div className="h-4 w-4 shrink-0 text-muted-foreground mr-2">
+            <div className="h-4 w-4 shrink-0 text-muted-foreground -mt-2 mr-2">
               {thread.icon}
             </div>
           </div>
@@ -210,9 +208,6 @@ const ThreadItem = ({
             >
               <Trash2 className="h-4 w-4" />
             </button>
-            {activeThreadId === thread.id && (
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            )}
             {thread.files && (
               <FileViewer
                 isOpen={showFiles}

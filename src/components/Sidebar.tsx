@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ThreadList } from './ThreadList';
 import { NoteList } from './NoteList';
-import { ThreadTabs } from './ThreadTabs';
+import { SidebarTabs } from './SidebarTabs';
 import { Thread, NoteThread, ChatThread } from '@/types';
 import { Plus, StickyNote } from 'lucide-react';
 
@@ -103,7 +103,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <div className="absolute inset-0 bg-card border-r border-border flex flex-col">
       <div className="mt-1">
-        <ThreadTabs
+        <SidebarTabs
           activeTab={activeTab}
           onTabChange={setActiveTab}
           threadCount={chatThreads.length}
@@ -120,12 +120,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {activeTab === 'threads' ? (
               <>
                 <Plus className="h-4 w-4 shrink-0" />
-                <span className="flex items-center -mb-1">Start a new chat</span>
+                <span className="flex items-center">Start a new chat</span>
               </>
             ) : (
               <>
                 <StickyNote className="h-4 w-4 shrink-0" />
-                <span className="flex items-center -mb-1">Create a new note</span>
+                <span className="flex items-center">Create a new note</span>
               </>
             )}
           </button>

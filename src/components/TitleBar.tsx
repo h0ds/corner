@@ -1,5 +1,4 @@
 import React from 'react';
-import { window as tauriWindow } from '@tauri-apps/api';
 
 export const TitleBar: React.FC = () => {
   return (

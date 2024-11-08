@@ -34,7 +34,7 @@ export const ThreadHeader: React.FC<ThreadHeaderProps> = ({
     <div 
       className={cn(
         "absolute top-0 left-0 right-0 flex items-center justify-between p-3",
-        "border-border z-10"
+        "border-border border-b z-10 h-[40px]" 
       )}
     >
       {/* Empty div for left side */}

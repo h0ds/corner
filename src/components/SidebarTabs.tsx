@@ -1,23 +1,22 @@
 import React from 'react';
-import { Thread } from '@/types';
 import { MessageSquare, StickyNote } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-interface ThreadTabsProps {
+interface SidebarTabsProps {
   activeTab: 'threads' | 'notes';
   onTabChange: (tab: 'threads' | 'notes') => void;
   threadCount: number;
   noteCount: number;
 }
 
-export const ThreadTabs: React.FC<ThreadTabsProps> = ({
+export const SidebarTabs: React.FC<SidebarTabsProps> = ({
   activeTab,
   onTabChange,
   threadCount,
   noteCount,
 }) => {
   return (
-    <div className="flex w-full border-b border-border">
+    <div className="flex w-full border-b border-border h-[40px]">
       <button
         onClick={() => onTabChange('threads')}
         className={cn(

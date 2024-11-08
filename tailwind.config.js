@@ -19,7 +19,12 @@ module.exports = {
         extend: {
             fontFamily: {
                 'serif': ['Instrument Serif', 'serif'],
-                'mono': ['Server Mono', 'monospace'],
+                'mono': ['Space Mono', 'monospace'],
+                'sans': ['Space Mono', 'monospace'],
+            },
+            fontWeight: {
+                normal: '400',
+                bold: '700',
             },
             colors: {
                 border: "hsl(var(--border))",

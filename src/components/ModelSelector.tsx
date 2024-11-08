@@ -1,3 +1,4 @@
+import React from 'react';
 import { ModelIcon } from './ModelIcon';
 import {
   Select,
@@ -5,13 +6,15 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/components/ui/select";
 
 export interface Model {
   id: string;
   name: string;
-  provider: 'anthropic' | 'perplexity' | 'openai' | 'xai';
+  provider: 'anthropic' | 'perplexity' | 'openai' | 'xai' | 'google';
 }
+
+export const DEFAULT_MODEL = 'claude-3-sonnet-20240229';
 
 export const AVAILABLE_MODELS: Model[] = [
   // Anthropic Models
@@ -24,118 +27,98 @@ export const AVAILABLE_MODELS: Model[] = [
   { id: 'gpt-4', name: 'GPT-4', provider: 'openai' },
   { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', provider: 'openai' },
   
-  // Perplexity Sonar Models
+  // Perplexity Models
   { id: 'llama-3.1-sonar-small-128k-online', name: 'Sonar Small Online (8B)', provider: 'perplexity' },
   { id: 'llama-3.1-sonar-large-128k-online', name: 'Sonar Large Online (70B)', provider: 'perplexity' },
   { id: 'llama-3.1-sonar-huge-128k-online', name: 'Sonar Huge Online (405B)', provider: 'perplexity' },
-  
-  // Perplexity Chat Models
   { id: 'llama-3.1-sonar-small-128k-chat', name: 'Sonar Small Chat (8B)', provider: 'perplexity' },
   { id: 'llama-3.1-sonar-large-128k-chat', name: 'Sonar Large Chat (70B)', provider: 'perplexity' },
-  
-  // Perplexity Open Source Models
   { id: 'llama-3.1-8b-instruct', name: 'Llama 3.1 8B', provider: 'perplexity' },
   { id: 'llama-3.1-70b-instruct', name: 'Llama 3.1 70B', provider: 'perplexity' },
 
   // xAI Models
   { id: 'grok-beta', name: 'Grok Beta', provider: 'xai' },
+
+  // Google Models
+  { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', provider: 'google' },
+  { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', provider: 'google' },
+  { id: 'gemini-1.0-pro', name: 'Gemini 1.0 Pro', provider: 'google' },
 ];
 
 interface ModelSelectorProps {
   selectedModel: string;
   onModelChange: (modelId: string) => void;
   disabled?: boolean;
+  availableProviders?: ('anthropic' | 'perplexity' | 'openai' | 'xai' | 'google')[];
 }
 
 export const ModelSelector: React.FC<ModelSelectorProps> = ({
   selectedModel,
   onModelChange,
-  disabled
+  disabled,
+  availableProviders = []
 }) => {
+  // Get available models based on providers
+  const availableModels = AVAILABLE_MODELS.filter(m => availableProviders.includes(m.provider));
+
   // Group models by provider
-  const anthropicModels = AVAILABLE_MODELS.filter(m => m.provider === 'anthropic');
-  const openaiModels = AVAILABLE_MODELS.filter(m => m.provider === 'openai');
-  const perplexityModels = AVAILABLE_MODELS.filter(m => m.provider === 'perplexity');
-  const xaiModels = AVAILABLE_MODELS.filter(m => m.provider === 'xai');
+  const modelsByProvider = availableModels.reduce((acc, model) => {
+    if (!acc[model.provider]) {
+      acc[model.provider] = [];
+    }
+    acc[model.provider].push(model);
+    return acc;
+  }, {} as Record<string, Model[]>);
+
+  // Get current model data
+  const currentModel = AVAILABLE_MODELS.find(m => m.id === selectedModel);
+
+  // Handle model change
+  const handleModelChange = (modelId: string) => {
+    console.log('Model change:', { from: selectedModel, to: modelId });
+    onModelChange(modelId);
+  };
 
   return (
-    <Select
+    <Select 
+      defaultValue={selectedModel}
       value={selectedModel}
-      onValueChange={onModelChange}
-      disabled={disabled}
+      onValueChange={handleModelChange}
+      disabled={disabled || availableModels.length === 0}
     >
       <SelectTrigger className="w-[180px] rounded-md text-sm">
-        <SelectValue>
-          <div className="flex items-center gap-2">
-            <ModelIcon modelId={selectedModel} className="w-4 h-4" />
-            <span className="-mb-1">{AVAILABLE_MODELS.find(m => m.id === selectedModel)?.name || 'Select a model'}</span>
-          </div>
-        </SelectValue>
+        <div className="flex items-center gap-2">
+          <ModelIcon modelId={selectedModel} className="w-4 h-4" />
+          <span>{currentModel?.name || 'Select Model'}</span>
+        </div>
       </SelectTrigger>
-      <SelectContent>
-        <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground mt-2">
-          Anthropic
-        </div>
-        {anthropicModels.map((model) => (
-          <SelectItem
-            key={model.id}
-            value={model.id}
-            className="text-sm"
-          >
-            <div className="flex items-center gap-2">
-              <ModelIcon modelId={model.id} className="w-4 h-4" />
-              <span className="-mb-1">{model.name}</span>
+      
+      <SelectContent align="end">
+        {Object.entries(modelsByProvider).map(([provider, models]) => (
+          <React.Fragment key={provider}>
+            <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground capitalize">
+              {provider}
             </div>
-          </SelectItem>
-        ))}
-        
-        <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground mt-2">
-          OpenAI
-        </div>
-        {openaiModels.map((model) => (
-          <SelectItem
-            key={model.id}
-            value={model.id}
-            className="text-sm"
-          >
-            <div className="flex items-center gap-2">
-              <ModelIcon modelId={model.id} className="w-4 h-4" />
-              <span className="-mb-1">{model.name}</span>
-            </div>
-          </SelectItem>
+            {models.map(model => (
+              <SelectItem 
+                key={model.id} 
+                value={model.id}
+                className="cursor-pointer"
+              >
+                <div className="flex items-center gap-2">
+                  <ModelIcon modelId={model.id} className="w-4 h-4" />
+                  <span>{model.name}</span>
+                </div>
+              </SelectItem>
+            ))}
+          </React.Fragment>
         ))}
 
-        <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground mt-2">
-          Perplexity
-        </div>
-        {perplexityModels.map((model) => (
-          <SelectItem
-            key={model.id}
-            value={model.id}
-            className="text-sm"
-          >
-            <div className="flex items-center gap-2">
-              <ModelIcon modelId={model.id} className="w-4 h-4" />
-              <span className="-mb-1">{model.name}</span>
-            </div>
-          </SelectItem>
-        ))}
-
-        <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
-          xAI
-        </div>
-        {xaiModels.map((model) => (
-          <SelectItem
-            key={model.id}
-            value={model.id}
-            className="text-sm"
-          >
-            <div className="flex items-center gap-2">
-              <ModelIcon modelId={model.id} className="w-4 h-4" />
-              <span className="-mb-1">{model.name}</span>
-            </div>
-          </SelectItem>
-        ))}
+        {availableModels.length === 0 && (
+          <div className="px-2 py-4 text-sm text-muted-foreground text-center">
+            No models available. Please add API keys in settings.
+          </div>
+        )}
       </SelectContent>
     </Select>
   );

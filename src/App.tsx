@@ -127,6 +127,8 @@ function App() {
   const [fileLinkQuery, setFileLinkQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const [noteNavigationStack, setNoteNavigationStack] = useState<string[]>([]);
+  const [preferencesOpen, setPreferencesOpen] = useState(false);
+  const [preferencesTab, setPreferencesTab] = useState<string>('api-keys');
 
   // Initialize cache on mount
   useEffect(() => {
@@ -216,13 +218,14 @@ function App() {
       // Load current shortcuts
       const currentShortcuts = await loadShortcuts();
       
-      // Find clear history shortcut
+      // Find shortcuts
       const clearHistoryShortcut = currentShortcuts.find(s => s.id === 'clear-history');
       const toggleSidebarShortcut = currentShortcuts.find(s => s.id === 'toggle-sidebar');
+      const searchShortcut = currentShortcuts.find(s => s.id === 'search');
+      const newNoteShortcut = currentShortcuts.find(s => s.id === 'new-note');
 
       if (clearHistoryShortcut && matchesShortcut(e, clearHistoryShortcut)) {
         e.preventDefault();
-        // Only clear the active thread's messages
         if (activeThreadId) {
           clearCurrentThread();
         }
@@ -232,11 +235,26 @@ function App() {
         e.preventDefault();
         setSidebarVisible(!sidebarVisible);
       }
+
+      if (searchShortcut && matchesShortcut(e, searchShortcut)) {
+        e.preventDefault();
+        setShowSearch(true);
+      }
+
+      // Add handler for new note shortcut
+      if (newNoteShortcut && matchesShortcut(e, newNoteShortcut)) {
+        e.preventDefault();
+        handleNewNote();
+        // Switch to notes tab
+        window.dispatchEvent(new CustomEvent('switch-tab', {
+          detail: { tab: 'notes' }
+        }));
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown as any);
     return () => window.removeEventListener('keydown', handleKeyDown as any);
-  }, [sidebarVisible, activeThreadId]); // Add activeThreadId to dependencies
+  }, [sidebarVisible, activeThreadId, handleNewNote]); // Add handleNewNote to dependencies
 
   const handleSendMessage = async (message: string, overrideModel?: string) => {
     if (isDiscussing && isDiscussionPaused) {
@@ -928,6 +946,11 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  const handleShowPreferencesTab = (tab: string) => {
+    setPreferencesTab(tab);
+    setPreferencesOpen(true);
+  };
+
   return (
     <div className="flex h-screen bg-background/50 backdrop-blur-sm overflow-hidden">
       <TitleBar />
@@ -979,7 +1002,8 @@ function App() {
                   onFileDelete={handleFileDelete}
                   onShowKnowledgeGraph={() => setView('graph')}
                   onShowSearch={() => setShowSearch(true)}
-                  onShowPreferences={() => setShowPreferences(true)}
+                  onShowPreferences={() => setPreferencesOpen(true)}
+                  onShowPreferencesTab={handleShowPreferencesTab}
                 />
               </div>
             </ResizeObserver>
@@ -1031,14 +1055,14 @@ function App() {
                     isDiscussionPaused={isDiscussionPaused}
                     onStopDiscussion={handleStopDiscussion}
                     onOpenModelSelect={() => {
-                      setPreferenceTab('models');
-                      setShowPreferences(true);
+                      setPreferencesTab('models');
+                      setPreferencesOpen(true);
                     }}
                     onSendMessage={handleSendMessage}
                     onCompareModels={handleCompareModels}
                     onStartDiscussion={handleStartDiscussion}
                     onClearThread={clearCurrentThread}
-                    onShowPreferences={() => setShowPreferences(true)}
+                    onShowPreferences={() => setPreferencesOpen(true)}
                   />
                 )
               ) : (
@@ -1051,11 +1075,11 @@ function App() {
         </div>
 
         <Preferences
-          isOpen={showPreferences}
-          onClose={() => setShowPreferences(false)}
+          isOpen={preferencesOpen}
+          onClose={() => setPreferencesOpen(false)}
+          initialTab={preferencesTab}
           selectedModel={selectedModel}
           onModelChange={setSelectedModel}
-          initialTab={preferenceTab}
           plugins={plugins}
           onPluginChange={setPlugins}
         />

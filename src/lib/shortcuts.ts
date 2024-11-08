@@ -32,6 +32,13 @@ export const DEFAULT_SHORTCUTS: KeyboardShortcut[] = [
     description: 'Open search dialog',
     defaultKey: '⌘/Ctrl + F',
     currentKey: '⌘/Ctrl + F'
+  },
+  {
+    id: 'new-note',
+    name: 'New Note',
+    description: 'Create a new note',
+    defaultKey: '⌘/Ctrl + N',
+    currentKey: '⌘/Ctrl + N'
   }
 ];
 

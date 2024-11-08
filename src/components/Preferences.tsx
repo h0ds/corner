@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { KeyRound, Palette, Bot, Keyboard, Network, Code } from "lucide-react";
+import { KeyRound, Palette, Bot, Keyboard, Network, Code, Zap } from "lucide-react";
 import { cn } from '@/lib/utils';
 import { KeyboardShortcut, loadShortcuts, saveShortcuts, resetShortcuts } from '@/lib/shortcuts';
 import { Plugin } from '@/lib/plugins';
@@ -19,6 +19,7 @@ import { Models } from './preferences/Models';
 import { Shortcuts } from './preferences/Shortcuts';
 import { Connections } from './preferences/Connections';
 import { Plugins } from './preferences/Plugins';
+import { Actions, Action } from './preferences/Actions';
 
 interface PreferencesProps {
   isOpen: boolean;
@@ -28,6 +29,8 @@ interface PreferencesProps {
   initialTab?: PreferenceTab;
   plugins?: Plugin[];
   onPluginChange?: (plugins: Plugin[]) => void;
+  actions?: Action[];
+  onActionsChange?: (actions: Action[]) => void;
 }
 
 type VerificationStatus = 'idle' | 'verifying' | 'success' | 'error';
@@ -37,9 +40,10 @@ interface ApiKeys {
   perplexity: string;
   openai: string;
   xai: string;
+  google: string;
 }
 
-type PreferenceTab = 'api-keys' | 'appearance' | 'models' | 'shortcuts' | 'plugins' | 'connections';
+type PreferenceTab = 'api-keys' | 'appearance' | 'models' | 'shortcuts' | 'plugins' | 'connections' | 'actions';
 
 export const Preferences: React.FC<PreferencesProps> = ({ 
   isOpen, 
@@ -49,12 +53,15 @@ export const Preferences: React.FC<PreferencesProps> = ({
   initialTab = 'api-keys',
   plugins = [],
   onPluginChange,
+  actions = [],
+  onActionsChange,
 }) => {
   const [keys, setKeys] = useState<ApiKeys>({ 
     anthropic: '', 
     perplexity: '', 
     openai: '',
-    xai: ''
+    xai: '',
+    google: ''
   });
   const [isSaving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,11 +71,13 @@ export const Preferences: React.FC<PreferencesProps> = ({
     perplexity: VerificationStatus;
     openai: VerificationStatus;
     xai: VerificationStatus;
+    google: VerificationStatus;
   }>({
     anthropic: 'idle',
     perplexity: 'idle',
     openai: 'idle',
-    xai: 'idle'
+    xai: 'idle',
+    google: 'idle'
   });
   const [shortcuts, setShortcuts] = useState<KeyboardShortcut[]>([]);
   const [editingShortcutId, setEditingShortcutId] = useState<string | null>(null);
@@ -79,27 +88,30 @@ export const Preferences: React.FC<PreferencesProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      invoke<{ anthropic: string | null; perplexity: string | null; openai: string | null; xai: string | null }>('get_api_keys')
+      invoke<{ anthropic: string | null; perplexity: string | null; openai: string | null; xai: string | null; google: string | null }>('get_api_keys')
         .then((storedKeys) => {
           console.log('Loaded stored keys:', {
             anthropic: storedKeys.anthropic ? '***' : 'none',
             perplexity: storedKeys.perplexity ? '***' : 'none',
             openai: storedKeys.openai ? '***' : 'none',
-            xai: storedKeys.xai ? '***' : 'none'
+            xai: storedKeys.xai ? '***' : 'none',
+            google: storedKeys.google ? '***' : 'none'
           });
           
           setKeys({
             anthropic: storedKeys.anthropic || '',
             perplexity: storedKeys.perplexity || '',
             openai: storedKeys.openai || '',
-            xai: storedKeys.xai || ''
+            xai: storedKeys.xai || '',
+            google: storedKeys.google || ''
           });
 
           setVerificationStatus(prev => ({
             anthropic: storedKeys.anthropic ? 'success' : prev.anthropic,
             perplexity: storedKeys.perplexity ? 'success' : prev.perplexity,
             openai: storedKeys.openai ? 'success' : prev.openai,
-            xai: storedKeys.xai ? 'success' : prev.xai
+            xai: storedKeys.xai ? 'success' : prev.xai,
+            google: storedKeys.google ? 'success' : prev.google
           }));
         })
         .catch(err => {
@@ -171,7 +183,9 @@ export const Preferences: React.FC<PreferencesProps> = ({
     setError(null);
     
     const timeoutId = setTimeout(() => {
-      verifyKey(type, value);
+      if (value.trim()) {
+        verifyKey(type, value);
+      }
     }, 500);
 
     return () => clearTimeout(timeoutId);
@@ -187,14 +201,12 @@ export const Preferences: React.FC<PreferencesProps> = ({
         perplexity: keys.perplexity || null,
         openai: keys.openai || null,
         xai: keys.xai || null,
+        google: keys.google || null,
       });
 
-      const verifyPromises: Promise<void>[] = [];
-      Object.entries(keys).forEach(([type, value]) => {
-        if (value && verificationStatus[type as keyof ApiKeys] === 'idle') {
-          verifyPromises.push(verifyKey(type as keyof ApiKeys, value));
-        }
-      });
+      const verifyPromises = Object.entries(keys)
+        .filter(([type, value]) => value && verificationStatus[type as keyof typeof verificationStatus] === 'idle')
+        .map(([type, value]) => verifyKey(type as keyof ApiKeys, value));
 
       await Promise.all(verifyPromises);
       
@@ -216,6 +228,7 @@ export const Preferences: React.FC<PreferencesProps> = ({
     { id: 'models', label: 'Models', icon: <Bot className="h-4 w-4" /> },
     { id: 'shortcuts', label: 'Shortcuts', icon: <Keyboard className="h-4 w-4" /> },
     { id: 'plugins', label: 'Plugins', icon: <Code className="h-4 w-4" /> },
+    { id: 'actions', label: 'Actions', icon: <Zap className="h-4 w-4" /> },
   ];
 
   const renderContent = () => {
@@ -232,10 +245,15 @@ export const Preferences: React.FC<PreferencesProps> = ({
       case 'appearance':
         return <Appearance />;
       case 'models':
+        const availableProviders = Object.entries(verificationStatus)
+          .filter(([_, status]) => status === 'success')
+          .map(([provider]) => provider as 'anthropic' | 'perplexity' | 'openai' | 'xai' | 'google');
+
         return (
           <Models
             selectedModel={selectedModel}
             onModelChange={onModelChange}
+            availableProviders={availableProviders}
           />
         );
       case 'shortcuts':
@@ -260,6 +278,13 @@ export const Preferences: React.FC<PreferencesProps> = ({
         );
       case 'connections':
         return <Connections />;
+      case 'actions':
+        return (
+          <Actions
+            actions={actions}
+            onActionChange={onActionsChange}
+          />
+        );
       default:
         return null;
     }
@@ -319,7 +344,7 @@ export const Preferences: React.FC<PreferencesProps> = ({
     >
       <DialogContent className="rounded-md bg-background border-border sm:max-w-[700px] p-0 gap-0">
         <div className="flex h-[500px]">
-          <div className="w-[200px] border-r border-border p-2 space-y-1">
+          <div className="w-[200px] border-r border-border p-2 space-y-1 shrink-0">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
@@ -336,48 +361,49 @@ export const Preferences: React.FC<PreferencesProps> = ({
             ))}
           </div>
 
-          <div className="flex-1 p-6">
-            <DialogHeader>
+          <div className="flex-1 flex flex-col min-w-0">
+            <DialogHeader className="px-6 py-4 border-b border-border shrink-0">
               <DialogTitle className="text-md font-medium">
                 {tabs.find(t => t.id === activeTab)?.label}
               </DialogTitle>
             </DialogHeader>
 
-            <div className="mt-4">
+            <div className="flex-1 overflow-y-auto p-6">
               {renderContent()}
+
+              {error && (
+                <Alert variant="destructive" className="rounded-md mt-4">
+                  <AlertDescription className="text-sm">
+                    {error}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {activeTab === 'api-keys' && (
+                <DialogFooter className="gap-2 mt-6">
+                  <Button 
+                    variant="outline" 
+                    onClick={onClose}
+                    className="rounded-md text-sm"
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={handleSave} 
+                    disabled={isSaving || 
+                      (!keys.anthropic && !keys.perplexity && !keys.openai && !keys.xai && !keys.google) || 
+                      verificationStatus.anthropic === 'verifying' || 
+                      verificationStatus.perplexity === 'verifying' || 
+                      verificationStatus.openai === 'verifying' || 
+                      verificationStatus.xai === 'verifying' ||
+                      verificationStatus.google === 'verifying'}
+                    className="rounded-md text-sm"
+                  >
+                    {isSaving ? 'Saving...' : 'Save'}
+                  </Button>
+                </DialogFooter>
+              )}
             </div>
-
-            {error && (
-              <Alert variant="destructive" className="rounded-md mt-4">
-                <AlertDescription className="text-sm">
-                  {error}
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {activeTab === 'api-keys' && (
-              <DialogFooter className="gap-2 mt-6">
-                <Button 
-                  variant="outline" 
-                  onClick={onClose}
-                  className="rounded-md text-sm"
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={handleSave} 
-                  disabled={isSaving || 
-                    (!keys.anthropic && !keys.perplexity && !keys.openai && !keys.xai) || 
-                    verificationStatus.anthropic === 'verifying' || 
-                    verificationStatus.perplexity === 'verifying' || 
-                    verificationStatus.openai === 'verifying' || 
-                    verificationStatus.xai === 'verifying'}
-                  className="rounded-md text-sm"
-                >
-                  {isSaving ? 'Saving...' : 'Save'}
-                </Button>
-              </DialogFooter>
-            )}
           </div>
         </div>
       </DialogContent>

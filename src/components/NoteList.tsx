@@ -8,8 +8,7 @@ import {
   X,
   SmilePlus,
   Palette,
-  Type,
-  ChevronRight,
+  Type
 } from "lucide-react";
 import {
   ContextMenu,
@@ -196,6 +195,12 @@ const SortableNoteItem: React.FC<{
     setIsEditing(false);
   };
 
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsEditing(true);
+  };
+
   return (
     <ContextMenu>
       <ContextMenuTrigger>
@@ -220,6 +225,7 @@ const SortableNoteItem: React.FC<{
               } as React.CSSProperties
             }
             onClick={() => onNoteSelect(note.id)}
+            onDoubleClick={handleDoubleClick}
           >
             {activeNoteId === note.id && (
               <div
@@ -243,7 +249,7 @@ const SortableNoteItem: React.FC<{
                   {...attributes}
                   className="touch-none cursor-grab transition-opacity"
                 >
-                  <div className="h-4 w-4 shrink-0 text-muted-foreground mr-2">
+                  <div className="h-4 w-4 shrink-0 text-muted-foreground -mt-2 mr-2">
                     {note.icon}
                   </div>
                 </div>
@@ -265,20 +271,23 @@ const SortableNoteItem: React.FC<{
                     onBlur={handleFinishEdit}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") handleFinishEdit();
-                      if (e.key === "Escape") setIsEditing(false);
+                      if (e.key === "Escape") {
+                        setEditValue(note.name);
+                        setIsEditing(false);
+                      }
                     }}
+                    onClick={(e) => e.stopPropagation()}
                     className="w-full bg-transparent border-none focus:outline-none text-sm"
                     autoFocus
                   />
                 ) : (
-                  <span className="text-sm truncate">{note.name}</span>
+                  <span className="text-sm truncate select-none">
+                    {note.name}
+                  </span>
                 )}
               </div>
 
               <div className="flex items-center gap-1">
-                {activeNoteId === note.id && (
-                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                )}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();

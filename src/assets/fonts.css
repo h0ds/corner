@@ -1,15 +1,39 @@
 @font-face {
-  font-family: 'Server Mono';
-  src: url('/fonts/ServerMono-Regular.woff2') format('woff2'),
-       url('/fonts/ServerMono-Regular.woff') format('woff');
-  font-weight: normal;
+  font-family: 'Space Mono';
+  src: url('/fonts/SpaceMono-Regular.ttf') format('truetype');
+  font-weight: 400;
   font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Space Mono';
+  src: url('/fonts/SpaceMono-Italic.ttf') format('truetype');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Space Mono';
+  src: url('/fonts/SpaceMono-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Space Mono';
+  src: url('/fonts/SpaceMono-BoldItalic.ttf') format('truetype');
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
 }
 
 @font-face {
   font-family: 'Instrument Serif';
   src: url('/fonts/InstrumentSerif-Regular.ttf') format('truetype');
-  font-weight: normal;
+  font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
@@ -17,7 +41,7 @@
 @font-face {
   font-family: 'Instrument Serif';
   src: url('/fonts/InstrumentSerif-Italic.ttf') format('truetype');
-  font-weight: normal;
+  font-weight: 400;
   font-style: italic;
   font-display: swap;
 }

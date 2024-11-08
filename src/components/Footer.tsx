@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { FileText, Network, Search, Settings } from 'lucide-react';
+import { FileText, Network, Search, Settings, Zap } from 'lucide-react';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { FileMenu } from './FileMenu';
 import { FileAttachment, Thread } from '@/types';
@@ -17,6 +17,7 @@ interface FooterProps {
   onShowKnowledgeGraph: () => void;
   onShowSearch: () => void;
   onShowPreferences: () => void;
+  onShowPreferencesTab?: (tab: string) => void;
 }
 
 export const Footer: React.FC<FooterProps> = ({
@@ -26,6 +27,7 @@ export const Footer: React.FC<FooterProps> = ({
   onShowKnowledgeGraph,
   onShowSearch,
   onShowPreferences,
+  onShowPreferencesTab,
 }) => {
   const [showFileMenu, setShowFileMenu] = useState(false);
 
@@ -78,6 +80,22 @@ export const Footer: React.FC<FooterProps> = ({
               <TooltipContent side="top" className="text-xs">
                 Search
                 <span className="ml-2 text-muted-foreground">⌘F</span>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => onShowPreferencesTab?.('actions')}
+                  className="p-2 bg-background hover:bg-accent rounded-md transition-colors border border-border"
+                >
+                  <Zap className="h-4 w-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                Quick Actions
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

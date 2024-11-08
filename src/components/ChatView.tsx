@@ -122,9 +122,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   return model ? (
                     <div className="flex flex-col gap-0.5">
                       <span className="font-medium">{model.name}</span>
-                      <span className="text-muted-foreground">
-                        {model.provider === 'anthropic' ? 'Anthropic' : 
-                         model.provider === 'openai' ? 'OpenAI' : 'Perplexity'}
+                      <span className="text-muted-foreground capitalize">
+                        {model.provider}
                       </span>
                     </div>
                   ) : selectedModel;
