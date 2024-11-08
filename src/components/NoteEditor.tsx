@@ -239,15 +239,6 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     }, 0);
   }, [content, linkStartIndex, onUpdate]);
 
-  const renderMarkdown = useCallback((text: string) => {
-    try {
-      return marked(text || '');
-    } catch (error) {
-      console.error('Error parsing markdown:', error);
-      return '<div class="text-red-500">Error parsing markdown</div>';
-    }
-  }, []);
-
   const handlePreviewClick = useCallback((e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
     if (target.classList.contains('wiki-link')) {
@@ -308,7 +299,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   const showBackButton = navigationStack.length > 0;
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full w-full">
       <MenuBar 
         onInsertMarkdown={insertMarkdown}
         isPreview={isPreview}

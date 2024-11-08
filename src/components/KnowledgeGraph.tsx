@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useState, useCallback, useEffect } from 'react';
 import { useTheme } from 'next-themes';
-import { GraphCanvas, GraphNode, GraphEdge } from 'reagraph';
-import { KnowledgeGraphProps } from '@/types';
+import { GraphCanvas } from 'reagraph';
+import { KnowledgeGraphProps, GraphNode, GraphEdge } from '@/types';
 
 export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
   threads,
@@ -27,7 +27,7 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
 
   const { nodes, edges } = useMemo(() => {
     const nodeMap = new Map<string, GraphNode>();
-    const edgeMap = new Map<string, { source: string; target: string }>();
+    const edgeMap = new Map<string, GraphEdge>();
     const connectionCounts = new Map<string, number>();
 
     // Initialize nodes
@@ -62,12 +62,14 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
         targetThreads.forEach(targetThread => {
           if (targetThread.id === sourceThread.id) return; // Skip self-links
           
-          // Create edges in both directions to show bi-directional connection
-          const edgeId1 = `${sourceThread.id}-${targetThread.id}`;
-          const edgeId2 = `${targetThread.id}-${sourceThread.id}`;
+          const edgeId = `${sourceThread.id}-${targetThread.id}`;
           
-          if (!edgeMap.has(edgeId1) && !edgeMap.has(edgeId2)) {
-            edgeMap.set(edgeId1, { source: sourceThread.id, target: targetThread.id });
+          if (!edgeMap.has(edgeId)) {
+            edgeMap.set(edgeId, {
+              id: edgeId,
+              source: sourceThread.id,
+              target: targetThread.id
+            });
             
             // Increment connection count for both nodes
             connectionCounts.set(

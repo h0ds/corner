@@ -13,8 +13,14 @@
     "windows": [
       {
         "title": "Corner",
-        "width": 800,
-        "height": 600
+        "decorations": true,
+        "transparent": true,
+        "hiddenTitle": true,
+        "theme": "Light",
+        "center": true,
+        "minWidth": 600,
+        "minHeight": 400,
+        "visible": true
       }
     ],
     "security": {

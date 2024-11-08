@@ -101,7 +101,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }, [threads, onNewNote]);
 
   return (
-    <div className="absolute inset-0 bg-card flex flex-col rounded-xl">
+    <div className="absolute inset-0 bg-card border-r border-border flex flex-col">
       <div className="mt-1">
         <ThreadTabs
           activeTab={activeTab}
@@ -113,19 +113,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="p-2 border-b border-border">
           <button
             onClick={activeTab === 'threads' ? props.onNewThread : handleCreateNote}
-            className="w-full flex items-center gap-2 p-2 text-sm rounded-md 
+            className="w-full flex items-center gap-2 p-3 text-sm rounded-md 
                      bg-primary text-primary-foreground hover:bg-primary/90 transition-colors
                      justify-start pl-3"
           >
             {activeTab === 'threads' ? (
               <>
                 <Plus className="h-4 w-4 shrink-0" />
-                <span className="flex items-center -mb-1">New thread</span>
+                <span className="flex items-center -mb-1">Start a new chat</span>
               </>
             ) : (
               <>
                 <StickyNote className="h-4 w-4 shrink-0" />
-                <span className="flex items-center -mb-1">New note</span>
+                <span className="flex items-center -mb-1">Create a new note</span>
               </>
             )}
           </button>

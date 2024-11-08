@@ -93,7 +93,7 @@ const ThreadItem = ({
   return (
     <div
       className={cn(
-        "group flex items-center gap-2 px-3 py-2 rounded-md cursor-pointer relative",
+        "group flex items-center gap-2 px-3 py-2 rounded-md cursor-pointer relative bg-gray-50",
         "hover:bg-accent hover:text-accent-foreground transition-colors",
         isDragging && "opacity-50",
         isOverlay && "bg-background border border-border shadow-lg scale-105 rotate-2"
@@ -112,7 +112,7 @@ const ThreadItem = ({
     >
       {activeThreadId === thread.id && (
         <div 
-          className="absolute inset-0 rounded-md pointer-events-none border border-1"
+          className="absolute inset-0 rounded-md pointer-events-none !bg-gray-200"
           style={thread.color ? {
             borderColor: thread.color
           } : {
@@ -601,7 +601,7 @@ export const ThreadList: React.FC<ThreadListProps> = ({
   });
 
   return (
-    <div className="flex-1 overflow-y-auto p-2 space-y-1">
+    <div className="flex-1 overflow-y-auto p-2 space-y-2">
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}

@@ -39,13 +39,14 @@ import { Square } from 'lucide-react';
 import { ThreadHeader } from './components/ThreadHeader';
 import { cn } from '@/lib/utils';
 import { Sidebar } from './components/Sidebar';
-import { NoteEditor } from './components/NoteEditor';
 import { ChatView } from './components/ChatView';
 import { KnowledgeGraph } from './components/KnowledgeGraph';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FileLinkMenu } from './components/FileLinkMenu';
 import { SearchPanel } from './components/SearchPanel';
 import { Settings } from 'lucide-react';
+import { TitleBar } from './components/TitleBar';
+import { NoteEditor } from "./components/NoteEditor";
 
 interface ApiResponse {
   content?: string;
@@ -928,23 +929,9 @@ function App() {
   }, []);
 
   return (
-    <div className="relative flex h-screen">
-      {/* Background image */}
-      <div className="fixed inset-0 z-0">
-        <img
-          src="https://images.unsplash.com/photo-1726610930930-0e1af5f2d038?q=80&w=2342&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-          alt="Background"
-          className="object-cover w-full h-full"
-        />
-      </div>
-
-      {/* Frosted glass overlay */}
-      <div 
-        className="fixed inset-0 z-10 backdrop-blur-md bg-white/30"
-      />
-
-      {/* Main content */}
-      <div className="relative z-20 flex w-full h-screen border-t">
+    <div className="flex h-screen bg-background/50 backdrop-blur-sm overflow-hidden">
+      <TitleBar />
+      <div className="relative flex h-screen w-full border-t border-border">
         {/* Sidebar with animation */}
         <motion.div
           initial={false}
@@ -953,7 +940,7 @@ function App() {
             opacity: sidebarVisible ? 1 : 0,
           }}
           transition={{ duration: 0.2 }}
-          className={`relative shrink-0 ${sidebarVisible ? 'm-4 mr-2' : ''}`}
+          className="relative shrink-0"
           style={{
             minWidth: sidebarVisible ? '250px' : '0px',
           }}
@@ -1000,22 +987,20 @@ function App() {
         </motion.div>
 
         {/* Main content */}
-        <div className="flex-1 flex flex-col min-w-0 m-4 bg-white rounded-xl backdrop-blur-sm">
-          <div className="flex flex-col h-full relative">
+        <div className="flex-1 flex flex-col min-w-0">
+          <div className="flex flex-col h-full relative bg-background">
             {activeThread && !activeThread.isNote && view !== 'graph' && (
               <ThreadHeader
                 thread={activeThread}
                 onRename={(newName) => handleRenameThread(activeThread.id, newName)}
                 onIconChange={(newIcon) => handleThreadIconChange(activeThread.id, newIcon)}
-                isCollapsed={isHeaderCollapsed}
-                onToggleCollapse={() => setIsHeaderCollapsed(!isHeaderCollapsed)}
               />
             )}
             <main 
               ref={chatContainerRef}
               className={cn(
                 "flex-1 overflow-y-auto min-w-0",
-                activeThread?.isNote ? "mt-0" : (isHeaderCollapsed || view === 'graph' ? "mt-0" : "mt-11"),
+                activeThread?.isNote ? "mt-0" : "mt-11",
                 "transition-spacing duration-200", 
                 !activeThread?.isNote && view === 'thread' && "flex flex-col h-full"
               )}

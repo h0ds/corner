@@ -106,3 +106,23 @@ export const THREAD_ICONS = [
   '💻', '🖥️', '🌐', '🔐', '📡', '🎓', '📚', '✨',
   '🚀', '🎪', '🌟', '💫', '🔮', '🎲', '🎯', '🎪'
 ] as const;
+
+export interface KnowledgeGraphProps {
+  threads: Thread[];
+  onNodeClick?: (nodeId: string) => void;
+}
+
+export interface GraphNode {
+  id: string;
+  label: string;
+  data: {
+    color?: string;
+    size?: number;
+  };
+}
+
+export interface GraphEdge {
+  id: string;
+  source: string;
+  target: string;
+}

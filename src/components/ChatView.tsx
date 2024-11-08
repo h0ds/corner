@@ -48,7 +48,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
 }) => {
   return (
     <>
-      <div className="flex-1 p-6 space-y-6 overflow-y-auto">
+      <div className="flex-1 p-6 space-y-6 overflow-y-auto pb-[100px]">
         <AnimatePresence>
           {messages.length === 0 ? (
             <div className="text-center text-muted-foreground/40 mt-1 text-sm tracking-tighter">
@@ -81,8 +81,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
         </AnimatePresence>
       </div>
 
-      <footer 
-        className="flex-shrink-0 p-4 border-t border-border relative"
+      <div 
+        className="flex-shrink-0 p-2 absolute left-4 right-4 bottom-0 mb-4 bg-gray-50 rounded-lg"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="absolute right-4 -top-12 flex items-center gap-2">
@@ -144,7 +144,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
           isDiscussing={isDiscussing}
           isPaused={isDiscussionPaused}
         />
-      </footer>
+      </div>
     </>
   );
 }; 
