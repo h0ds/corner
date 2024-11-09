@@ -1017,6 +1017,39 @@ function App() {
     }
   }, [threadToDelete, handleDeleteThread]);
 
+  const handleLinkNotes = (sourceNoteId: string, targetNoteId: string) => {
+    setThreads(prev => {
+      const updatedThreads = prev.map(thread => {
+        if (thread.id === sourceNoteId) {
+          const currentLinks = thread.linkedNotes || [];
+          return {
+            ...thread,
+            linkedNotes: Array.from(new Set([...currentLinks, targetNoteId])),
+            updatedAt: Date.now(),
+          };
+        }
+        if (thread.id === targetNoteId) {
+          const currentLinks = thread.linkedNotes || [];
+          return {
+            ...thread,
+            linkedNotes: Array.from(new Set([...currentLinks, sourceNoteId])),
+            updatedAt: Date.now(),
+          };
+        }
+        return thread;
+      });
+
+      // Save each updated thread
+      updatedThreads.forEach(thread => {
+        if (thread.id === sourceNoteId || thread.id === targetNoteId) {
+          saveThread(thread);
+        }
+      });
+
+      return updatedThreads;
+    });
+  };
+
   return (
     <div className="flex h-screen bg-background/50 backdrop-blur-sm overflow-hidden">
       <TitleBar />
@@ -1109,6 +1142,11 @@ function App() {
                     allNotes={threads.filter((t): t is NoteThread => t.isNote === true)}
                     onNavigateBack={handleNavigateBack}
                     navigationStack={noteNavigationStack}
+                    onLinkNotes={handleLinkNotes}
+                    onNavigateToNote={(noteId) => {
+                      setActiveThreadId(noteId);
+                      setNoteNavigationStack(prev => [...prev, activeThreadId]);
+                    }}
                   />
                 ) : (
                   <ChatView

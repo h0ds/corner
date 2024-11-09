@@ -66,6 +66,30 @@ module.exports = {
                 md: "calc(var(--radius) - 2px)",
                 sm: "calc(var(--radius) - 4px)",
             },
+            typography: {
+                DEFAULT: {
+                    css: {
+                        maxWidth: 'none',
+                        code: {
+                            backgroundColor: 'var(--muted)',
+                            borderRadius: '0.25rem',
+                            paddingTop: '0.125rem',
+                            paddingRight: '0.375rem',
+                            paddingBottom: '0.125rem',
+                            paddingLeft: '0.375rem',
+                        },
+                        'code::before': {
+                            content: '""'
+                        },
+                        'code::after': {
+                            content: '""'
+                        }
+                    }
+                }
+            }
         },
     },
+    plugins: [
+        require('@tailwindcss/typography'),
+    ],
 }
