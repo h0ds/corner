@@ -1,225 +1,123 @@
-import React, { useMemo, useRef, useState, useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
+import { Thread, NoteThread, GraphNode, GraphEdge } from '@/types';
+import ForceGraph2D from 'react-force-graph-2d';
 import { useTheme } from 'next-themes';
-import { GraphCanvas } from 'reagraph';
-import { KnowledgeGraphProps, GraphNode, GraphEdge } from '@/types';
+
+interface KnowledgeGraphProps {
+  threads: Thread[];
+  onNodeClick?: (nodeId: string) => void;
+}
 
 export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
   threads,
-  onNodeClick
+  onNodeClick,
 }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
-  const updateDimensions = useCallback(() => {
-    if (containerRef.current) {
-      const { width, height } = containerRef.current.getBoundingClientRect();
-      setDimensions({ width, height });
-    }
-  }, []);
+  // Create nodes and links from threads
+  const { nodes, links } = useMemo(() => {
+    const nodes: GraphNode[] = [];
+    const links: GraphEdge[] = [];
+    const processedLinks = new Set<string>();
 
-  useEffect(() => {
-    updateDimensions();
-    window.addEventListener('resize', updateDimensions);
-    return () => window.removeEventListener('resize', updateDimensions);
-  }, [updateDimensions]);
+    // First, create nodes for all notes
+    const notes = threads.filter((t): t is NoteThread => t.isNote);
+    notes.forEach(note => {
+      nodes.push({
+        id: note.id,
+        label: note.name,
+        data: {
+          color: note.color || (isDark ? '#666' : '#ccc'),
+          size: 8
+        }
+      });
 
-  const { nodes, edges } = useMemo(() => {
-    const nodeMap = new Map<string, GraphNode>();
-    const edgeMap = new Map<string, GraphEdge>();
-    const connectionCounts = new Map<string, number>();
-
-    // Initialize nodes
-    threads.forEach(thread => {
-      if (thread.isNote) {
-        nodeMap.set(thread.id, {
-          id: thread.id,
-          label: thread.name,
-          data: { color: thread.color },
+      // Add links for linked notes
+      if (note.linkedNotes) {
+        note.linkedNotes.forEach(targetId => {
+          // Create unique link ID by sorting the node IDs
+          const linkId = [note.id, targetId].sort().join('-');
+          
+          // Only add link if we haven't processed it yet
+          if (!processedLinks.has(linkId)) {
+            links.push({
+              id: linkId,
+              source: note.id,
+              target: targetId
+            });
+            processedLinks.add(linkId);
+          }
         });
-        connectionCounts.set(thread.id, 0);
       }
     });
 
-    // Find all wiki-links in all notes
-    const noteThreads = threads.filter(t => t.isNote);
-    noteThreads.forEach(sourceThread => {
-      if (!sourceThread.content) return;
+    console.log('Graph data:', { nodes, links });
+    return { nodes, links };
+  }, [threads, isDark]);
 
-      // Find all wiki-style links [[note name]]
-      const wikiLinkRegex = /\[\[([^\]]+?)\]\]/g;
-      const matches = Array.from(sourceThread.content.matchAll(wikiLinkRegex));
-
-      matches.forEach(match => {
-        const linkedNoteName = match[1].trim();
-        
-        // Find all target threads that match this name (case insensitive)
-        const targetThreads = noteThreads.filter(t => 
-          t.name.toLowerCase() === linkedNoteName.toLowerCase()
-        );
-
-        targetThreads.forEach(targetThread => {
-          if (targetThread.id === sourceThread.id) return; // Skip self-links
-          
-          const edgeId = `${sourceThread.id}-${targetThread.id}`;
-          
-          if (!edgeMap.has(edgeId)) {
-            edgeMap.set(edgeId, {
-              id: edgeId,
-              source: sourceThread.id,
-              target: targetThread.id
-            });
-            
-            // Increment connection count for both nodes
-            connectionCounts.set(
-              sourceThread.id, 
-              (connectionCounts.get(sourceThread.id) || 0) + 1
-            );
-            connectionCounts.set(
-              targetThread.id, 
-              (connectionCounts.get(targetThread.id) || 0) + 1
-            );
-          }
-        });
-      });
-    });
-
-    // Calculate PageRank
-    const damping = 0.85;
-    const epsilon = 0.00001;
-    const maxIterations = 100;
-    let pageRanks = new Map<string, number>();
-    let prevPageRanks = new Map<string, number>();
-
-    // Initialize PageRank values
-    nodeMap.forEach((_, id) => {
-      pageRanks.set(id, 1 / nodeMap.size);
-    });
-
-    // Iterate until convergence
-    for (let i = 0; i < maxIterations; i++) {
-      prevPageRanks = new Map(pageRanks);
-      
-      nodeMap.forEach((_, id) => {
-        const connections = connectionCounts.get(id) || 0;
-        let sum = 0;
-        
-        // Get all edges that point to this node
-        Array.from(edgeMap.values())
-          .filter(edge => edge.target === id)
-          .forEach(edge => {
-            const sourceConnections = connectionCounts.get(edge.source) || 0;
-            if (sourceConnections > 0) {
-              sum += (prevPageRanks.get(edge.source) || 0) / sourceConnections;
-            }
-          });
-
-        pageRanks.set(id, (1 - damping) / nodeMap.size + damping * sum);
-      });
-
-      // Check for convergence
-      let diff = 0;
-      pageRanks.forEach((value, id) => {
-        diff += Math.abs(value - (prevPageRanks.get(id) || 0));
-      });
-
-      if (diff < epsilon) break;
+  // Handle node click
+  const handleNodeClick = useCallback((node: any) => {
+    if (onNodeClick) {
+      onNodeClick(node.id);
+      // Dispatch event to switch to notes tab
+      window.dispatchEvent(new CustomEvent('switch-tab', {
+        detail: { tab: 'notes' }
+      }));
     }
-
-    // Update node sizes based on PageRank
-    nodeMap.forEach((node, id) => {
-      const rank = pageRanks.get(id) || 0;
-      const minSize = 3;
-      const maxSize = 12;
-      node.data.size = minSize + (maxSize - minSize) * (rank * nodeMap.size * 2);
-    });
-
-    return {
-      nodes: Array.from(nodeMap.values()),
-      edges: Array.from(edgeMap.values())
-    };
-  }, [threads]);
-
-  // Custom theme based on system theme
-  const graphTheme = {
-    canvas: {
-      background: isDark ? '#000' : '#fff',
-    },
-    node: {
-      fill: isDark ? '#666' : '#ccc',
-      activeFill: isDark ? '#444' : '#999',
-      opacity: 1,
-      selectedOpacity: 1,
-      inactiveOpacity: 0.2,
-      label: {
-        color: isDark ? '#fff' : '#000',
-        activeColor: isDark ? '#fff' : '#000',
-        stroke: isDark ? '#000' : '#fff',
-        strokeWidth: 0,
-        fontSize: 12,
-        fontFamily: 'Server Mono, monospace',
-      },
-    },
-    edge: {
-      fill: isDark ? 'rgba(102,102,102,0.3)' : 'rgba(153,153,153,0.3)', 
-      activeFill: isDark ? 'rgba(68,68,68,0.7)' : 'rgba(153,153,153,0.7)',
-      opacity: 1,
-      selectedOpacity: 1,
-      inactiveOpacity: 0.1,
-      label: {
-        fontSize: 12,
-        fontFamily: 'Server Mono, monospace',
-        color: isDark ? '#fff' : '#000',
-        activeColor: isDark ? '#fff' : '#000',
-        strokeWidth: 0,
-      },
-    },
-    ring: {
-      fill: isDark ? '#666' : '#ccc',
-      activeFill: isDark ? '#444' : '#999',
-    },
-    arrow: {
-      fill: isDark ? 'rgba(102,102,102,0.3)' : 'rgba(153,153,153,0.3)',
-      activeFill: isDark ? 'rgba(68,68,68,0.7)' : 'rgba(153,153,153,0.7)',
-    },
-    lasso: {
-      border: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)',
-      fill: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
-    }
-  } as const;
+  }, [onNodeClick]);
 
   return (
-    <div className="flex-1 flex flex-col h-full" ref={containerRef}>
-      <div className="border-b border-border p-3">
-        <h2 className="text-sm font-medium">Knowledge Graph</h2>
-      </div>
-      <div className="flex-1 relative">
-        {dimensions.width > 0 && dimensions.height > 0 && (
-          <GraphCanvas
-            nodes={nodes}
-            edges={edges}
-            theme={graphTheme}
-            labelType="all"
-            draggable
-            enableZoom
-            enablePan
-            height={dimensions.height}
-            width={dimensions.width}
-            onNodeClick={(node) => onNodeClick?.(node.id)}
-            forceConfig={{
-              charge: -200,
-              linkDistance: 100,
-              collisionRadius: 10,
-            }}
-          />
-        )}
-      </div>
-      <div className="border-t border-border p-3">
-        <p className="text-xs text-muted-foreground">
-          {nodes.length} {nodes.length === 1 ? 'node' : 'nodes'}, {edges.length} {edges.length === 1 ? 'connection' : 'connections'}
-        </p>
-      </div>
+    <div className="w-full h-full">
+      <ForceGraph2D
+        graphData={{ nodes, links }}
+        nodeLabel="label"
+        nodeColor={node => node.data.color}
+        nodeRelSize={node => node.data.size}
+        linkColor={() => isDark ? '#444' : '#ddd'}
+        backgroundColor="transparent"
+        onNodeClick={handleNodeClick}
+        linkWidth={2}
+        linkDirectionalParticles={2}
+        linkDirectionalParticleSpeed={0.005}
+        d3VelocityDecay={0.3}
+        cooldownTicks={100}
+        nodeCanvasObject={(node: any, ctx, globalScale) => {
+          const label = node.label;
+          const fontSize = 12/globalScale;
+          ctx.font = `${fontSize}px Space Mono`;
+          const textWidth = ctx.measureText(label).width;
+          const bckgDimensions = [textWidth, fontSize].map(n => n + fontSize * 0.8);
+
+          // Draw background
+          ctx.fillStyle = isDark ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.8)';
+          ctx.fillRect(
+            node.x - bckgDimensions[0] / 2,
+            node.y - bckgDimensions[1] / 2,
+            bckgDimensions[0],
+            bckgDimensions[1]
+          );
+
+          // Draw text
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillStyle = isDark ? '#fff' : '#000';
+          ctx.fillText(label, node.x, node.y);
+        }}
+        nodePointerAreaPaint={(node: any, color, ctx) => {
+          ctx.fillStyle = color;
+          const bckgDimensions = [
+            ctx.measureText(node.label).width + 12,
+            16
+          ];
+          ctx.fillRect(
+            node.x - bckgDimensions[0] / 2,
+            node.y - bckgDimensions[1] / 2,
+            bckgDimensions[0],
+            bckgDimensions[1]
+          );
+        }}
+      />
     </div>
   );
 }; 

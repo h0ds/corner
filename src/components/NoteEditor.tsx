@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import { 
   Bold, Italic, Code as CodeIcon, Eye, ArrowLeft, AlertCircle, Copy,
   List, ListOrdered, Quote, Link, Image, Heading1, Heading2, Heading3,
-  FileText, ExternalLink, Link as LinkIcon
+  FileText, ExternalLink, Link as LinkIcon, X
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NoteLinkMenu } from './NoteLinkMenu';
 import CodeEditor from '@uiw/react-textarea-code-editor';
+import { motion } from 'framer-motion';
+import { LinkedNotes } from './LinkedNotes';
 
 interface NoteEditorProps {
   note: NoteThread;
@@ -22,8 +24,8 @@ interface NoteEditorProps {
   allNotes: NoteThread[];
   onNavigateBack?: () => void;
   navigationStack: string[];
-  onNavigateToNote: (noteId: string) => void;
   onLinkNotes?: (sourceNoteId: string, targetNoteId: string) => void;
+  onNavigateToNote?: (noteId: string) => void;
 }
 
 const CACHE_PREFIX = 'note_cache_';
@@ -38,119 +40,34 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   onNavigateBack,
   navigationStack,
   allNotes,
-  onNavigateToNote,
   onLinkNotes,
+  onNavigateToNote,
 }) => {
-  const [content, setContent] = useState<string>(
-    typeof initialContent === 'string' ? initialContent : ''
-  );
-  const [error, setError] = useState<string | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState(note.name);
-  const cacheKey = `${CACHE_PREFIX}${CACHE_VERSION}_${note.id}`;
+  const [content, setContent] = useState(note.content);
   const [showLinkMenu, setShowLinkMenu] = useState(false);
-  const [linkQuery, setLinkQuery] = useState('');
-  const [cursorPosition, setCursorPosition] = useState<number | null>(null);
-  const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('edit');
   const [showLinkedNotes, setShowLinkedNotes] = useState(true);
-  const [linkedNoteIds, setLinkedNoteIds] = useState<Set<string>>(new Set());
-  const [linkMode, setLinkMode] = useState<'link' | 'insert'>('insert');
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(note.name);
 
-  // Load cached content on mount
+  // Update content when note changes
   useEffect(() => {
-    try {
-      const cached = localStorage.getItem(cacheKey);
-      if (cached) {
-        const parsedCache = JSON.parse(cached);
-        // Only use cache if it's newer than the note's last update
-        if (parsedCache.timestamp > (note.updatedAt || 0)) {
-          // Ensure cached content is a string
-          const cachedContent = typeof parsedCache.content === 'string' 
-            ? parsedCache.content 
-            : '';
-          setContent(cachedContent);
-          setError('Found unsaved changes. Would you like to restore them?');
-        }
-      }
-    } catch (e) {
-      console.error('Error loading cache:', e);
-      // Don't show error for cache loading failures
-    }
-  }, [note.id, note.updatedAt]);
+    setContent(note.content);
+  }, [note.id, note.content]);
 
-  const handleChange = (value: string | undefined) => {
-    // Ensure value is always a string
-    const newContent = typeof value === 'string' ? value : '';
+  // Handle content changes
+  const handleChange = (newContent: string) => {
     setContent(newContent);
-    
-    try {
-      // Save to cache
-      localStorage.setItem(cacheKey, JSON.stringify({
-        content: newContent,
-        timestamp: Date.now()
-      }));
-
-      // Update note
-      onUpdate({
-        ...note,
-        content: newContent
-      });
-
-    } catch (e) {
-      console.error('Error saving changes:', e);
-      setError('Failed to save changes. Please try again.');
-    }
+    onUpdate({
+      ...note,
+      content: newContent,
+      linkedNotes: note.linkedNotes || [],
+      updatedAt: Date.now()
+    });
   };
 
-  const clearCache = () => {
-    try {
-      localStorage.removeItem(cacheKey);
-      setError(null);
-    } catch (e) {
-      console.error('Error clearing cache:', e);
-      setError('Failed to clear cache. Please try manually clearing your browser storage.');
-    }
-  };
-
-  const restoreCache = () => {
-    try {
-      const cached = localStorage.getItem(cacheKey);
-      if (cached) {
-        const parsedCache = JSON.parse(cached);
-        const restoredContent = parsedCache.content || '';
-        setContent(restoredContent);
-        onUpdate({
-          ...note,
-          content: restoredContent
-        });
-      }
-      setError(null);
-    } catch (e) {
-      console.error('Error restoring cache:', e);
-      setError('Failed to restore cached content.');
-    }
-  };
-
-  const resetEditor = () => {
-    try {
-      clearCache();
-      const resetContent = initialContent || '';
-      setContent(resetContent);
-      onUpdate({
-        ...note,
-        content: resetContent
-      });
-      setError(null);
-    } catch (e) {
-      console.error('Error resetting editor:', e);
-      setError('Failed to reset editor.');
-    }
-  };
-
-  const handleStartRename = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  // Handle rename
+  const handleStartRename = () => {
     setIsEditing(true);
     setEditValue(note.name);
   };
@@ -159,210 +76,183 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     if (editValue.trim() && editValue !== note.name) {
       onUpdate({
         ...note,
-        name: editValue.trim()
+        name: editValue.trim(),
+        content: content,
+        linkedNotes: note.linkedNotes || [],
+        updatedAt: Date.now()
       });
     }
     setIsEditing(false);
   };
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    const textarea = e.currentTarget;
-    const value = textarea.value;
-    const selectionStart = textarea.selectionStart;
-    
-    // Check for [[ to trigger link menu
-    if (e.key === '[' && value[selectionStart - 1] === '[') {
-      e.preventDefault();
-      handleWikiLinkTrigger();
-      return;
-    }
-
-    // Close link menu on escape
-    if (e.key === 'Escape' && showLinkMenu) {
-      e.preventDefault();
-      setShowLinkMenu(false);
-      return;
-    }
-
-    // Handle backspace in link menu
-    if (e.key === 'Backspace' && showLinkMenu) {
-      if (linkQuery === '') {
-        setShowLinkMenu(false);
-      }
-      setLinkQuery(prev => prev.slice(0, -1));
-      return;
-    }
-
-    // Update link query
-    if (showLinkMenu && e.key.length === 1) {
-      e.preventDefault();
-      setLinkQuery(prev => prev + e.key);
-      return;
-    }
-  }, [showLinkMenu]);
-
-  const handleLinkSelect = useCallback((noteName: string) => {
-    if (cursorPosition === null) return;
-
-    const newContent = content.slice(0, cursorPosition - 1) + 
-      `[[${noteName}]]` + 
-      content.slice(cursorPosition);
-
-    setContent(newContent);
-    setShowLinkMenu(false);
-    setLinkQuery('');
-    setCursorPosition(null);
-
-    // Update note with new content
-    onUpdate({
-      ...note,
-      content: newContent
-    });
-  }, [content, cursorPosition, note, onUpdate]);
-
-  // Updated caret position calculation
-  const getCaretCoordinates = (element: HTMLElement, position: number) => {
-    const range = document.createRange();
-    const textNode = element.firstChild || element;
-    range.setStart(textNode, position);
-    range.setEnd(textNode, position);
-    
-    const rect = range.getBoundingClientRect();
-    const editorRect = element.getBoundingClientRect();
-    
-    return {
-      left: rect.left - editorRect.left,
-      top: rect.top - editorRect.top + rect.height,
-      height: rect.height
-    };
-  };
-
-  // Updated wikilink trigger
-  const handleWikiLinkTrigger = (mode: 'link' | 'insert' = 'insert') => {
-    setMenuPosition({
-      x: 100,
-      y: 200
-    });
-    setShowLinkMenu(true);
-    setLinkQuery('');
-    setLinkMode(mode);
-    if (mode === 'insert') {
-      const textarea = document.querySelector('textarea');
-      if (textarea) {
-        setCursorPosition(textarea.selectionStart);
-      }
-    } else {
-      setCursorPosition(null);
-    }
-  };
-
-  // Close menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (showLinkMenu) {
-        const target = e.target as HTMLElement;
-        if (!target.closest('.note-link-menu')) {
-          setShowLinkMenu(false);
-          setMenuPosition(null);
-        }
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showLinkMenu]);
-
-  const insertMarkdown = (prefix: string, suffix: string = '') => {
+  // Handle wiki link trigger
+  const handleWikiLinkTrigger = () => {
     const textarea = document.querySelector('textarea');
     if (!textarea) return;
-
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
     const selectedText = content.substring(start, end);
-    const beforeText = content.substring(0, start);
-    const afterText = content.substring(end);
-
-    const newContent = `${beforeText}${prefix}${selectedText}${suffix}${afterText}`;
+    const newContent = `${content.substring(0, start)}[[${selectedText}]]${content.substring(end)}`;
     handleChange(newContent);
-
-    // Reset selection
-    setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(
-        start + prefix.length,
-        end + prefix.length
-      );
-    }, 0);
   };
 
+  // Toolbar items
   const toolbarItems = [
     {
       icon: <Bold className="h-4 w-4" />,
       label: 'Bold',
-      action: () => insertMarkdown('**', '**'),
+      action: () => {
+        const textarea = document.querySelector('textarea');
+        if (!textarea) return;
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const selectedText = content.substring(start, end);
+        const newContent = `${content.substring(0, start)}**${selectedText}**${content.substring(end)}`;
+        handleChange(newContent);
+      },
       shortcut: '⌘B'
     },
     {
       icon: <Italic className="h-4 w-4" />,
       label: 'Italic',
-      action: () => insertMarkdown('*', '*'),
+      action: () => {
+        const textarea = document.querySelector('textarea');
+        if (!textarea) return;
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const selectedText = content.substring(start, end);
+        const newContent = `${content.substring(0, start)}*${selectedText}*${content.substring(end)}`;
+        handleChange(newContent);
+      },
       shortcut: '⌘I'
     },
     {
       icon: <CodeIcon className="h-4 w-4" />,
       label: 'Code',
-      action: () => insertMarkdown('`', '`'),
+      action: () => {
+        const textarea = document.querySelector('textarea');
+        if (!textarea) return;
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const selectedText = content.substring(start, end);
+        const newContent = `${content.substring(0, start)}\`${selectedText}\`${content.substring(end)}`;
+        handleChange(newContent);
+      },
       shortcut: '⌘E'
     },
     { type: 'divider' },
     {
       icon: <Heading1 className="h-4 w-4" />,
       label: 'Heading 1',
-      action: () => insertMarkdown('# '),
+      action: () => {
+        const textarea = document.querySelector('textarea');
+        if (!textarea) return;
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const selectedText = content.substring(start, end);
+        const newContent = `${content.substring(0, start)}# ${selectedText}${content.substring(end)}`;
+        handleChange(newContent);
+      },
       shortcut: '⌘1'
     },
     {
       icon: <Heading2 className="h-4 w-4" />,
       label: 'Heading 2',
-      action: () => insertMarkdown('## '),
+      action: () => {
+        const textarea = document.querySelector('textarea');
+        if (!textarea) return;
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const selectedText = content.substring(start, end);
+        const newContent = `${content.substring(0, start)}## ${selectedText}${content.substring(end)}`;
+        handleChange(newContent);
+      },
       shortcut: '⌘2'
     },
     {
       icon: <Heading3 className="h-4 w-4" />,
       label: 'Heading 3',
-      action: () => insertMarkdown('### '),
+      action: () => {
+        const textarea = document.querySelector('textarea');
+        if (!textarea) return;
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const selectedText = content.substring(start, end);
+        const newContent = `${content.substring(0, start)}### ${selectedText}${content.substring(end)}`;
+        handleChange(newContent);
+      },
       shortcut: '⌘3'
     },
     { type: 'divider' },
     {
       icon: <List className="h-4 w-4" />,
       label: 'Bullet List',
-      action: () => insertMarkdown('- '),
+      action: () => {
+        const textarea = document.querySelector('textarea');
+        if (!textarea) return;
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const selectedText = content.substring(start, end);
+        const newContent = `${content.substring(0, start)}- ${selectedText}${content.substring(end)}`;
+        handleChange(newContent);
+      },
       shortcut: '⌘L'
     },
     {
       icon: <ListOrdered className="h-4 w-4" />,
       label: 'Numbered List',
-      action: () => insertMarkdown('1. '),
+      action: () => {
+        const textarea = document.querySelector('textarea');
+        if (!textarea) return;
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const selectedText = content.substring(start, end);
+        const newContent = `${content.substring(0, start)}1. ${selectedText}${content.substring(end)}`;
+        handleChange(newContent);
+      },
       shortcut: '⌘N'
     },
     {
       icon: <Quote className="h-4 w-4" />,
       label: 'Quote',
-      action: () => insertMarkdown('> '),
+      action: () => {
+        const textarea = document.querySelector('textarea');
+        if (!textarea) return;
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const selectedText = content.substring(start, end);
+        const newContent = `${content.substring(0, start)}> ${selectedText}${content.substring(end)}`;
+        handleChange(newContent);
+      },
       shortcut: '⌘.'
     },
     { type: 'divider' },
     {
       icon: <Link className="h-4 w-4" />,
       label: 'Link',
-      action: () => insertMarkdown('[', '](url)'),
+      action: () => {
+        const textarea = document.querySelector('textarea');
+        if (!textarea) return;
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const selectedText = content.substring(start, end);
+        const newContent = `${content.substring(0, start)}[${selectedText}](url)${content.substring(end)}`;
+        handleChange(newContent);
+      },
       shortcut: '⌘K'
     },
     {
       icon: <Image className="h-4 w-4" />,
       label: 'Image',
-      action: () => insertMarkdown('![', '](url)'),
+      action: () => {
+        const textarea = document.querySelector('textarea');
+        if (!textarea) return;
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const selectedText = content.substring(start, end);
+        const newContent = `${content.substring(0, start)}![${selectedText}](url)${content.substring(end)}`;
+        handleChange(newContent);
+      },
       shortcut: '⌘P'
     },
     { type: 'divider' },
@@ -375,64 +265,10 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     {
       icon: <LinkIcon className="h-4 w-4" />,
       label: 'Link Note',
-      action: () => {
-        setMenuPosition({
-          x: 100,
-          y: 200
-        });
-        setShowLinkMenu(true);
-        setLinkQuery('');
-        setCursorPosition(null); // We don't need cursor position for linking
-      },
+      action: () => setShowLinkMenu(true),
       shortcut: '⌘L'
     }
   ];
-
-  const handleNoteSelect = useCallback((noteName: string) => {
-    handleLinkSelect(noteName);
-    
-    // Find the note and add it to linked notes
-    const selectedNote = allNotes.find(n => 
-      n.name.toLowerCase() === noteName.toLowerCase()
-    );
-    
-    if (selectedNote) {
-      setLinkedNoteIds(prev => new Set([...prev, selectedNote.id]));
-    }
-  }, [allNotes, handleLinkSelect]);
-
-  // Add new handler for linking notes
-  const handleLinkNotes = (targetNoteId: string) => {
-    if (onLinkNotes) {
-      onLinkNotes(note.id, targetNoteId);
-      // Add to linkedNoteIds
-      setLinkedNoteIds(prev => new Set([...prev, targetNoteId]));
-    }
-  };
-
-  const getLinkedNotes = () => {
-    // Get notes from content links
-    const wikiLinkRegex = /\[\[([^\]]+?)\]\]/g;
-    const matches = Array.from(content.matchAll(wikiLinkRegex));
-    const linkedNoteNames = [...new Set(matches.map(m => m[1]))];
-    
-    const contentLinkedNotes = linkedNoteNames
-      .map(name => allNotes.find(n => 
-        n.name.toLowerCase() === name.toLowerCase()
-      ))
-      .filter((note): note is NoteThread => note !== undefined);
-
-    // Get manually linked notes
-    const manuallyLinkedNotes = (note.linkedNotes || [])
-      .map(id => allNotes.find(n => n.id === id))
-      .filter((note): note is NoteThread => note !== undefined);
-
-    // Combine and remove duplicates
-    const allLinkedNotes = [...contentLinkedNotes, ...manuallyLinkedNotes];
-    return Array.from(new Set(allLinkedNotes.map(n => n.id)))
-      .map(id => allLinkedNotes.find(n => n.id === id))
-      .filter((note): note is NoteThread => note !== undefined);
-  };
 
   return (
     <div className="flex flex-col h-full">
@@ -488,8 +324,8 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
           )}
         </div>
 
-        {/* Right section */}
-        <div className="flex items-center gap-1 w-8">
+        {/* Right section with view toggles */}
+        <div className="flex items-center gap-1">
           <Button
             variant="ghost"
             size="icon"
@@ -523,16 +359,13 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         </div>
       </div>
 
-      {/* Markdown Toolbar */}
+      {/* Toolbar */}
       {viewMode === 'edit' && (
         <div className="border-b border-border px-2 py-1">
           <div className="flex items-center gap-1">
             {toolbarItems.map((item, index) => 
               item.type === 'divider' ? (
-                <div 
-                  key={`divider-${index}`}
-                  className="w-px h-6 bg-border mx-1"
-                />
+                <div key={`divider-${index}`} className="w-px h-6 bg-border mx-1" />
               ) : (
                 <Button
                   key={item.label}
@@ -550,83 +383,15 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         </div>
       )}
 
-      {/* Error Alert */}
-      {error && (
-        <Alert variant="destructive" className="m-2">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription className="flex items-center gap-4">
-            {error}
-            {error.includes('unsaved changes') ? (
-              <>
-                <Button variant="outline" size="sm" onClick={restoreCache}>
-                  Restore
-                </Button>
-                <Button variant="outline" size="sm" onClick={clearCache}>
-                  Discard
-                </Button>
-              </>
-            ) : (
-              <Button variant="outline" size="sm" onClick={resetEditor}>
-                Reset Editor
-              </Button>
-            )}
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Editor/Preview with Linked Notes */}
-      <div className="flex-1 overflow-hidden relative">
+      {/* Main content area */}
+      <div className="flex-1 overflow-hidden">
         <div className="h-full flex">
-          {/* Main content area */}
           <div className="flex-1 flex flex-col">
             {viewMode === 'edit' ? (
               <div className="h-full relative">
                 <CodeEditor
                   value={content}
                   onChange={(e) => handleChange(e.target.value)}
-                  onKeyDown={(e) => {
-                    // Add keyboard shortcuts
-                    if (e.metaKey || e.ctrlKey) {
-                      switch (e.key) {
-                        case 'b': 
-                          e.preventDefault();
-                          insertMarkdown('**', '**');
-                          break;
-                        case 'i':
-                          e.preventDefault();
-                          insertMarkdown('*', '*');
-                          break;
-                        case 'e':
-                          e.preventDefault();
-                          insertMarkdown('`', '`');
-                          break;
-                        case 'k':
-                          e.preventDefault();
-                          insertMarkdown('[', '](url)');
-                          break;
-                        case 'l':
-                          e.preventDefault();
-                          const textarea = document.querySelector('textarea');
-                          if (!textarea) return;
-                          
-                          const rect = textarea.getBoundingClientRect();
-                          const selectionStart = textarea.selectionStart;
-                          const caretCoords = getCaretCoordinates(textarea, selectionStart);
-                          
-                          setMenuPosition({
-                            x: rect.left + caretCoords.left,
-                            y: rect.top + caretCoords.top + caretCoords.height
-                          });
-                          
-                          setShowLinkMenu(true);
-                          setLinkQuery('');
-                          setCursorPosition(selectionStart);
-                          break;
-                        // ... handle other shortcuts ...
-                      }
-                    }
-                    handleKeyDown(e);
-                  }}
                   language="markdown"
                   placeholder="Start writing..."
                   padding={16}
@@ -641,32 +406,6 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
                     "focus:outline-none focus:ring-0 border-0"
                   )}
                 />
-                {showLinkMenu && menuPosition && (
-                  <div 
-                    className="fixed z-[9999]"
-                    style={{
-                      left: `${menuPosition.x}px`,
-                      top: `${menuPosition.y}px`,
-                    }}
-                  >
-                    <NoteLinkMenu
-                      query={linkQuery}
-                      notes={allNotes.filter(n => n.id !== note.id)}
-                      onSelect={handleNoteSelect}
-                      onClose={() => {
-                        setShowLinkMenu(false);
-                        setMenuPosition(null);
-                        setLinkMode('insert');
-                      }}
-                      currentNoteId={note.id}
-                      onLinkNotes={onLinkNotes ? 
-                        (targetNoteId) => onLinkNotes(note.id, targetNoteId) : 
-                        undefined
-                      }
-                      mode={linkMode}
-                    />
-                  </div>
-                )}
               </div>
             ) : (
               <div className="h-full overflow-y-auto p-4">
@@ -782,54 +521,36 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
             )}
           </div>
 
-          {/* Linked Notes Panel - Now toggleable */}
+          {/* Linked Notes Panel */}
           {showLinkedNotes && (
-            <div className="w-[250px] border-l border-border flex flex-col">
-              <div className="p-3 border-b border-border">
-                <h3 className="text-sm font-medium">Linked Notes</h3>
-              </div>
-              <div className="flex-1 overflow-y-auto p-2">
-                {(() => {
-                  const linkedNotes = getLinkedNotes();
-
-                  if (linkedNotes.length === 0) {
-                    return (
-                      <div className="text-sm text-muted-foreground text-center p-4">
-                        No linked notes
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <div className="space-y-1">
-                      {linkedNotes.map(linkedNote => (
-                        <button
-                          key={linkedNote.id}
-                          onClick={() => onNavigateToNote(linkedNote.id)}
-                          className={cn(
-                            "w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-md",
-                            "hover:bg-accent hover:text-accent-foreground transition-colors",
-                            "text-left group"
-                          )}
-                        >
-                          <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
-                          <span className="flex-1 truncate">{linkedNote.name}</span>
-                          <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100" />
-                        </button>
-                      ))}
-                    </div>
-                  );
-                })()}
-              </div>
-              <div className="p-2 border-t border-border">
-                <p className="text-xs text-muted-foreground">
-                  {getLinkedNotes().length} {getLinkedNotes().length === 1 ? 'link' : 'links'}
-                </p>
-              </div>
-            </div>
+            <LinkedNotes
+              currentNote={note}
+              allNotes={allNotes}
+              onNavigateToNote={onNavigateToNote || (() => {})}
+            />
           )}
         </div>
       </div>
+
+      {/* Link Menu Modal */}
+      {showLinkMenu && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50">
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+            <NoteLinkMenu
+              query=""
+              notes={allNotes.filter(n => n.id !== note.id)}
+              onLinkNote={(targetNoteId) => {
+                if (onLinkNotes) {
+                  onLinkNotes(note.id, targetNoteId);
+                }
+                setShowLinkMenu(false);
+              }}
+              onClose={() => setShowLinkMenu(false)}
+              currentNoteId={note.id}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
-}; 
+};

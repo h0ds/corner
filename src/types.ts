@@ -29,7 +29,7 @@ export interface BaseThread {
   color?: string;
   textColor?: string;
   icon?: string;
-  linkedNotes?: string[];
+  linkedNotes: string[];
 }
 
 export interface ChatThread extends BaseThread {
@@ -41,7 +41,6 @@ export interface ChatThread extends BaseThread {
 export interface NoteThread extends BaseThread {
   isNote: true;
   content: string;
-  linkedNotes?: string[];
 }
 
 export type Thread = ChatThread | NoteThread;

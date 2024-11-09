@@ -160,6 +160,7 @@ function App() {
       createdAt: Date.now(),
       updatedAt: Date.now(),
       cachedFiles: [],
+      linkedNotes: [],
     };
 
     const newThread: Thread = isNote ? {
@@ -173,15 +174,14 @@ function App() {
       lastUsedModel: selectedModel,
     };
     
-    // Update state first
-    setThreads(prev => [newThread, ...prev]); // Add to beginning of list
+    console.log('Creating new thread:', newThread);
+    
+    setThreads(prev => [newThread, ...prev]);
     setActiveThreadId(newThread.id);
-    setView('thread');
-
-    // Then save to storage
+    setView(isNote ? 'note' : 'thread');
     saveThread(newThread);
 
-    return newThread.id; // Return the new thread ID
+    return newThread.id;
   }, [selectedModel]);
 
   // Create a memoized version of handleNewNote
@@ -863,19 +863,26 @@ function App() {
     }));
   };
 
-  const handleNoteUpdate = (content: string) => {
-    if (!activeThreadId) return;
+  const handleNoteUpdate = (updatedNote: NoteThread) => {
+    console.log('Updating note:', {
+      id: updatedNote.id,
+      name: updatedNote.name,
+      contentLength: updatedNote.content.length,
+      content: updatedNote.content.slice(0, 50) + '...',
+      linkedNotes: updatedNote.linkedNotes
+    });
 
-    setThreads(prev => prev.map(thread => {
-      if (thread.id === activeThreadId && thread.isNote) {
-        return {
-          ...thread,
-          content: content,
-          updatedAt: Date.now(),
-        };
-      }
-      return thread;
-    }));
+    setThreads(prev => prev.map(thread => 
+      thread.id === updatedNote.id 
+        ? {
+            ...thread,
+            ...updatedNote,
+            linkedNotes: updatedNote.linkedNotes || [],
+            content: updatedNote.content,
+            updatedAt: Date.now()
+          }
+        : thread
+    ));
   };
 
   useEffect(() => {
@@ -1018,21 +1025,27 @@ function App() {
   }, [threadToDelete, handleDeleteThread]);
 
   const handleLinkNotes = (sourceNoteId: string, targetNoteId: string) => {
+    console.log('Linking notes:', { sourceNoteId, targetNoteId });
+    
     setThreads(prev => {
       const updatedThreads = prev.map(thread => {
         if (thread.id === sourceNoteId) {
           const currentLinks = thread.linkedNotes || [];
+          const newLinks = Array.from(new Set([...currentLinks, targetNoteId]));
+          console.log(`Updating source note ${thread.name}:`, { currentLinks, newLinks });
           return {
             ...thread,
-            linkedNotes: Array.from(new Set([...currentLinks, targetNoteId])),
+            linkedNotes: newLinks,
             updatedAt: Date.now(),
           };
         }
         if (thread.id === targetNoteId) {
           const currentLinks = thread.linkedNotes || [];
+          const newLinks = Array.from(new Set([...currentLinks, sourceNoteId]));
+          console.log(`Updating target note ${thread.name}:`, { currentLinks, newLinks });
           return {
             ...thread,
-            linkedNotes: Array.from(new Set([...currentLinks, sourceNoteId])),
+            linkedNotes: newLinks,
             updatedAt: Date.now(),
           };
         }
@@ -1145,7 +1158,7 @@ function App() {
                     onLinkNotes={handleLinkNotes}
                     onNavigateToNote={(noteId) => {
                       setActiveThreadId(noteId);
-                      setNoteNavigationStack(prev => [...prev, activeThreadId]);
+                      setNoteNavigationStack(prev => [...prev, activeThreadId!]);
                     }}
                   />
                 ) : (
