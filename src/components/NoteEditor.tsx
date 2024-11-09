@@ -1,21 +1,19 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { NoteThread } from '@/types';
 import { cn } from '@/lib/utils';
-import { 
-  Bold, Italic, Code as CodeIcon, Eye, ArrowLeft, AlertCircle, Copy,
-  List, ListOrdered, Quote, Link, Image, Heading1, Heading2, Heading3,
-  FileText, ExternalLink, Link as LinkIcon, X
+import {
+  Bold, Italic, Code as CodeIcon, Eye, ArrowLeft, Copy,
+  List, ListOrdered, Quote, Link, Image, Heading1, Heading2, Heading3, NotebookIcon
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import DOMPurify from 'dompurify';
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NoteLinkMenu } from './NoteLinkMenu';
 import CodeEditor from '@uiw/react-textarea-code-editor';
-import { motion } from 'framer-motion';
 import { LinkedNotes } from './LinkedNotes';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface NoteEditorProps {
   note: NoteThread;
@@ -257,13 +255,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     },
     { type: 'divider' },
     {
-      icon: <FileText className="h-4 w-4" />,
-      label: 'Wiki Link',
-      action: handleWikiLinkTrigger,
-      shortcut: '⌘L'
-    },
-    {
-      icon: <LinkIcon className="h-4 w-4" />,
+      icon: <NotebookIcon className="h-4 w-4" />,
       label: 'Link Note',
       action: () => setShowLinkMenu(true),
       shortcut: '⌘L'
@@ -343,19 +335,6 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
               <CodeIcon className="h-4 w-4" />
             )}
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setShowLinkedNotes(!showLinkedNotes)}
-            className={cn(
-              "h-6 w-6",
-              "text-muted-foreground hover:text-foreground",
-              showLinkedNotes && "text-foreground"
-            )}
-            title={showLinkedNotes ? 'Hide Links' : 'Show Links'}
-          >
-            <FileText className="h-4 w-4" />
-          </Button>
         </div>
       </div>
 
@@ -384,7 +363,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
       )}
 
       {/* Main content area */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden relative">
         <div className="h-full flex">
           <div className="flex-1 flex flex-col">
             {viewMode === 'edit' ? (
@@ -521,14 +500,42 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
             )}
           </div>
 
-          {/* Linked Notes Panel */}
-          {showLinkedNotes && (
-            <LinkedNotes
-              currentNote={note}
-              allNotes={allNotes}
-              onNavigateToNote={onNavigateToNote || (() => {})}
-            />
-          )}
+          {/* Linked Notes Panel with animation */}
+          <AnimatePresence>
+            {showLinkedNotes && (
+              <motion.div
+                initial={{ width: 0, opacity: 0 }}
+                animate={{ width: 250, opacity: 1 }}
+                exit={{ width: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="shrink-0"
+              >
+                <LinkedNotes
+                  currentNote={note}
+                  allNotes={allNotes}
+                  onNavigateToNote={onNavigateToNote || (() => {})}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Linked Notes Toggle Button - Bottom Right */}
+        <div className="absolute bottom-2 right-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowLinkedNotes(!showLinkedNotes)}
+            className={cn(
+              "gap-2",
+              showLinkedNotes && "bg-background text-accent-foreground"
+            )}
+          >
+            <NotebookIcon className="h-4 w-4" />
+            <span className="text-xs text-muted-foreground ml-1">
+              ({note.linkedNotes?.length || 0})
+            </span>
+          </Button>
         </div>
       </div>
 

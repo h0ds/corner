@@ -26,7 +26,7 @@ export const LinkedNotes: React.FC<LinkedNotesProps> = ({
   });
 
   return (
-    <div className="w-[250px] border-l border-border flex flex-col">
+    <div className="w-[250px] border border-border flex flex-col m-2 rounded-md">
       <div className="p-3 border-b border-border">
         <h3 className="text-sm font-medium">Linked Notes</h3>
       </div>

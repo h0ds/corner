@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Thread, NoteThread, GraphNode, GraphEdge } from '@/types';
 import ForceGraph2D from 'react-force-graph-2d';
 import { useTheme } from 'next-themes';
@@ -28,18 +28,17 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
         id: note.id,
         label: note.name,
         data: {
-          color: note.color || (isDark ? '#666' : '#ccc'),
-          size: 8
+          color: note.color,
+          size: 10,
+          content: note.content.slice(0, 100),
+          linkedCount: note.linkedNotes?.length || 0
         }
       });
 
       // Add links for linked notes
       if (note.linkedNotes) {
         note.linkedNotes.forEach(targetId => {
-          // Create unique link ID by sorting the node IDs
           const linkId = [note.id, targetId].sort().join('-');
-          
-          // Only add link if we haven't processed it yet
           if (!processedLinks.has(linkId)) {
             links.push({
               id: linkId,
@@ -52,9 +51,29 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
       }
     });
 
-    console.log('Graph data:', { nodes, links });
     return { nodes, links };
   }, [threads, isDark]);
+
+  // Custom tooltip renderer
+  const getNodeTooltip = useCallback((node: any) => {
+    return `
+      <div style="
+        background: ${isDark ? 'rgba(0,0,0,0.9)' : 'rgba(255,255,255,0.9)'};
+        color: ${isDark ? '#fff' : '#000'};
+        padding: 8px;
+        border-radius: 4px;
+        max-width: 200px;
+        font-family: 'Space Mono', monospace;
+        font-size: 12px;
+        border: 1px solid ${isDark ? '#333' : '#ddd'};
+      ">
+        <div style="font-weight: bold; margin-bottom: 4px;">${node.label}</div>
+        <div style="color: ${isDark ? '#999' : '#666'}; margin-bottom: 4px;">
+          ${node.data.linkedCount} linked note${node.data.linkedCount !== 1 ? 's' : ''}
+        </div>
+      </div>
+    `;
+  }, [isDark]);
 
   // Handle node click
   const handleNodeClick = useCallback((node: any) => {
@@ -71,9 +90,9 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     <div className="w-full h-full">
       <ForceGraph2D
         graphData={{ nodes, links }}
-        nodeLabel="label"
+        nodeLabel={getNodeTooltip}
         nodeColor={node => node.data.color}
-        nodeRelSize={node => node.data.size}
+        nodeRelSize={8}
         linkColor={() => isDark ? '#444' : '#ddd'}
         backgroundColor="transparent"
         onNodeClick={handleNodeClick}
