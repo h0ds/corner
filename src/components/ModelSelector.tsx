@@ -7,6 +7,7 @@ import {
   SelectTrigger
 } from "@/components/ui/select";
 import { ApiKeys } from '@/types';
+import { formatProviderName } from '@/lib/utils';
 
 export interface Model {
   id: string;
@@ -17,15 +18,24 @@ export interface Model {
 export const DEFAULT_MODEL = 'claude-3-sonnet-20240229';
 
 export const AVAILABLE_MODELS: Model[] = [
+  // OpenAI Models - GPT-4 Turbo
+  { id: 'gpt-4-0125-preview', name: 'GPT-4 Turbo Preview', provider: 'openai' },
+  { id: 'gpt-4-1106-preview', name: 'GPT-4 Turbo (Previous)', provider: 'openai' },
+  { id: 'gpt-4-vision-preview', name: 'GPT-4 Vision', provider: 'openai' },
+  
+  // OpenAI Models - GPT-4
+  { id: 'gpt-4', name: 'GPT-4', provider: 'openai' },
+  { id: 'gpt-4-32k', name: 'GPT-4 32k', provider: 'openai' },
+  
+  // OpenAI Models - GPT-3.5
+  { id: 'gpt-3.5-turbo-0125', name: 'GPT-3.5 Turbo', provider: 'openai' },
+  { id: 'gpt-3.5-turbo-instruct', name: 'GPT-3.5 Turbo Instruct', provider: 'openai' },
+  { id: 'gpt-3.5-turbo-16k', name: 'GPT-3.5 Turbo 16k', provider: 'openai' },
+  
   // Anthropic Models
   { id: 'claude-3-opus-20240229', name: 'Claude 3 Opus', provider: 'anthropic' },
   { id: 'claude-3-sonnet-20240229', name: 'Claude 3 Sonnet', provider: 'anthropic' },
   { id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku', provider: 'anthropic' },
-  
-  // OpenAI Models
-  { id: 'gpt-4-turbo-preview', name: 'GPT-4 Turbo', provider: 'openai' },
-  { id: 'gpt-4', name: 'GPT-4', provider: 'openai' },
-  { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', provider: 'openai' },
   
   // Perplexity Models
   { id: 'llama-3.1-sonar-small-128k-online', name: 'Sonar Small Online (8B)', provider: 'perplexity' },
@@ -61,24 +71,14 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   const [triggerWidth, setTriggerWidth] = useState(180);
   const measureRef = useRef<HTMLSpanElement>(null);
 
-  // Check if a specific provider has a valid API key
+  // Check if a provider has a valid API key
   const hasValidApiKey = (provider: string): boolean => {
     if (!apiKeys) return false;
     const key = apiKeys[provider as keyof typeof apiKeys];
     return typeof key === 'string' && key.trim().length > 0;
   };
 
-  // Get available models based on API keys
-  const getAvailableModels = () => {
-    return AVAILABLE_MODELS.filter(model => hasValidApiKey(model.provider));
-  };
-
-  // Check if any models are available
-  const hasAvailableModels = (): boolean => {
-    return getAvailableModels().length > 0;
-  };
-
-  // Group all models by provider
+  // Get models grouped by provider
   const modelsByProvider = AVAILABLE_MODELS.reduce((acc, model) => {
     if (!acc[model.provider]) {
       acc[model.provider] = [];
@@ -92,29 +92,24 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
 
   // Debug logging
   console.log('ModelSelector state:', {
-    apiKeys: {
-      anthropic: apiKeys?.anthropic ? 'set' : 'not set',
-      perplexity: apiKeys?.perplexity ? 'set' : 'not set',
-      openai: apiKeys?.openai ? 'set' : 'not set',
-      xai: apiKeys?.xai ? 'set' : 'not set',
-      google: apiKeys?.google ? 'set' : 'not set'
-    },
-    availableModels: getAvailableModels().map(m => m.name),
-    hasAvailable: hasAvailableModels(),
-    currentModel: currentModel?.name
+    apiKeys: Object.fromEntries(
+      Object.entries(apiKeys || {}).map(([k, v]) => [k, v ? 'set' : 'not set'])
+    ),
+    currentModel: currentModel?.name,
+    hasValidKeys: Object.entries(apiKeys || {}).filter(([_, v]) => typeof v === 'string' && v.trim().length > 0).length
   });
 
   // If current model's provider is not configured, select first available model
   useEffect(() => {
     if (currentModel && !hasValidApiKey(currentModel.provider)) {
-      const firstAvailableModel = getAvailableModels()[0];
+      const firstAvailableModel = AVAILABLE_MODELS.find(m => hasValidApiKey(m.provider));
       if (firstAvailableModel) {
         onModelChange(firstAvailableModel.id);
       }
     }
-  }, [currentModel, onModelChange, apiKeys]);
+  }, [currentModel, apiKeys, onModelChange]);
 
-  // Update width based on all model names
+  // Update width based on model names
   useEffect(() => {
     if (measureRef.current) {
       const widths = AVAILABLE_MODELS.map(model => {
@@ -125,6 +120,11 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
       setTriggerWidth(Math.max(180, maxWidth + 56));
     }
   }, [currentModel?.name]);
+
+  // Check if any provider has a valid API key
+  const hasAnyValidKey = Object.values(apiKeys || {}).some(key => 
+    typeof key === 'string' && key.trim().length > 0
+  );
 
   return (
     <>
@@ -140,7 +140,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         defaultValue={selectedModel}
         value={selectedModel}
         onValueChange={onModelChange}
-        disabled={disabled || !hasAvailableModels()}
+        disabled={disabled || !hasAnyValidKey}
       >
         <SelectTrigger 
           className="rounded-md text-sm"
@@ -158,20 +158,18 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         >
           {Object.entries(modelsByProvider).map(([provider, models]) => {
             const providerHasKey = hasValidApiKey(provider);
+            if (!providerHasKey) return null;
+            
             return (
               <React.Fragment key={provider}>
-                <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground capitalize flex items-center justify-between">
-                  <span>{provider}</span>
-                  {!providerHasKey && (
-                    <span className="text-xs text-yellow-500">(API key required)</span>
-                  )}
+                <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground capitalize">
+                  {formatProviderName(provider)}
                 </div>
                 {models.map(model => (
                   <SelectItem 
                     key={model.id} 
                     value={model.id}
                     className="cursor-pointer"
-                    disabled={!providerHasKey}
                   >
                     <div className="flex items-center gap-2 w-full truncate">
                       <ModelIcon modelId={model.id} className="w-4 h-4 flex-shrink-0" />
@@ -183,7 +181,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
             );
           })}
 
-          {!hasAvailableModels() && (
+          {!hasAnyValidKey && (
             <div className="px-2 py-4 text-sm text-muted-foreground text-center">
               No models available. Please add API keys in settings.
             </div>

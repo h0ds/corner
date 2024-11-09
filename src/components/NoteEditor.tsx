@@ -263,57 +263,55 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     }
   ];
 
+  // Add handler for unlinking notes
+  const handleUnlinkNote = (targetNoteId: string) => {
+    onUpdate({
+      ...note,
+      linkedNotes: note.linkedNotes?.filter(id => id !== targetNoteId) || [],
+      updatedAt: Date.now()
+    });
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center justify-between gap-2 p-3 border-b border-border h-[40px]">
         {/* Left section */}
-        <div className="flex items-center gap-2 w-8">
-          {navigationStack.length > 1 && (
-            <button
+        <div className="flex items-center gap-2 min-w-0">
+          {onNavigateBack && navigationStack.length > 0 && (
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={onNavigateBack}
-              className="p-1 hover:bg-accent rounded-md text-muted-foreground hover:text-foreground"
+              className="h-6 w-6"
             >
               <ArrowLeft className="h-4 w-4" />
-            </button>
+            </Button>
           )}
-        </div>
-
-        {/* Center section */}
-        <div className="flex-1 flex justify-center">
+          
           {isEditing ? (
             <Input
               value={editValue}
               onChange={(e) => setEditValue(e.target.value)}
-              onBlur={handleFinishRename}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') handleFinishRename();
+                if (e.key === 'Enter') {
+                  handleFinishRename();
+                }
                 if (e.key === 'Escape') {
-                  setEditValue(note.name);
-                  setIsEditing(false);
+                  handleFinishRename();
                 }
               }}
-              className={cn(
-                "h-6 text-sm text-center font-mono",
-                "w-[200px] bg-transparent",
-                "focus:ring-0 focus:ring-offset-0",
-                "border-none shadow-none"
-              )}
+              onBlur={handleFinishRename}
+              className="h-6 text-sm px-2 py-0.5 focus-visible:ring-1"
               autoFocus
-              onClick={(e) => e.stopPropagation()}
             />
           ) : (
-            <h1 
-              className={cn(
-                "text-sm cursor-pointer",
-                "font-mono tracking-tight",
-                "transition-colors hover:text-muted-foreground"
-              )}
+            <div 
+              className="text-sm cursor-pointer truncate"
               onDoubleClick={handleStartRename}
-              title="Double click to edit name"
             >
-              {note.name || 'Untitled Note'}
-            </h1>
+              {note.name}
+            </div>
           )}
         </div>
 
@@ -515,6 +513,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
                   currentNote={note}
                   allNotes={allNotes}
                   onNavigateToNote={onNavigateToNote || (() => {})}
+                  onUnlinkNote={handleUnlinkNote}
                 />
               </motion.div>
             )}
@@ -531,12 +530,17 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
                   size="sm"
                   onClick={() => setShowLinkedNotes(!showLinkedNotes)}
                   className={cn(
-                    "gap-2 w-8 h-8",
-                    showLinkedNotes && "bg-accent text-accent-foreground"
+                    "gap-2",
+                    showLinkedNotes && "bg-accent text-accent-foreground",
+                    (note.linkedNotes?.length || 0) >= 1 ? "w-[3rem]" : "w-8",
+                    "h-8"
                   )}
                   aria-label={`${showLinkedNotes ? 'Hide' : 'Show'} linked notes (${note.linkedNotes?.length || 0})`}
                 >
                   <FileText className="h-4 w-4" />
+                  {(note.linkedNotes?.length || 0) >= 1 && (
+                    <span className="text-xs">{note.linkedNotes?.length}</span>
+                  )}
                   <span className="sr-only">
                     {showLinkedNotes ? 'Hide Links' : 'Show Links'} ({note.linkedNotes?.length || 0})
                   </span>
