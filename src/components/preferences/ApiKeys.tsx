@@ -48,7 +48,7 @@ export const ApiKeys: React.FC<ApiKeysProps> = ({
     <div className="space-y-4">
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="anthropic-key">Claude API Key</Label>
+          <Label htmlFor="anthropic-key">Anthropic API Key</Label>
           <div className="flex items-center gap-2">
             <Input
               id="anthropic-key"

@@ -109,8 +109,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
               <TooltipTrigger asChild>
                 <button
                   onClick={onOpenModelSelect}
-                  className="p-2 bg-background text-muted-foreground hover:text-foreground 
-                           border border-border/50 hover:bg-accent rounded-md transition-colors 
+                  className="p-2 -mr-4 bg-gray-100 text-muted-foreground hover:text-foreground 
+                          hover:bg-accent rounded-md transition-colors 
                            cursor-pointer"
                 >
                   <ModelIcon modelId={selectedModel} className="h-5 w-5" />

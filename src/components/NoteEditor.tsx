@@ -3,7 +3,7 @@ import { NoteThread } from '@/types';
 import { cn } from '@/lib/utils';
 import {
   Bold, Italic, Code as CodeIcon, Eye, ArrowLeft, Copy,
-  List, ListOrdered, Quote, Link, Image, Heading1, Heading2, Heading3, NotebookIcon
+  List, ListOrdered, Quote, Link, Image, Heading1, Heading2, Heading3, NotebookIcon, FileText
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -14,6 +14,7 @@ import { NoteLinkMenu } from './NoteLinkMenu';
 import CodeEditor from '@uiw/react-textarea-code-editor';
 import { LinkedNotes } from './LinkedNotes';
 import { motion, AnimatePresence } from 'framer-motion';
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@radix-ui/react-tooltip';
 
 interface NoteEditorProps {
   note: NoteThread;
@@ -41,10 +42,10 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   onLinkNotes,
   onNavigateToNote,
 }) => {
-  const [content, setContent] = useState(note.content);
+  const [content, setContent] = useState(initialContent);
   const [showLinkMenu, setShowLinkMenu] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('edit');
-  const [showLinkedNotes, setShowLinkedNotes] = useState(true);
+  const [showLinkedNotes, setShowLinkedNotes] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(note.name);
 
@@ -520,22 +521,32 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
           </AnimatePresence>
         </div>
 
-        {/* Linked Notes Toggle Button - Bottom Right */}
-        <div className="absolute bottom-2 right-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowLinkedNotes(!showLinkedNotes)}
-            className={cn(
-              "gap-2",
-              showLinkedNotes && "bg-background text-accent-foreground"
-            )}
-          >
-            <NotebookIcon className="h-4 w-4" />
-            <span className="text-xs text-muted-foreground ml-1">
-              ({note.linkedNotes?.length || 0})
-            </span>
-          </Button>
+        {/* Linked Notes Toggle Button */}
+        <div className="absolute bottom-4 right-4">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowLinkedNotes(!showLinkedNotes)}
+                  className={cn(
+                    "gap-2 w-8 h-8",
+                    showLinkedNotes && "bg-accent text-accent-foreground"
+                  )}
+                  aria-label={`${showLinkedNotes ? 'Hide' : 'Show'} linked notes (${note.linkedNotes?.length || 0})`}
+                >
+                  <FileText className="h-4 w-4" />
+                  <span className="sr-only">
+                    {showLinkedNotes ? 'Hide Links' : 'Show Links'} ({note.linkedNotes?.length || 0})
+                  </span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="left">
+                {showLinkedNotes ? 'Hide' : 'Show'} linked notes ({note.linkedNotes?.length || 0})
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </div>
 
@@ -551,6 +562,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
                   onLinkNotes(note.id, targetNoteId);
                 }
                 setShowLinkMenu(false);
+                setShowLinkedNotes(true);
               }}
               onClose={() => setShowLinkMenu(false)}
               currentNoteId={note.id}

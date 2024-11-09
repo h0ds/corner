@@ -4,9 +4,9 @@ import {
   Select,
   SelectContent,
   SelectItem,
-  SelectTrigger,
-  SelectValue,
+  SelectTrigger
 } from "@/components/ui/select";
+import { ApiKeys } from '@/types';
 
 export interface Model {
   id: string;
@@ -49,23 +49,37 @@ interface ModelSelectorProps {
   selectedModel: string;
   onModelChange: (modelId: string) => void;
   disabled?: boolean;
-  availableProviders?: ('anthropic' | 'perplexity' | 'openai' | 'xai' | 'google')[];
+  apiKeys: ApiKeys;
 }
 
 export const ModelSelector: React.FC<ModelSelectorProps> = ({
   selectedModel,
   onModelChange,
   disabled,
-  availableProviders = []
+  apiKeys
 }) => {
   const [triggerWidth, setTriggerWidth] = useState(180);
   const measureRef = useRef<HTMLSpanElement>(null);
-  
-  // Get available models based on providers
-  const availableModels = AVAILABLE_MODELS.filter(m => availableProviders.includes(m.provider));
 
-  // Group models by provider
-  const modelsByProvider = availableModels.reduce((acc, model) => {
+  // Check if a specific provider has a valid API key
+  const hasValidApiKey = (provider: string): boolean => {
+    if (!apiKeys) return false;
+    const key = apiKeys[provider as keyof typeof apiKeys];
+    return typeof key === 'string' && key.trim().length > 0;
+  };
+
+  // Get available models based on API keys
+  const getAvailableModels = () => {
+    return AVAILABLE_MODELS.filter(model => hasValidApiKey(model.provider));
+  };
+
+  // Check if any models are available
+  const hasAvailableModels = (): boolean => {
+    return getAvailableModels().length > 0;
+  };
+
+  // Group all models by provider
+  const modelsByProvider = AVAILABLE_MODELS.reduce((acc, model) => {
     if (!acc[model.provider]) {
       acc[model.provider] = [];
     }
@@ -76,28 +90,44 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   // Get current model data
   const currentModel = AVAILABLE_MODELS.find(m => m.id === selectedModel);
 
-  // Handle model change
-  const handleModelChange = (modelId: string) => {
-    console.log('Model change:', { from: selectedModel, to: modelId });
-    onModelChange(modelId);
-  };
+  // Debug logging
+  console.log('ModelSelector state:', {
+    apiKeys: {
+      anthropic: apiKeys?.anthropic ? 'set' : 'not set',
+      perplexity: apiKeys?.perplexity ? 'set' : 'not set',
+      openai: apiKeys?.openai ? 'set' : 'not set',
+      xai: apiKeys?.xai ? 'set' : 'not set',
+      google: apiKeys?.google ? 'set' : 'not set'
+    },
+    availableModels: getAvailableModels().map(m => m.name),
+    hasAvailable: hasAvailableModels(),
+    currentModel: currentModel?.name
+  });
+
+  // If current model's provider is not configured, select first available model
+  useEffect(() => {
+    if (currentModel && !hasValidApiKey(currentModel.provider)) {
+      const firstAvailableModel = getAvailableModels()[0];
+      if (firstAvailableModel) {
+        onModelChange(firstAvailableModel.id);
+      }
+    }
+  }, [currentModel, onModelChange, apiKeys]);
 
   // Update width based on all model names
   useEffect(() => {
     if (measureRef.current) {
-      // Measure all model names to find the longest one
-      const widths = availableModels.map(model => {
+      const widths = AVAILABLE_MODELS.map(model => {
         measureRef.current!.textContent = model.name;
         return measureRef.current!.offsetWidth;
       });
       const maxWidth = Math.max(...widths, measureRef.current.offsetWidth);
-      setTriggerWidth(Math.max(180, maxWidth + 56)); // 56px for padding and icon
+      setTriggerWidth(Math.max(180, maxWidth + 56));
     }
-  }, [availableModels, currentModel?.name]);
+  }, [currentModel?.name]);
 
   return (
     <>
-      {/* Hidden element to measure text width */}
       <span 
         ref={measureRef} 
         className="absolute invisible whitespace-nowrap text-sm"
@@ -109,8 +139,8 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
       <Select 
         defaultValue={selectedModel}
         value={selectedModel}
-        onValueChange={handleModelChange}
-        disabled={disabled || availableModels.length === 0}
+        onValueChange={onModelChange}
+        disabled={disabled || !hasAvailableModels()}
       >
         <SelectTrigger 
           className="rounded-md text-sm"
@@ -126,27 +156,34 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
           align="end"
           style={{ width: `${triggerWidth}px` }}
         >
-          {Object.entries(modelsByProvider).map(([provider, models]) => (
-            <React.Fragment key={provider}>
-              <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground capitalize">
-                {provider}
-              </div>
-              {models.map(model => (
-                <SelectItem 
-                  key={model.id} 
-                  value={model.id}
-                  className="cursor-pointer"
-                >
-                  <div className="flex items-center gap-2 w-full truncate">
-                    <ModelIcon modelId={model.id} className="w-4 h-4 flex-shrink-0" />
-                    <span className="truncate">{model.name}</span>
-                  </div>
-                </SelectItem>
-              ))}
-            </React.Fragment>
-          ))}
+          {Object.entries(modelsByProvider).map(([provider, models]) => {
+            const providerHasKey = hasValidApiKey(provider);
+            return (
+              <React.Fragment key={provider}>
+                <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground capitalize flex items-center justify-between">
+                  <span>{provider}</span>
+                  {!providerHasKey && (
+                    <span className="text-xs text-yellow-500">(API key required)</span>
+                  )}
+                </div>
+                {models.map(model => (
+                  <SelectItem 
+                    key={model.id} 
+                    value={model.id}
+                    className="cursor-pointer"
+                    disabled={!providerHasKey}
+                  >
+                    <div className="flex items-center gap-2 w-full truncate">
+                      <ModelIcon modelId={model.id} className="w-4 h-4 flex-shrink-0" />
+                      <span className="truncate">{model.name}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </React.Fragment>
+            );
+          })}
 
-          {availableModels.length === 0 && (
+          {!hasAvailableModels() && (
             <div className="px-2 py-4 text-sm text-muted-foreground text-center">
               No models available. Please add API keys in settings.
             </div>

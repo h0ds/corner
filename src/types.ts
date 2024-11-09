@@ -59,6 +59,9 @@ export interface ApiResponse {
 export interface ApiKeys {
   anthropic?: string;
   perplexity?: string;
+  openai?: string;
+  xai?: string;
+  google?: string;
 }
 
 export interface PluginModification {

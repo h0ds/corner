@@ -34,6 +34,8 @@ import { SearchPanel } from './components/SearchPanel';
 import { TitleBar } from './components/TitleBar';
 import { NoteEditor } from "./components/NoteEditor";
 import { Button } from "@/components/ui/button";
+import { loadApiKeys } from '@/lib/apiKeys';
+import { ApiKeys } from '@/types';
 
 interface ApiResponse {
   content?: string;
@@ -116,6 +118,7 @@ function App() {
   const [noteNavigationStack, setNoteNavigationStack] = useState<string[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [threadToDelete, setThreadToDelete] = useState<string | null>(null);
+  const [apiKeys, setApiKeys] = useState<ApiKeys>({});
 
   // Initialize cache on mount
   useEffect(() => {
@@ -1063,6 +1066,15 @@ function App() {
     });
   };
 
+  // Load API keys on mount
+  useEffect(() => {
+    const loadKeys = async () => {
+      const keys = await loadApiKeys();
+      setApiKeys(keys);
+    };
+    loadKeys();
+  }, []);
+
   return (
     <div className="flex h-screen bg-background/50 backdrop-blur-sm overflow-hidden">
       <TitleBar />
@@ -1169,6 +1181,7 @@ function App() {
                     isDiscussing={isDiscussing}
                     selectedModel={selectedModel}
                     isDiscussionPaused={isDiscussionPaused}
+                    apiKeys={apiKeys}
                     onStopDiscussion={handleStopDiscussion}
                     onOpenModelSelect={() => {
                       setPreferenceTab('models');

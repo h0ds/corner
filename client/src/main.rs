@@ -110,7 +110,7 @@ async fn send_message(
             if api_key.is_empty() {
                 return Ok(ApiResponse {
                     content: None,
-                    error: Some("Claude API key not configured. Please add your API key in settings.".to_string()),
+                    error: Some("Anthropic API key not configured. Please add your API key in settings.".to_string()),
                 });
             }
 
@@ -171,7 +171,7 @@ async fn send_message(
                 if status.as_u16() == 401 {
                     return Ok(ApiResponse {
                         content: None,
-                        error: Some("Claude API key is missing or invalid. Please check your API key in settings.".to_string()),
+                        error: Some("Anthropic API key is missing or invalid. Please check your API key in settings.".to_string()),
                     });
                 }
                 Ok(ApiResponse {
