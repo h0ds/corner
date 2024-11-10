@@ -9,6 +9,9 @@ export interface Message {
     model1: { id: string; response: string };
     model2: { id: string; response: string };
   };
+  citations?: { url: string; title?: string }[];
+  images?: string[];
+  relatedQuestions?: string[];
 }
 
 export interface FileAttachment {

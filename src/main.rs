@@ -28,6 +28,8 @@ async fn send_message(
                     content: None,
                     error: Some("Anthropic API key not configured. Please add your API key in settings.".to_string()),
                     citations: None,
+                    images: None,
+                    related_questions: None,
                 });
             }
 
@@ -90,6 +92,8 @@ async fn send_message(
                         content: None,
                         error: Some(error_message.to_string()),
                         citations: None,
+                        images: None,
+                        related_questions: None,
                     });
                 }
 
@@ -107,6 +111,8 @@ async fn send_message(
                     content: Some(content.to_string()),
                     error: None,
                     citations: None,
+                    images: None,
+                    related_questions: None,
                 })
             } else {
                 if status.as_u16() == 401 || status.as_u16() == 403 {
@@ -115,6 +121,8 @@ async fn send_message(
                         content: None,
                         error: Some("Anthropic API key is invalid. Please check your API key in settings.".to_string()),
                         citations: None,
+                        images: None,
+                        related_questions: None,
                     })
                 } else {
                     println!("Anthropic API error response: {} - {}", status, response_text);
@@ -125,6 +133,8 @@ async fn send_message(
                                 content: None,
                                 error: Some(format!("Anthropic API error: {}", error_msg)),
                                 citations: None,
+                                images: None,
+                                related_questions: None,
                             });
                         }
                     }
@@ -133,6 +143,8 @@ async fn send_message(
                         content: None,
                         error: Some(format!("API error (Status: {}): {}", status, response_text)),
                         citations: None,
+                        images: None,
+                        related_questions: None,
                     })
                 }
             }
@@ -156,17 +168,21 @@ async fn send_message(
                     content: None,
                     error: Some("Perplexity API key not configured. Please add your API key in settings.".to_string()),
                     citations: None,
+                    images: None,
+                    related_questions: None,
                 });
             }
 
             println!("Perplexity API key found, length: {}", api_key.len());
 
             let request_body = serde_json::json!({
-                "contents": [{
-                    "parts": [{
-                        "text": request.message
-                    }]
-                }]
+                "model": request.model,
+                "messages": [{
+                    "role": "user",
+                    "content": request.message
+                }],
+                "return_images": true,
+                "return_related_questions": true
             });
 
             println!("\n=== Perplexity API Request ===");
@@ -181,6 +197,7 @@ async fn send_message(
             let response = client
                 .post(&url)
                 .header("Content-Type", "application/json")
+                .header("Authorization", format!("Bearer {}", api_key))
                 .json(&request_body)
                 .send()
                 .await
@@ -207,32 +224,49 @@ async fn send_message(
                     .map_err(|e| e.to_string())?;
 
                 // Extract citations from the response
-                let citations = if let Some(citations_array) = json["citations"].as_array() {
+                let citations = if let Some(citations_array) = json["choices"][0]["message"]["context"]["citations"].as_array() {
                     Some(citations_array
                         .iter()
-                        .enumerate()
-                        .map(|(i, url)| Citation {
-                            url: url.as_str().unwrap_or_default().to_string(),
-                            title: None,
+                        .map(|citation| Citation {
+                            url: citation["url"].as_str().unwrap_or_default().to_string(),
+                            title: citation["title"].as_str().map(String::from)
                         })
                         .collect::<Vec<Citation>>())
                 } else {
                     None
                 };
 
+                // Extract images if present
+                let images = json["choices"][0]["message"]["context"]["images"]
+                    .as_array()
+                    .map(|arr| arr.iter()
+                        .filter_map(|img| img.as_str().map(String::from))
+                        .collect::<Vec<String>>());
+
+                // Extract related questions if present
+                let related_questions = json["choices"][0]["message"]["context"]["related_questions"]
+                    .as_array()
+                    .map(|arr| arr.iter()
+                        .filter_map(|q| q.as_str().map(String::from))
+                        .collect::<Vec<String>>());
+
                 // Extract content from choices
                 let content = json["choices"][0]["message"]["content"]
                     .as_str()
                     .map(|s| s.to_string());
 
-                println!("Perplexity Response: {}", json);
-                println!("Extracted citations: {:?}", citations);
-                println!("Extracted content: {:?}", content);
+                println!("\n=== Parsed Response ===");
+                println!("Citations: {:?}", citations);
+                println!("Images: {:?}", images);
+                println!("Related Questions: {:?}", related_questions);
+                println!("Content: {:?}", content);
 
                 Ok(ApiResponse {
                     content,
                     error: None,
                     citations,
+                    images,
+                    related_questions,
                 })
             } else {
                 if status.as_u16() == 401 || status.as_u16() == 403 {
@@ -241,6 +275,8 @@ async fn send_message(
                         content: None,
                         error: Some("Perplexity API key is invalid. Please check your API key in settings.".to_string()),
                         citations: None,
+                        images: None,
+                        related_questions: None,
                     })
                 } else {
                     println!("Perplexity API error response: {} - {}", status, response_text);
@@ -251,6 +287,8 @@ async fn send_message(
                                 content: None,
                                 error: Some(format!("Perplexity API error: {}", error_msg)),
                                 citations: None,
+                                images: None,
+                                related_questions: None,
                             });
                         }
                     }
@@ -259,6 +297,8 @@ async fn send_message(
                         content: None,
                         error: Some(format!("API error (Status: {}): {}", status, response_text)),
                         citations: None,
+                        images: None,
+                        related_questions: None,
                     })
                 }
             }
@@ -282,6 +322,8 @@ async fn send_message(
                     content: None,
                     error: Some("OpenAI API key not configured. Please add your API key in settings.".to_string()),
                     citations: None,
+                    images: None,
+                    related_questions: None,
                 });
             }
 
@@ -344,6 +386,8 @@ async fn send_message(
                         content: None,
                         error: Some(error_message.to_string()),
                         citations: None,
+                        images: None,
+                        related_questions: None,
                     });
                 }
 
@@ -361,6 +405,8 @@ async fn send_message(
                     content: Some(content.to_string()),
                     error: None,
                     citations: None,
+                    images: None,
+                    related_questions: None,
                 })
             } else {
                 if status.as_u16() == 401 || status.as_u16() == 403 {
@@ -369,6 +415,8 @@ async fn send_message(
                         content: None,
                         error: Some("OpenAI API key is invalid. Please check your API key in settings.".to_string()),
                         citations: None,
+                        images: None,
+                        related_questions: None,
                     })
                 } else {
                     println!("OpenAI API error response: {} - {}", status, response_text);
@@ -379,6 +427,8 @@ async fn send_message(
                                 content: None,
                                 error: Some(format!("OpenAI API error: {}", error_msg)),
                                 citations: None,
+                                images: None,
+                                related_questions: None,
                             });
                         }
                     }
@@ -387,6 +437,8 @@ async fn send_message(
                         content: None,
                         error: Some(format!("API error (Status: {}): {}", status, response_text)),
                         citations: None,
+                        images: None,
+                        related_questions: None,
                     })
                 }
             }
@@ -410,6 +462,8 @@ async fn send_message(
                     content: None,
                     error: Some("xAI API key not configured. Please add your API key in settings.".to_string()),
                     citations: None,
+                    images: None,
+                    related_questions: None,
                 });
             }
 
@@ -472,6 +526,8 @@ async fn send_message(
                         content: None,
                         error: Some(error_message.to_string()),
                         citations: None,
+                        images: None,
+                        related_questions: None,
                     });
                 }
 
@@ -489,6 +545,8 @@ async fn send_message(
                     content: Some(content.to_string()),
                     error: None,
                     citations: None,
+                    images: None,
+                    related_questions: None,
                 })
             } else {
                 if status.as_u16() == 401 || status.as_u16() == 403 {
@@ -497,6 +555,8 @@ async fn send_message(
                         content: None,
                         error: Some("xAI API key is invalid. Please check your API key in settings.".to_string()),
                         citations: None,
+                        images: None,
+                        related_questions: None,
                     })
                 } else {
                     println!("xAI API error response: {} - {}", status, response_text);
@@ -507,6 +567,8 @@ async fn send_message(
                                 content: None,
                                 error: Some(format!("xAI API error: {}", error_msg)),
                                 citations: None,
+                                images: None,
+                                related_questions: None,
                             });
                         }
                     }
@@ -515,6 +577,8 @@ async fn send_message(
                         content: None,
                         error: Some(format!("API error (Status: {}): {}", status, response_text)),
                         citations: None,
+                        images: None,
+                        related_questions: None,
                     })
                 }
             }
@@ -546,6 +610,8 @@ async fn send_message(
                     content: None,
                     error: Some("Google API key not configured. Please add your API key in settings.".to_string()),
                     citations: None,
+                    images: None,
+                    related_questions: None,
                 });
             }
 
@@ -609,6 +675,8 @@ async fn send_message(
                         content: None,
                         error: Some(error_message.to_string()),
                         citations: None,
+                        images: None,
+                        related_questions: None,
                     });
                 }
 
@@ -626,6 +694,8 @@ async fn send_message(
                     content: Some(content.to_string()),
                     error: None,
                     citations: None,
+                    images: None,
+                    related_questions: None,
                 })
             } else {
                 if status.as_u16() == 401 || status.as_u16() == 403 {
@@ -634,6 +704,8 @@ async fn send_message(
                         content: None,
                         error: Some("Google API key is invalid. Please check your API key in settings.".to_string()),
                         citations: None,
+                        images: None,
+                        related_questions: None,
                     })
                 } else {
                     println!("Google API error response: {} - {}", status, response_text);
@@ -644,6 +716,8 @@ async fn send_message(
                                 content: None,
                                 error: Some(format!("Google API error: {}", error_msg)),
                                 citations: None,
+                                images: None,
+                                related_questions: None,
                             });
                         }
                     }
@@ -652,6 +726,8 @@ async fn send_message(
                         content: None,
                         error: Some(format!("API error (Status: {}): {}", status, response_text)),
                         citations: None,
+                        images: None,
+                        related_questions: None,
                     })
                 }
             }
@@ -664,6 +740,8 @@ async fn send_message(
                 content: None,
                 error: Some(format!("Unknown provider: {}", provider)),
                 citations: None,
+                images: None,
+                related_questions: None,
             });
         }
     }

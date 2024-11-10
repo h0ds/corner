@@ -2,7 +2,7 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 import { Message, PluginModification } from '@/types';
 import { ModelIcon } from './ModelIcon';
-import { User, XCircle, Copy, Check } from 'lucide-react';
+import { User, XCircle, Copy, Check, ImageIcon } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -23,12 +23,11 @@ interface ChatMessageProps {
   onErrorClick?: () => void;
   modelId?: string;
   plugins?: PluginModification[];
-  comparison?: {
-    message: string;
-    model1: { id: string; response: string };
-    model2: { id: string; response: string };
-  };
+  comparison?: Message['comparison'];
   citations?: { url: string; title?: string }[];
+  images?: string[];
+  relatedQuestions?: string[];
+  onSendMessage?: (message: string) => void;
 }
 
 // Add this component to render plugin content
@@ -52,7 +51,10 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   modelId,
   plugins = [],
   comparison,
-  citations
+  citations,
+  images,
+  relatedQuestions,
+  onSendMessage,
 }) => {
   const [copied, setCopied] = React.useState(false);
 
@@ -71,13 +73,13 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     if (!citations?.length) return content;
 
     // Replace [n] with markdown links
-    return content.replace(/\[(\d+)\]/g, (_, num) => {
+    return content.replace(/\[(\d+)\]/g, (match, num) => {
       const index = parseInt(num) - 1;
       if (index >= 0 && index < citations.length) {
-        const citation = citations[index];
-        return `[${num}](${citation.url})`;
+        // Create markdown link with citation URL
+        return `[${match}](${citations[index].url})`;
       }
-      return `[${num}]`;
+      return match;
     });
   };
 
@@ -138,20 +140,24 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
           ul: ({children}) => <ul className="list-disc p-6 mb-6 last:mb-0 space-y-2">{children}</ul>,
           ol: ({children}) => <ol className="list-decimal px-8 py-6 last:mb-0 space-y-2">{children}</ol>,
           li: ({children}) => <li className="mb-2 last:mb-0">{children}</li>,
-          a: ({ node, ...props }) => (
-            <a
-              {...props}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:underline cursor-pointer"
-              onClick={(e) => {
-                if (props.href && citations?.some(c => c.url === props.href)) {
-                  e.preventDefault();
-                  window.open(props.href, '_blank');
-                }
-              }}
-            />
-          ),
+          a: ({ node, ...props }) => {
+            // Check if this is a citation link
+            const isCitation = props.children?.[0]?.toString().match(/^\[\d+\]$/);
+            
+            return (
+              <a
+                {...props}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(
+                  "cursor-pointer",
+                  isCitation 
+                    ? "text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 no-underline" 
+                    : "text-primary hover:underline"
+                )}
+              />
+            );
+          },
           strong: ({children}) => (
             <span className="tracking-tighter font-medium underline">
               {children}
@@ -358,6 +364,50 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         <div className="prose prose-sm dark:prose-invert max-w-none">
           {renderContent()}
         </div>
+
+        {/* Display images if present */}
+        {images && images.length > 0 && (
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            {images.map((url, index) => (
+              <div key={index} className="relative aspect-video group">
+                <img
+                  src={url}
+                  alt={`Generated image ${index + 1}`}
+                  className="rounded-md w-full h-full object-cover"
+                />
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="absolute inset-0 flex items-center justify-center bg-black/50 
+                           opacity-0 group-hover:opacity-100 transition-opacity rounded-md"
+                >
+                  <ImageIcon className="h-6 w-6 text-white" />
+                </a>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Display related questions if present */}
+        {relatedQuestions && relatedQuestions.length > 0 && (
+          <div className="mt-4 space-y-2">
+            <h4 className="text-xs font-medium text-muted-foreground">Related Questions:</h4>
+            <div className="flex flex-wrap gap-2">
+              {relatedQuestions.map((question, index) => (
+                <button
+                  key={index}
+                  onClick={() => onSendMessage?.(question)}
+                  className="text-sm text-blue-500 hover:text-blue-600 dark:text-blue-400 
+                           dark:hover:text-blue-300 bg-accent/30 hover:bg-accent/50 
+                           px-3 py-1.5 rounded-md transition-colors"
+                >
+                  {question}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {citations && <Citations citations={citations} />}
         

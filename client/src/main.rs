@@ -217,8 +217,8 @@ async fn send_message(
                 "top_p": 0.9,
                 "return_citations": true,
                 "search_domain_filter": ["perplexity.ai"],
-                "return_images": false,
-                "return_related_questions": false,
+                "return_images": true,
+                "return_related_questions": true,
                 "search_recency_filter": "month",
                 "top_k": 0,
                 "stream": false,
@@ -230,7 +230,6 @@ async fn send_message(
                 "Request body: {}",
                 serde_json::to_string_pretty(&request_body).unwrap()
             );
-
             let response = client
                 .post("https://api.perplexity.ai/chat/completions")
                 .header("Authorization", format!("Bearer {}", api_key))
@@ -240,8 +239,21 @@ async fn send_message(
                 .await
                 .map_err(|e| e.to_string())?;
 
-            if response.status().is_success() {
-                let json: serde_json::Value = response.json().await.map_err(|e| e.to_string())?;
+            let status = response.status();
+            println!("\n=== Perplexity API Response ===");
+            println!("Status: {}", status);
+            println!("Headers: {:#?}", response.headers());
+
+            let response_text = response.text().await.map_err(|e| {
+                println!("Failed to read response body: {:?}", e);
+                e.to_string()
+            })?;
+    
+            println!("Response body: {}", response_text);
+    
+            if status.is_success() {
+                let json: serde_json::Value = serde_json::from_str(&response_text)
+                    .map_err(|e| e.to_string())?;
                 Ok(ApiResponse {
                     content: Some(
                         json["choices"][0]["message"]["content"]
@@ -252,16 +264,15 @@ async fn send_message(
                     error: None,
                 })
             } else {
-                if response.status().as_u16() == 401 {
+                if status.as_u16() == 401 {
                     return Ok(ApiResponse {
                         content: None,
                         error: Some("Perplexity API key is missing or invalid. Please check your API key in settings.".to_string()),
                     });
                 }
-                let error_text = response.text().await.map_err(|e| e.to_string())?;
                 Ok(ApiResponse {
                     content: None,
-                    error: Some(format!("Perplexity API error: {}", error_text)),
+                    error: Some(format!("Perplexity API error: {}", response_text)),
                 })
             }
         }
@@ -308,8 +319,21 @@ async fn send_message(
                 .await
                 .map_err(|e| e.to_string())?;
 
-            if response.status().is_success() {
-                let json: serde_json::Value = response.json().await.map_err(|e| e.to_string())?;
+            let status = response.status();
+            println!("\n=== OpenAI API Response ===");
+            println!("Status: {}", status);
+            println!("Headers: {:#?}", response.headers());
+
+            let response_text = response.text().await.map_err(|e| {
+                println!("Failed to read response body: {:?}", e);
+                e.to_string()
+            })?;
+
+            println!("Response body: {}", response_text);
+
+            if status.is_success() {
+                let json: serde_json::Value = serde_json::from_str(&response_text)
+                    .map_err(|e| e.to_string())?;
                 Ok(ApiResponse {
                     content: Some(
                         json["choices"][0]["message"]["content"]
@@ -320,16 +344,15 @@ async fn send_message(
                     error: None,
                 })
             } else {
-                if response.status().as_u16() == 401 {
+                if status.as_u16() == 401 {
                     return Ok(ApiResponse {
                         content: None,
                         error: Some("OpenAI API key is missing or invalid. Please check your API key in settings.".to_string()),
                     });
                 }
-                let error_text = response.text().await.map_err(|e| e.to_string())?;
                 Ok(ApiResponse {
                     content: None,
-                    error: Some(format!("OpenAI API error: {}", error_text)),
+                    error: Some(format!("OpenAI API error: {}", response_text)),
                 })
             }
         }
@@ -371,8 +394,21 @@ async fn send_message(
                 .await
                 .map_err(|e| e.to_string())?;
 
-            if response.status().is_success() {
-                let json: serde_json::Value = response.json().await.map_err(|e| e.to_string())?;
+            let status = response.status();
+            println!("\n=== xAI API Response ===");
+            println!("Status: {}", status);
+            println!("Headers: {:#?}", response.headers());
+
+            let response_text = response.text().await.map_err(|e| {
+                println!("Failed to read response body: {:?}", e);
+                e.to_string()
+            })?;
+
+            println!("Response body: {}", response_text);
+
+            if status.is_success() {
+                let json: serde_json::Value = serde_json::from_str(&response_text)
+                    .map_err(|e| e.to_string())?;
                 Ok(ApiResponse {
                     content: Some(
                         json["choices"][0]["message"]["content"]
@@ -383,16 +419,15 @@ async fn send_message(
                     error: None,
                 })
             } else {
-                if response.status().as_u16() == 401 {
+                if status.as_u16() == 401 {
                     return Ok(ApiResponse {
                         content: None,
                         error: Some("xAI API key is missing or invalid. Please check your API key in settings.".to_string()),
                     });
                 }
-                let error_text = response.text().await.map_err(|e| e.to_string())?;
                 Ok(ApiResponse {
                     content: None,
-                    error: Some(format!("xAI API error: {}", error_text)),
+                    error: Some(format!("xAI API error: {}", response_text)),
                 })
             }
         }

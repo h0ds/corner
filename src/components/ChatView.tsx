@@ -76,6 +76,9 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   modelId={message.modelId}
                   comparison={message.comparison}
                   citations={message.citations}
+                  images={message.images}
+                  relatedQuestions={message.relatedQuestions}
+                  onSendMessage={onSendMessage}
                 />
                 {message.file && (
                   <FilePreview
