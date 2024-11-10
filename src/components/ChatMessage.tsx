@@ -4,10 +4,10 @@ import { Message, PluginModification } from '@/types';
 import { ModelIcon } from './ModelIcon';
 import { User, XCircle, Copy, Check, ImageIcon } from 'lucide-react';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { AVAILABLE_MODELS } from './ModelSelector';
 import ReactMarkdown from 'react-markdown';

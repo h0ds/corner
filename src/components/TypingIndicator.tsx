@@ -24,7 +24,9 @@ export const TypingIndicator = () => {
         {[0, 1, 2].map((i) => (
           <motion.div
             key={i}
-            className="w-2 h-2 bg-blue-400 dark:bg-blue-500 rounded-full"
+            className="w-2 h-2 rounded-full bg-gradient-to-r from-blue-400 via-blue-500 to-blue-600 
+                     dark:from-blue-500 dark:via-blue-600 dark:to-blue-700
+                     animate-gradient-x bg-[length:200%_200%] [animation-duration:0.5s]"
             variants={{
               initial: { y: 0 },
               animate: {

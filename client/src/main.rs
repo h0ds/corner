@@ -47,17 +47,44 @@ struct ChatResponseContent {
     content_type: String,
 }
 
+#[derive(Serialize, Deserialize)]
+struct PerplexityResponse {
+    choices: Vec<PerplexityChoice>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct PerplexityChoice {
+    message: PerplexityMessage,
+}
+
+#[derive(Serialize, Deserialize)]
+struct PerplexityMessage {
+    content: String,
+    #[serde(default)]
+    citations: Vec<PerplexityCitation>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct PerplexityCitation {
+    text: String,
+    url: String,
+}
+
 struct ApiKeys {
     anthropic: Mutex<Option<String>>,
     perplexity: Mutex<Option<String>>,
     openai: Mutex<Option<String>>,
     xai: Mutex<Option<String>>,
+    google: Mutex<Option<String>>,
 }
 
 #[derive(Serialize)]
 struct ApiResponse {
     content: Option<String>,
     error: Option<String>,
+    citations: Option<Vec<Citation>>,
+    images: Option<Vec<String>>,
+    related_questions: Option<Vec<String>>,
 }
 
 #[derive(Deserialize)]
@@ -73,6 +100,12 @@ struct SendMessageRequest {
     provider: String,
     file_content: Option<String>,
     file_name: Option<String>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct Citation {
+    url: String,
+    title: Option<String>,
 }
 
 #[tauri::command]
@@ -111,6 +144,9 @@ async fn send_message(
                 return Ok(ApiResponse {
                     content: None,
                     error: Some("Anthropic API key not configured. Please add your API key in settings.".to_string()),
+                    citations: None,
+                    images: None,
+                    related_questions: None,
                 });
             }
 
@@ -166,17 +202,26 @@ async fn send_message(
                             .to_string(),
                     ),
                     error: None,
+                    citations: None,
+                    images: None,
+                    related_questions: None,
                 })
             } else {
                 if status.as_u16() == 401 {
                     return Ok(ApiResponse {
                         content: None,
                         error: Some("Anthropic API key is missing or invalid. Please check your API key in settings.".to_string()),
+                        citations: None,
+                        images: None,
+                        related_questions: None,
                     });
                 }
                 Ok(ApiResponse {
                     content: None,
                     error: Some(format!("API error (Status: {}): {}", status, response_text)),
+                    citations: None,
+                    images: None,
+                    related_questions: None,
                 })
             }
         }
@@ -196,6 +241,9 @@ async fn send_message(
                 return Ok(ApiResponse {
                     content: None,
                     error: Some("Perplexity API key not configured. Please add your API key in settings.".to_string()),
+                    citations: None,
+                    images: None,
+                    related_questions: None,
                 });
             }
 
@@ -252,27 +300,43 @@ async fn send_message(
             println!("Response body: {}", response_text);
     
             if status.is_success() {
-                let json: serde_json::Value = serde_json::from_str(&response_text)
+                let perplexity_response: PerplexityResponse = serde_json::from_str(&response_text)
                     .map_err(|e| e.to_string())?;
+
+                let message = &perplexity_response.choices[0].message;
+                let mut content = message.content.clone();
+
+                // Add citations if present
+                if !message.citations.is_empty() {
+                    content.push_str("\n\nSources:\n");
+                    for (i, citation) in message.citations.iter().enumerate() {
+                        content.push_str(&format!("{}. {} ({})\n", i + 1, citation.text, citation.url));
+                    }
+                }
+
                 Ok(ApiResponse {
-                    content: Some(
-                        json["choices"][0]["message"]["content"]
-                            .as_str()
-                            .unwrap_or_default()
-                            .to_string(),
-                    ),
+                    content: Some(content),
                     error: None,
+                    citations: None,
+                    images: None,
+                    related_questions: None,
                 })
             } else {
                 if status.as_u16() == 401 {
                     return Ok(ApiResponse {
                         content: None,
                         error: Some("Perplexity API key is missing or invalid. Please check your API key in settings.".to_string()),
+                        citations: None,
+                        images: None,
+                        related_questions: None,
                     });
                 }
                 Ok(ApiResponse {
                     content: None,
                     error: Some(format!("Perplexity API error: {}", response_text)),
+                    citations: None,
+                    images: None,
+                    related_questions: None,
                 })
             }
         }
@@ -292,6 +356,9 @@ async fn send_message(
                 return Ok(ApiResponse {
                     content: None,
                     error: Some("OpenAI API key not configured. Please add your API key in settings.".to_string()),
+                    citations: None,
+                    images: None,
+                    related_questions: None,
                 });
             }
 
@@ -342,17 +409,26 @@ async fn send_message(
                             .to_string(),
                     ),
                     error: None,
+                    citations: None,
+                    images: None,
+                    related_questions: None,
                 })
             } else {
                 if status.as_u16() == 401 {
                     return Ok(ApiResponse {
                         content: None,
                         error: Some("OpenAI API key is missing or invalid. Please check your API key in settings.".to_string()),
+                        citations: None,
+                        images: None,
+                        related_questions: None,
                     });
                 }
                 Ok(ApiResponse {
                     content: None,
                     error: Some(format!("OpenAI API error: {}", response_text)),
+                    citations: None,
+                    images: None,
+                    related_questions: None,
                 })
             }
         }
@@ -372,6 +448,9 @@ async fn send_message(
                 return Ok(ApiResponse {
                     content: None,
                     error: Some("xAI API key not configured. Please add your API key in settings.".to_string()),
+                    citations: None,
+                    images: None,
+                    related_questions: None,
                 });
             }
 
@@ -417,23 +496,183 @@ async fn send_message(
                             .to_string(),
                     ),
                     error: None,
+                    citations: None,
+                    images: None,
+                    related_questions: None,
                 })
             } else {
                 if status.as_u16() == 401 {
                     return Ok(ApiResponse {
                         content: None,
                         error: Some("xAI API key is missing or invalid. Please check your API key in settings.".to_string()),
+                        citations: None,
+                        images: None,
+                        related_questions: None,
                     });
                 }
                 Ok(ApiResponse {
                     content: None,
                     error: Some(format!("xAI API error: {}", response_text)),
+                    citations: None,
+                    images: None,
+                    related_questions: None,
                 })
+            }
+        }
+        "google" => {
+            let stored_keys = load_stored_keys(&app_handle)?;
+            let api_key = if let Some(key) = stored_keys["google"].as_str() {
+                println!("Using stored Google API key");
+                key.to_string()
+            } else {
+                println!("No stored key, checking state");
+                let state_key = state.google.lock().unwrap();
+                match state_key.clone() {
+                    Some(key) if !key.is_empty() => {
+                        println!("Using state Google API key");
+                        key
+                    },
+                    _ => {
+                        println!("Falling back to env Google API key");
+                        env::var("GOOGLE_API_KEY").unwrap_or_default()
+                    }
+                }
+            };
+
+            if api_key.is_empty() {
+                println!("No Google API key found");
+                return Ok(ApiResponse {
+                    content: None,
+                    error: Some("Google API key not configured. Please add your API key in settings.".to_string()),
+                    citations: None,
+                    images: None,
+                    related_questions: None,
+                });
+            }
+
+            println!("Google API key found, length: {}", api_key.len());
+
+            let request_body = serde_json::json!({
+                "contents": [{
+                    "parts": [{
+                        "text": message_with_file
+                    }]
+                }]
+            });
+
+            let url = format!(
+                "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}",
+                model = request.model,
+                key = api_key
+            );
+
+            println!("\n=== Google API Request ===");
+            println!("URL: {}", url.replace(&api_key, "[REDACTED]"));
+            println!("Request body: {}", serde_json::to_string_pretty(&request_body).unwrap());
+
+            let response = client
+                .post(&url)
+                .header("Content-Type", "application/json")
+                .json(&request_body)
+                .send()
+                .await
+                .map_err(|e| {
+                    println!("\n=== Google API Error ===");
+                    println!("Request error: {:?}", e);
+                    e.to_string()
+                })?;
+
+            let status = response.status();
+            println!("\n=== Google API Response ===");
+            println!("Status: {}", status);
+            println!("Headers: {:#?}", response.headers());
+
+            let response_text = response.text().await.map_err(|e| {
+                println!("Failed to read response body: {:?}", e);
+                e.to_string()
+            })?;
+
+            println!("Response body: {}", response_text);
+
+            if status.is_success() {
+                let json: serde_json::Value = serde_json::from_str(&response_text)
+                    .map_err(|e| {
+                        println!("Google API JSON parse error: {:?}", e);
+                        e.to_string()
+                    })?;
+
+                // Check for error in the response
+                if let Some(error) = json.get("error") {
+                    println!("Google API error in response: {:?}", error);
+                    let error_message = error["message"].as_str()
+                        .unwrap_or("Unknown error occurred");
+                    return Ok(ApiResponse {
+                        content: None,
+                        error: Some(error_message.to_string()),
+                        citations: None,
+                        images: None,
+                        related_questions: None,
+                    });
+                }
+
+                // Extract content from the response
+                let content = json["candidates"][0]["content"]["parts"][0]["text"]
+                    .as_str()
+                    .ok_or_else(|| {
+                        println!("Failed to extract text from Google API response");
+                        "Failed to extract text from response".to_string()
+                    })?;
+
+                println!("Successfully extracted content from Google API response");
+
+                Ok(ApiResponse {
+                    content: Some(content.to_string()),
+                    error: None,
+                    citations: None,
+                    images: None,
+                    related_questions: None,
+                })
+            } else {
+                if status.as_u16() == 401 || status.as_u16() == 403 {
+                    println!("Google API authentication error: {}", status);
+                    Ok(ApiResponse {
+                        content: None,
+                        error: Some("Google API key is invalid. Please check your API key in settings.".to_string()),
+                        citations: None,
+                        images: None,
+                        related_questions: None,
+                    })
+                } else {
+                    println!("Google API error response: {} - {}", status, response_text);
+                    // Try to parse error message from response
+                    if let Ok(error_json) = serde_json::from_str::<serde_json::Value>(&response_text) {
+                        if let Some(error_msg) = error_json["error"]["message"].as_str() {
+                            return Ok(ApiResponse {
+                                content: None,
+                                error: Some(format!("Google API error: {}", error_msg)),
+                                citations: None,
+                                images: None,
+                                related_questions: None,
+                            });
+                        }
+                    }
+                    
+                    Ok(ApiResponse {
+                        content: None,
+                        error: Some(format!("API error (Status: {}): {}", status, response_text)),
+                        citations: None,
+                        images: None,
+                        related_questions: None,
+                    })
+                }
             }
         }
         _ => Ok(ApiResponse {
             content: None,
             error: Some("Invalid provider specified".to_string()),
+            citations: None,
+            images: None,
+            related_questions: None,
         }),
     }
 }
@@ -453,12 +692,16 @@ fn set_api_keys(
     anthropic: Option<String>,
     perplexity: Option<String>,
     openai: Option<String>,
+    xai: Option<String>,
+    google: Option<String>,
 ) -> Result<(), String> {
     // Create a JSON object with the new keys
     let mut keys = serde_json::json!({
         "anthropic": null,
         "perplexity": null,
-        "openai": null
+        "openai": null,
+        "xai": null,
+        "google": null
     });
 
     // Use ref to avoid moving the values
@@ -470,6 +713,12 @@ fn set_api_keys(
     }
     if let Some(ref key) = openai {
         keys["openai"] = serde_json::Value::String(key.clone());
+    }
+    if let Some(ref key) = xai {
+        keys["xai"] = serde_json::Value::String(key.clone());
+    }
+    if let Some(ref key) = google {
+        keys["google"] = serde_json::Value::String(key.clone());
     }
 
     // Save to file storage
@@ -485,6 +734,12 @@ fn set_api_keys(
     }
     if let Some(key) = openai {
         *state.openai.lock().unwrap() = Some(key);
+    }
+    if let Some(key) = xai {
+        *state.xai.lock().unwrap() = Some(key);
+    }
+    if let Some(key) = google {
+        *state.google.lock().unwrap() = Some(key);
     }
 
     Ok(())
@@ -535,11 +790,17 @@ async fn verify_api_key(request: VerifyRequest) -> Result<ApiResponse, String> {
                 Ok(ApiResponse {
                     content: Some("API key verified successfully".to_string()),
                     error: None,
+                    citations: None,
+                    images: None,
+                    related_questions: None,
                 })
             } else {
                 Ok(ApiResponse {
                     content: None,
                     error: Some(body),
+                    citations: None,
+                    images: None,
+                    related_questions: None,
                 })
             }
         }
@@ -581,11 +842,17 @@ async fn verify_api_key(request: VerifyRequest) -> Result<ApiResponse, String> {
                 Ok(ApiResponse {
                     content: Some("API key verified successfully".to_string()),
                     error: None,
+                    citations: None,
+                    images: None,
+                    related_questions: None,
                 })
             } else {
                 Ok(ApiResponse {
                     content: None,
                     error: Some(body),
+                    citations: None,
+                    images: None,
+                    related_questions: None,
                 })
             }
         }
@@ -627,14 +894,101 @@ async fn verify_api_key(request: VerifyRequest) -> Result<ApiResponse, String> {
                 Ok(ApiResponse {
                     content: Some("API key verified successfully".to_string()),
                     error: None,
+                    citations: None,
+                    images: None,
+                    related_questions: None,
                 })
             } else {
                 Ok(ApiResponse {
                     content: None,
                     error: Some(body),
+                    citations: None,
+                    images: None,
+                    related_questions: None,
                 })
             }
         }
+        "google" => {
+            let url = format!(
+                "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={}",
+                request.key
+            );
+
+            let response = client
+                .post(&url)
+                .header("Content-Type", "application/json")
+                .json(&serde_json::json!({
+                    "contents": [{
+                        "parts": [{
+                            "text": "Hi"
+                        }]
+                    }]
+                }))
+                .send()
+                .await
+                .map_err(|e| format!("Failed to send request: {}", e))?;
+
+            // Clone status and headers before consuming the body
+            let status = response.status();
+            let headers = response.headers().clone();
+
+            // Log response info
+            println!("API Response from Google:");
+            println!("Status: {}", status);
+            println!("Headers: {:?}", headers);
+
+            // Get response body
+            let body = response
+                .text()
+                .await
+                .map_err(|e| format!("Failed to read response body: {}", e))?;
+            println!("Body: {}", body);
+
+            // Parse the response body to check for specific error messages
+            if let Ok(error_json) = serde_json::from_str::<serde_json::Value>(&body) {
+                if let Some(error) = error_json.get("error") {
+                    let error_message = error["message"].as_str().unwrap_or("Unknown error");
+                    let error_code = error["code"].as_i64().unwrap_or(0);
+                    
+                    // Check for specific error conditions
+                    if error_code == 400 && error_message.contains("API key not valid") {
+                        return Ok(ApiResponse {
+                            content: None,
+                            error: Some("Invalid Google API key. Please check your API key in settings.".to_string()),
+                            citations: None,
+                            images: None,
+                            related_questions: None,
+                        });
+                    }
+                    
+                    return Ok(ApiResponse {
+                        content: None,
+                        error: Some(format!("Google API error: {}", error_message)),
+                        citations: None,
+                        images: None,
+                        related_questions: None,
+                    });
+                }
+            }
+
+            if status.is_success() {
+                Ok(ApiResponse {
+                    content: Some("API key verified successfully".to_string()),
+                    error: None,
+                    citations: None,
+                    images: None,
+                    related_questions: None,
+                })
+            } else {
+                Ok(ApiResponse {
+                    content: None,
+                    error: Some(format!("Unexpected error (Status: {})", status)),
+                    citations: None,
+                    images: None,
+                    related_questions: None,
+                })
+            }
+        },
         _ => Err(format!("Unsupported provider: {}", request.provider)),
     }
 }
@@ -951,6 +1305,7 @@ fn main() {
             perplexity: Mutex::new(None),
             openai: Mutex::new(None),
             xai: Mutex::new(None),
+            google: Mutex::new(None),
         })
         .invoke_handler(tauri::generate_handler![
             send_message,

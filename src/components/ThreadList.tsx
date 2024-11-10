@@ -12,7 +12,6 @@ import {
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { Thread } from "@/types";
-import { Input } from "./ui/input";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -164,7 +163,7 @@ const ThreadItem = ({
 
         {editingThreadId === thread.id ? (
           <div className="flex-1" onClick={(e) => e.stopPropagation()}>
-            <Input
+            <input
               value={editingName}
               onChange={(e) => onEditingNameChange(e.target.value)}
               onBlur={onFinishRename}
@@ -172,8 +171,7 @@ const ThreadItem = ({
                 if (e.key === "Enter") onFinishRename();
                 if (e.key === "Escape") onFinishRename();
                 e.stopPropagation();
-              }}
-              className="h-6 text-sm py-0"
+              }}className="w-full bg-transparent border-none focus:outline-none text-sm"
               autoFocus
             />
           </div>

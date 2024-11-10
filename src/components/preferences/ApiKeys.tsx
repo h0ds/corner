@@ -27,8 +27,8 @@ interface ApiKeysProps {
     google: VerificationStatus;
   };
   error: string | null;
-  onKeyChange: (type: keyof typeof keys, value: string) => void;
-  onRetryVerification?: (type: keyof typeof keys) => void;
+  onKeyChange: (type: keyof ApiKeysProps['keys'], value: string) => void;
+  onRetryVerification?: (type: keyof ApiKeysProps['keys']) => void;
 }
 
 const API_KEY_URLS = {

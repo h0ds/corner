@@ -58,46 +58,51 @@ export const AVAILABLE_MODELS: Model[] = [
 interface ModelSelectorProps {
   selectedModel: string;
   onModelChange: (modelId: string) => void;
-  disabled?: boolean;
   apiKeys: ApiKeys;
 }
 
 export const ModelSelector: React.FC<ModelSelectorProps> = ({
   selectedModel,
   onModelChange,
-  disabled,
   apiKeys
 }) => {
   const [triggerWidth, setTriggerWidth] = useState(180);
   const measureRef = useRef<HTMLSpanElement>(null);
 
-  // Check if a provider has a valid API key
+  // Update the hasValidApiKey function to properly check API keys
   const hasValidApiKey = (provider: string): boolean => {
     if (!apiKeys) return false;
+    
+    // Debug log to check what keys we have
+    console.log('Checking API key for provider:', provider, {
+      hasKey: !!apiKeys[provider as keyof typeof apiKeys],
+      keyLength: apiKeys[provider as keyof typeof apiKeys]?.length
+    });
+    
     const key = apiKeys[provider as keyof typeof apiKeys];
     return typeof key === 'string' && key.trim().length > 0;
   };
 
-  // Get models grouped by provider
+  // Update the modelsByProvider reducer for better debugging
   const modelsByProvider = AVAILABLE_MODELS.reduce((acc, model) => {
-    if (!acc[model.provider]) {
-      acc[model.provider] = [];
+    const isValid = hasValidApiKey(model.provider);
+    console.log(`Provider ${model.provider} for model ${model.name}: ${isValid ? 'valid' : 'invalid'}`);
+    
+    if (isValid) {
+      if (!acc[model.provider]) {
+        acc[model.provider] = [];
+      }
+      acc[model.provider].push(model);
     }
-    acc[model.provider].push(model);
     return acc;
   }, {} as Record<string, Model[]>);
 
+  // Add debug logging after reduction
+  console.log('Available models by provider:', Object.keys(modelsByProvider));
+  console.log('Total available models:', Object.values(modelsByProvider).flat().length);
+
   // Get current model data
   const currentModel = AVAILABLE_MODELS.find(m => m.id === selectedModel);
-
-  // Debug logging
-  console.log('ModelSelector state:', {
-    apiKeys: Object.fromEntries(
-      Object.entries(apiKeys || {}).map(([k, v]) => [k, v ? 'set' : 'not set'])
-    ),
-    currentModel: currentModel?.name,
-    hasValidKeys: Object.entries(apiKeys || {}).filter(([_, v]) => typeof v === 'string' && v.trim().length > 0).length
-  });
 
   // If current model's provider is not configured, select first available model
   useEffect(() => {
@@ -122,9 +127,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   }, [currentModel?.name]);
 
   // Check if any provider has a valid API key
-  const hasAnyValidKey = Object.values(apiKeys || {}).some(key => 
-    typeof key === 'string' && key.trim().length > 0
-  );
+  const hasAnyValidKey = Object.values(modelsByProvider).some(models => models.length > 0);
 
   return (
     <>
@@ -140,7 +143,6 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         defaultValue={selectedModel}
         value={selectedModel}
         onValueChange={onModelChange}
-        disabled={disabled || !hasAnyValidKey}
       >
         <SelectTrigger 
           className="rounded-md text-sm"
@@ -156,34 +158,39 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
           align="end"
           style={{ width: `${triggerWidth}px` }}
         >
-          {Object.entries(modelsByProvider).map(([provider, models]) => {
-            const providerHasKey = hasValidApiKey(provider);
-            if (!providerHasKey) return null;
-            
-            return (
-              <React.Fragment key={provider}>
-                <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground capitalize">
-                  {formatProviderName(provider)}
-                </div>
-                {models.map(model => (
-                  <SelectItem 
-                    key={model.id} 
-                    value={model.id}
-                    className="cursor-pointer"
-                  >
-                    <div className="flex items-center gap-2 w-full truncate">
-                      <ModelIcon modelId={model.id} className="w-4 h-4 flex-shrink-0" />
-                      <span className="truncate">{model.name}</span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </React.Fragment>
-            );
-          })}
-
-          {!hasAnyValidKey && (
+          {Object.entries(modelsByProvider).length > 0 ? (
+            Object.entries(modelsByProvider).map(([provider, models]) => {
+              console.log(`Rendering provider ${provider} with ${models.length} models`);
+              return (
+                <React.Fragment key={provider}>
+                  <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground capitalize">
+                    {formatProviderName(provider)}
+                  </div>
+                  {models.map(model => (
+                    <SelectItem 
+                      key={model.id} 
+                      value={model.id}
+                      className="cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2 w-full truncate">
+                        <ModelIcon modelId={model.id} className="w-4 h-4 flex-shrink-0" />
+                        <span className="truncate">{model.name}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </React.Fragment>
+              );
+            })
+          ) : (
             <div className="px-2 py-4 text-sm text-muted-foreground text-center">
               No models available. Please add API keys in settings.
+              {/* Add debug info */}
+              <div className="mt-2 text-xs opacity-50">
+                Available keys: {Object.entries(apiKeys || {})
+                  .filter(([_, v]) => typeof v === 'string' && v.trim().length > 0)
+                  .map(([k]) => k)
+                  .join(', ')}
+              </div>
             </div>
           )}
         </SelectContent>
