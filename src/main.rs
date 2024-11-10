@@ -6,6 +6,9 @@ async fn send_message(
 ) -> Result<ApiResponse, String> {
     let client = reqwest::Client::new();
 
+    println!("Sending message to {} model: {}", request.provider, request.model);
+    println!("Message content: {}", request.message);
+
     match request.provider.as_str() {
         "anthropic" => {
             let stored_keys = load_stored_keys(&app_handle)?;
@@ -24,6 +27,7 @@ async fn send_message(
                 return Ok(ApiResponse {
                     content: None,
                     error: Some("Anthropic API key not configured. Please add your API key in settings.".to_string()),
+                    citations: None,
                 });
             }
 
@@ -37,13 +41,14 @@ async fn send_message(
                 }]
             });
 
-            println!("Anthropic API request body: {}", serde_json::to_string_pretty(&request_body).unwrap());
+            println!("\n=== Anthropic API Request ===");
+            println!("URL: {}", url.replace(&api_key, "[REDACTED]"));
+            println!("Request body: {}", serde_json::to_string_pretty(&request_body).unwrap());
 
             let url = format!(
                 "https://api.anthropic.com/v1/complete?key={key}",
                 key = api_key
             );
-            println!("Anthropic API URL: {}", url.replace(&api_key, "[REDACTED]"));
 
             let response = client
                 .post(&url)
@@ -52,19 +57,22 @@ async fn send_message(
                 .send()
                 .await
                 .map_err(|e| {
-                    println!("Anthropic API request error: {:?}", e);
+                    println!("\n=== Anthropic API Error ===");
+                    println!("Request error: {:?}", e);
                     e.to_string()
                 })?;
 
             let status = response.status();
-            println!("Anthropic API response status: {}", status);
+            println!("\n=== Anthropic API Response ===");
+            println!("Status: {}", status);
+            println!("Headers: {:#?}", response.headers());
 
             let response_text = response.text().await.map_err(|e| {
-                println!("Anthropic API response text error: {:?}", e);
+                println!("Failed to read response body: {:?}", e);
                 e.to_string()
             })?;
 
-            println!("Anthropic API response text: {}", response_text);
+            println!("Response body: {}", response_text);
 
             if status.is_success() {
                 let json: serde_json::Value = serde_json::from_str(&response_text)
@@ -81,6 +89,7 @@ async fn send_message(
                     return Ok(ApiResponse {
                         content: None,
                         error: Some(error_message.to_string()),
+                        citations: None,
                     });
                 }
 
@@ -97,6 +106,7 @@ async fn send_message(
                 Ok(ApiResponse {
                     content: Some(content.to_string()),
                     error: None,
+                    citations: None,
                 })
             } else {
                 if status.as_u16() == 401 || status.as_u16() == 403 {
@@ -104,6 +114,7 @@ async fn send_message(
                     Ok(ApiResponse {
                         content: None,
                         error: Some("Anthropic API key is invalid. Please check your API key in settings.".to_string()),
+                        citations: None,
                     })
                 } else {
                     println!("Anthropic API error response: {} - {}", status, response_text);
@@ -113,6 +124,7 @@ async fn send_message(
                             return Ok(ApiResponse {
                                 content: None,
                                 error: Some(format!("Anthropic API error: {}", error_msg)),
+                                citations: None,
                             });
                         }
                     }
@@ -120,6 +132,7 @@ async fn send_message(
                     Ok(ApiResponse {
                         content: None,
                         error: Some(format!("API error (Status: {}): {}", status, response_text)),
+                        citations: None,
                     })
                 }
             }
@@ -142,6 +155,7 @@ async fn send_message(
                 return Ok(ApiResponse {
                     content: None,
                     error: Some("Perplexity API key not configured. Please add your API key in settings.".to_string()),
+                    citations: None,
                 });
             }
 
@@ -155,13 +169,14 @@ async fn send_message(
                 }]
             });
 
-            println!("Perplexity API request body: {}", serde_json::to_string_pretty(&request_body).unwrap());
+            println!("\n=== Perplexity API Request ===");
+            println!("URL: {}", url.replace(&api_key, "[REDACTED]"));
+            println!("Request body: {}", serde_json::to_string_pretty(&request_body).unwrap());
 
             let url = format!(
                 "https://api.perplexity.ai/v1/generate?key={key}",
                 key = api_key
             );
-            println!("Perplexity API URL: {}", url.replace(&api_key, "[REDACTED]"));
 
             let response = client
                 .post(&url)
@@ -170,51 +185,54 @@ async fn send_message(
                 .send()
                 .await
                 .map_err(|e| {
-                    println!("Perplexity API request error: {:?}", e);
+                    println!("\n=== Perplexity API Error ===");
+                    println!("Request error: {:?}", e);
                     e.to_string()
                 })?;
 
             let status = response.status();
-            println!("Perplexity API response status: {}", status);
+            println!("\n=== Perplexity API Response ===");
+            println!("Status: {}", status);
+            println!("Headers: {:#?}", response.headers());
 
             let response_text = response.text().await.map_err(|e| {
-                println!("Perplexity API response text error: {:?}", e);
+                println!("Failed to read response body: {:?}", e);
                 e.to_string()
             })?;
 
-            println!("Perplexity API response text: {}", response_text);
+            println!("Response body: {}", response_text);
 
             if status.is_success() {
                 let json: serde_json::Value = serde_json::from_str(&response_text)
-                    .map_err(|e| {
-                        println!("Perplexity API JSON parse error: {:?}", e);
-                        e.to_string()
-                    })?;
+                    .map_err(|e| e.to_string())?;
 
-                // Check for error in the response
-                if let Some(error) = json.get("error") {
-                    println!("Perplexity API error in response: {:?}", error);
-                    let error_message = error["message"].as_str()
-                        .unwrap_or("Unknown error occurred");
-                    return Ok(ApiResponse {
-                        content: None,
-                        error: Some(error_message.to_string()),
-                    });
-                }
+                // Extract citations from the response
+                let citations = if let Some(citations_array) = json["citations"].as_array() {
+                    Some(citations_array
+                        .iter()
+                        .enumerate()
+                        .map(|(i, url)| Citation {
+                            url: url.as_str().unwrap_or_default().to_string(),
+                            title: None,
+                        })
+                        .collect::<Vec<Citation>>())
+                } else {
+                    None
+                };
 
-                // Extract content from the response
-                let content = json["candidates"][0]["content"]["parts"][0]["text"]
+                // Extract content from choices
+                let content = json["choices"][0]["message"]["content"]
                     .as_str()
-                    .ok_or_else(|| {
-                        println!("Failed to extract text from Perplexity API response");
-                        "Failed to extract text from response".to_string()
-                    })?;
+                    .map(|s| s.to_string());
 
-                println!("Successfully extracted content from Perplexity API response");
+                println!("Perplexity Response: {}", json);
+                println!("Extracted citations: {:?}", citations);
+                println!("Extracted content: {:?}", content);
 
                 Ok(ApiResponse {
-                    content: Some(content.to_string()),
+                    content,
                     error: None,
+                    citations,
                 })
             } else {
                 if status.as_u16() == 401 || status.as_u16() == 403 {
@@ -222,6 +240,7 @@ async fn send_message(
                     Ok(ApiResponse {
                         content: None,
                         error: Some("Perplexity API key is invalid. Please check your API key in settings.".to_string()),
+                        citations: None,
                     })
                 } else {
                     println!("Perplexity API error response: {} - {}", status, response_text);
@@ -231,6 +250,7 @@ async fn send_message(
                             return Ok(ApiResponse {
                                 content: None,
                                 error: Some(format!("Perplexity API error: {}", error_msg)),
+                                citations: None,
                             });
                         }
                     }
@@ -238,6 +258,7 @@ async fn send_message(
                     Ok(ApiResponse {
                         content: None,
                         error: Some(format!("API error (Status: {}): {}", status, response_text)),
+                        citations: None,
                     })
                 }
             }
@@ -260,6 +281,7 @@ async fn send_message(
                 return Ok(ApiResponse {
                     content: None,
                     error: Some("OpenAI API key not configured. Please add your API key in settings.".to_string()),
+                    citations: None,
                 });
             }
 
@@ -273,13 +295,14 @@ async fn send_message(
                 }]
             });
 
-            println!("OpenAI API request body: {}", serde_json::to_string_pretty(&request_body).unwrap());
+            println!("\n=== OpenAI API Request ===");
+            println!("URL: {}", url.replace(&api_key, "[REDACTED]"));
+            println!("Request body: {}", serde_json::to_string_pretty(&request_body).unwrap());
 
             let url = format!(
                 "https://api.openai.com/v1/chat/completions?key={key}",
                 key = api_key
             );
-            println!("OpenAI API URL: {}", url.replace(&api_key, "[REDACTED]"));
 
             let response = client
                 .post(&url)
@@ -288,19 +311,22 @@ async fn send_message(
                 .send()
                 .await
                 .map_err(|e| {
-                    println!("OpenAI API request error: {:?}", e);
+                    println!("\n=== OpenAI API Error ===");
+                    println!("Request error: {:?}", e);
                     e.to_string()
                 })?;
 
             let status = response.status();
-            println!("OpenAI API response status: {}", status);
+            println!("\n=== OpenAI API Response ===");
+            println!("Status: {}", status);
+            println!("Headers: {:#?}", response.headers());
 
             let response_text = response.text().await.map_err(|e| {
-                println!("OpenAI API response text error: {:?}", e);
+                println!("Failed to read response body: {:?}", e);
                 e.to_string()
             })?;
 
-            println!("OpenAI API response text: {}", response_text);
+            println!("Response body: {}", response_text);
 
             if status.is_success() {
                 let json: serde_json::Value = serde_json::from_str(&response_text)
@@ -317,6 +343,7 @@ async fn send_message(
                     return Ok(ApiResponse {
                         content: None,
                         error: Some(error_message.to_string()),
+                        citations: None,
                     });
                 }
 
@@ -333,6 +360,7 @@ async fn send_message(
                 Ok(ApiResponse {
                     content: Some(content.to_string()),
                     error: None,
+                    citations: None,
                 })
             } else {
                 if status.as_u16() == 401 || status.as_u16() == 403 {
@@ -340,6 +368,7 @@ async fn send_message(
                     Ok(ApiResponse {
                         content: None,
                         error: Some("OpenAI API key is invalid. Please check your API key in settings.".to_string()),
+                        citations: None,
                     })
                 } else {
                     println!("OpenAI API error response: {} - {}", status, response_text);
@@ -349,6 +378,7 @@ async fn send_message(
                             return Ok(ApiResponse {
                                 content: None,
                                 error: Some(format!("OpenAI API error: {}", error_msg)),
+                                citations: None,
                             });
                         }
                     }
@@ -356,6 +386,7 @@ async fn send_message(
                     Ok(ApiResponse {
                         content: None,
                         error: Some(format!("API error (Status: {}): {}", status, response_text)),
+                        citations: None,
                     })
                 }
             }
@@ -378,6 +409,7 @@ async fn send_message(
                 return Ok(ApiResponse {
                     content: None,
                     error: Some("xAI API key not configured. Please add your API key in settings.".to_string()),
+                    citations: None,
                 });
             }
 
@@ -391,13 +423,14 @@ async fn send_message(
                 }]
             });
 
-            println!("xAI API request body: {}", serde_json::to_string_pretty(&request_body).unwrap());
+            println!("\n=== xAI API Request ===");
+            println!("URL: {}", url.replace(&api_key, "[REDACTED]"));
+            println!("Request body: {}", serde_json::to_string_pretty(&request_body).unwrap());
 
             let url = format!(
                 "https://api.xai.com/v1/generate?key={key}",
                 key = api_key
             );
-            println!("xAI API URL: {}", url.replace(&api_key, "[REDACTED]"));
 
             let response = client
                 .post(&url)
@@ -406,19 +439,22 @@ async fn send_message(
                 .send()
                 .await
                 .map_err(|e| {
-                    println!("xAI API request error: {:?}", e);
+                    println!("\n=== xAI API Error ===");
+                    println!("Request error: {:?}", e);
                     e.to_string()
                 })?;
 
             let status = response.status();
-            println!("xAI API response status: {}", status);
+            println!("\n=== xAI API Response ===");
+            println!("Status: {}", status);
+            println!("Headers: {:#?}", response.headers());
 
             let response_text = response.text().await.map_err(|e| {
-                println!("xAI API response text error: {:?}", e);
+                println!("Failed to read response body: {:?}", e);
                 e.to_string()
             })?;
 
-            println!("xAI API response text: {}", response_text);
+            println!("Response body: {}", response_text);
 
             if status.is_success() {
                 let json: serde_json::Value = serde_json::from_str(&response_text)
@@ -435,6 +471,7 @@ async fn send_message(
                     return Ok(ApiResponse {
                         content: None,
                         error: Some(error_message.to_string()),
+                        citations: None,
                     });
                 }
 
@@ -451,6 +488,7 @@ async fn send_message(
                 Ok(ApiResponse {
                     content: Some(content.to_string()),
                     error: None,
+                    citations: None,
                 })
             } else {
                 if status.as_u16() == 401 || status.as_u16() == 403 {
@@ -458,6 +496,7 @@ async fn send_message(
                     Ok(ApiResponse {
                         content: None,
                         error: Some("xAI API key is invalid. Please check your API key in settings.".to_string()),
+                        citations: None,
                     })
                 } else {
                     println!("xAI API error response: {} - {}", status, response_text);
@@ -467,6 +506,7 @@ async fn send_message(
                             return Ok(ApiResponse {
                                 content: None,
                                 error: Some(format!("xAI API error: {}", error_msg)),
+                                citations: None,
                             });
                         }
                     }
@@ -474,6 +514,7 @@ async fn send_message(
                     Ok(ApiResponse {
                         content: None,
                         error: Some(format!("API error (Status: {}): {}", status, response_text)),
+                        citations: None,
                     })
                 }
             }
@@ -504,6 +545,7 @@ async fn send_message(
                 return Ok(ApiResponse {
                     content: None,
                     error: Some("Google API key not configured. Please add your API key in settings.".to_string()),
+                    citations: None,
                 });
             }
 
@@ -517,14 +559,15 @@ async fn send_message(
                 }]
             });
 
-            println!("Google API request body: {}", serde_json::to_string_pretty(&request_body).unwrap());
+            println!("\n=== Google API Request ===");
+            println!("URL: {}", url.replace(&api_key, "[REDACTED]"));
+            println!("Request body: {}", serde_json::to_string_pretty(&request_body).unwrap());
 
             let url = format!(
                 "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}",
                 model = request.model,
                 key = api_key
             );
-            println!("Google API URL: {}", url.replace(&api_key, "[REDACTED]"));
 
             let response = client
                 .post(&url)
@@ -533,19 +576,22 @@ async fn send_message(
                 .send()
                 .await
                 .map_err(|e| {
-                    println!("Google API request error: {:?}", e);
+                    println!("\n=== Google API Error ===");
+                    println!("Request error: {:?}", e);
                     e.to_string()
                 })?;
 
             let status = response.status();
-            println!("Google API response status: {}", status);
+            println!("\n=== Google API Response ===");
+            println!("Status: {}", status);
+            println!("Headers: {:#?}", response.headers());
 
             let response_text = response.text().await.map_err(|e| {
-                println!("Google API response text error: {:?}", e);
+                println!("Failed to read response body: {:?}", e);
                 e.to_string()
             })?;
 
-            println!("Google API response text: {}", response_text);
+            println!("Response body: {}", response_text);
 
             if status.is_success() {
                 let json: serde_json::Value = serde_json::from_str(&response_text)
@@ -562,6 +608,7 @@ async fn send_message(
                     return Ok(ApiResponse {
                         content: None,
                         error: Some(error_message.to_string()),
+                        citations: None,
                     });
                 }
 
@@ -578,6 +625,7 @@ async fn send_message(
                 Ok(ApiResponse {
                     content: Some(content.to_string()),
                     error: None,
+                    citations: None,
                 })
             } else {
                 if status.as_u16() == 401 || status.as_u16() == 403 {
@@ -585,6 +633,7 @@ async fn send_message(
                     Ok(ApiResponse {
                         content: None,
                         error: Some("Google API key is invalid. Please check your API key in settings.".to_string()),
+                        citations: None,
                     })
                 } else {
                     println!("Google API error response: {} - {}", status, response_text);
@@ -594,6 +643,7 @@ async fn send_message(
                             return Ok(ApiResponse {
                                 content: None,
                                 error: Some(format!("Google API error: {}", error_msg)),
+                                citations: None,
                             });
                         }
                     }
@@ -601,15 +651,19 @@ async fn send_message(
                     Ok(ApiResponse {
                         content: None,
                         error: Some(format!("API error (Status: {}): {}", status, response_text)),
+                        citations: None,
                     })
                 }
             }
         }
 
         provider => {
+            println!("\n=== Unknown Provider ===");
+            println!("Provider: {}", provider);
             return Ok(ApiResponse {
                 content: None,
                 error: Some(format!("Unknown provider: {}", provider)),
+                citations: None,
             });
         }
     }

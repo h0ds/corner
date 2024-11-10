@@ -14,6 +14,8 @@ import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import remarkGfm from 'remark-gfm';
+import { Citations } from './Citations';
+import { Button } from "@/components/ui/button";
 
 interface ChatMessageProps {
   role: Message['role'];
@@ -26,6 +28,7 @@ interface ChatMessageProps {
     model1: { id: string; response: string };
     model2: { id: string; response: string };
   };
+  citations?: { url: string; title?: string }[];
 }
 
 // Add this component to render plugin content
@@ -48,7 +51,8 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   onErrorClick,
   modelId,
   plugins = [],
-  comparison
+  comparison,
+  citations
 }) => {
   const [copied, setCopied] = React.useState(false);
 
@@ -61,6 +65,23 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
       console.error('Failed to copy:', err);
     }
   };
+
+  // Process content to convert citation references to links
+  const processContent = (content: string) => {
+    if (!citations?.length) return content;
+
+    // Replace [n] with markdown links
+    return content.replace(/\[(\d+)\]/g, (_, num) => {
+      const index = parseInt(num) - 1;
+      if (index >= 0 && index < citations.length) {
+        const citation = citations[index];
+        return `[${num}](${citation.url})`;
+      }
+      return `[${num}]`;
+    });
+  };
+
+  const processedContent = processContent(content);
 
   const renderContent = () => {
     let result = (
@@ -117,15 +138,19 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
           ul: ({children}) => <ul className="list-disc p-6 mb-6 last:mb-0 space-y-2">{children}</ul>,
           ol: ({children}) => <ol className="list-decimal px-8 py-6 last:mb-0 space-y-2">{children}</ol>,
           li: ({children}) => <li className="mb-2 last:mb-0">{children}</li>,
-          a: ({children, href}) => (
-            <a 
-              href={href}
+          a: ({ node, ...props }) => (
+            <a
+              {...props}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-primary underline hover:text-primary/80 px-0.5"
-            >
-              {children}
-            </a>
+              className="text-primary hover:underline cursor-pointer"
+              onClick={(e) => {
+                if (props.href && citations?.some(c => c.url === props.href)) {
+                  e.preventDefault();
+                  window.open(props.href, '_blank');
+                }
+              }}
+            />
           ),
           strong: ({children}) => (
             <span className="tracking-tighter font-medium underline">
@@ -161,7 +186,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
           hr: () => <hr className="border-border my-8" />,
         }}
       >
-        {content}
+        {processedContent}
       </ReactMarkdown>
     );
 
@@ -261,9 +286,38 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
 
   return (
     <div className={cn(
-      "flex items-start gap-4 group/message",
-      role === 'user' && "flex-row-reverse"
+      "group relative flex gap-3 px-4 py-3 rounded-lg select-text",
+      role === 'user' ? 'bg-accent/50' : 'bg-background border border-border',
+      role === 'error' && 'border-destructive/50 bg-destructive/10 text-destructive',
+      role === 'system' && 'bg-muted/50 text-muted-foreground text-sm',
     )}>
+      {role === 'assistant' && (
+        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={copyToClipboard}
+                >
+                  {copied ? (
+                    <Check className="h-3.5 w-3.5 text-green-500" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                  )}
+                  <span className="sr-only">Copy message</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="left">
+                {copied ? 'Copied!' : 'Copy message'}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      )}
+
       <div className="flex flex-col items-center gap-2">
         <TooltipProvider>
           <Tooltip>
@@ -298,39 +352,16 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             )}
           </Tooltip>
         </TooltipProvider>
-
-        {/* Copy button - only visible when hovering over the message */}
-        {role === 'assistant' && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={copyToClipboard}
-                  className="p-1.5 hover:bg-accent rounded-md text-muted-foreground
-                            transition-colors opacity-0 group-hover/message:opacity-100"
-                >
-                  {copied ? (
-                    <Check className="h-4 w-4 text-green-500" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="right" className="text-xs">
-                Copy message
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
       </div>
 
-      <div className={cn(
-        "flex-0 space-y-2 overflow-hidden text-sm selectable-text",
-        "max-w-[80%] w-fit",
-        role === 'user' && "text-right ml-auto",
-        role === 'user' ? "bg-primary text-primary-foreground px-3 py-2 rounded-md" : "border border-border/50 rounded-md px-3 py-2 "
-      )}>
-        {renderContent()}
+      <div className="flex-1 space-y-2 overflow-hidden">
+        <div className="prose prose-sm dark:prose-invert max-w-none">
+          {renderContent()}
+        </div>
+
+        {citations && <Citations citations={citations} />}
+        
+        {/* ... other JSX ... */}
       </div>
     </div>
   );

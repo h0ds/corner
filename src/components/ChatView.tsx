@@ -14,6 +14,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { AVAILABLE_MODELS } from './ModelSelector';
+import { useEffect, useRef } from 'react';
 
 interface ChatViewProps {
   messages: Message[];
@@ -46,6 +47,17 @@ export const ChatView: React.FC<ChatViewProps> = ({
   onClearThread,
   onShowPreferences,
 }) => {
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // Scroll to bottom when messages change or loading state changes
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, loading]);
+
   return (
     <>
       <div className="flex-1 p-6 space-y-6 overflow-y-auto pb-[100px]">
@@ -63,6 +75,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   onErrorClick={onShowPreferences}
                   modelId={message.modelId}
                   comparison={message.comparison}
+                  citations={message.citations}
                 />
                 {message.file && (
                   <FilePreview
@@ -79,6 +92,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
             </div>
           )}
         </AnimatePresence>
+        <div ref={messagesEndRef} />
       </div>
 
       <div 

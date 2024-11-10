@@ -359,15 +359,15 @@ function App() {
             return thread;
           }));
         } else if (response.content) {
-          // Add assistant message to thread
-          setThreads(prev => prev.map(thread => {
-            if (thread.id === activeThreadId) {
+          setThreads(threads => threads.map(thread => {
+            if (thread.id === activeThreadId && !thread.isNote) {
               return {
                 ...thread,
                 messages: [...thread.messages, { 
                   role: 'assistant', 
                   content: response.content!,
-                  modelId: modelToUse
+                  modelId: modelToUse,
+                  citations: response.citations
                 }],
                 updatedAt: Date.now(),
               };
