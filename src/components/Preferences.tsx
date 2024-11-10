@@ -243,6 +243,14 @@ export const Preferences: React.FC<PreferencesProps> = ({
             verificationStatus={verificationStatus}
             error={error}
             onKeyChange={handleKeyChange}
+            onRetryVerification={async (type) => {
+              if (keys[type]) {
+                const error = await verifyKey(type, keys[type]);
+                if (error) {
+                  setError(error);
+                }
+              }
+            }}
           />
         );
       case 'appearance':

@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { NoteThread } from '@/types';
+import React, { useEffect, useState, useRef } from 'react';
+import { NoteThread, Thread } from '@/types';
 import { cn } from '@/lib/utils';
 import {
   Bold, Italic, Code as CodeIcon, Eye, ArrowLeft, Copy,
@@ -14,7 +14,8 @@ import { NoteLinkMenu } from './NoteLinkMenu';
 import CodeEditor from '@uiw/react-textarea-code-editor';
 import { LinkedNotes } from './LinkedNotes';
 import { motion, AnimatePresence } from 'framer-motion';
-import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@radix-ui/react-tooltip';
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { ReferenceMenu } from './ReferenceMenu';
 
 interface NoteEditorProps {
   note: NoteThread;
@@ -25,6 +26,7 @@ interface NoteEditorProps {
   navigationStack: string[];
   onLinkNotes?: (sourceNoteId: string, targetNoteId: string) => void;
   onNavigateToNote?: (noteId: string) => void;
+  allThreads: Thread[];
 }
 
 const CACHE_PREFIX = 'note_cache_';
@@ -41,6 +43,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   allNotes,
   onLinkNotes,
   onNavigateToNote,
+  allThreads,
 }) => {
   const [content, setContent] = useState(initialContent);
   const [showLinkMenu, setShowLinkMenu] = useState(false);
@@ -48,6 +51,10 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   const [showLinkedNotes, setShowLinkedNotes] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(note.name);
+  const [showReferenceMenu, setShowReferenceMenu] = useState(false);
+  const [referenceQuery, setReferenceQuery] = useState('');
+  const [referenceStartIndex, setReferenceStartIndex] = useState<number | null>(null);
+  const editorRef = useRef<HTMLTextAreaElement>(null);
 
   // Update content when note changes
   useEffect(() => {
@@ -272,6 +279,60 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     });
   };
 
+  // Handle reference trigger
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === ':' && !referenceQuery) {
+      setReferenceStartIndex(e.currentTarget.selectionStart);
+      setReferenceQuery('');
+      setShowReferenceMenu(true);
+      return;
+    }
+
+    if (e.key === 'Escape') {
+      setShowReferenceMenu(false);
+      setReferenceQuery('');
+      setReferenceStartIndex(null);
+    }
+  };
+
+  const handleEditorChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newValue = e.target.value;
+    setContent(newValue);
+
+    // Handle reference query
+    if (referenceStartIndex !== null) {
+      const currentPosition = e.currentTarget.selectionStart;
+      const textAfterTrigger = newValue.slice(referenceStartIndex + 1, currentPosition);
+      
+      if (textAfterTrigger.includes(' ') || currentPosition <= referenceStartIndex) {
+        setShowReferenceMenu(false);
+        setReferenceQuery('');
+        setReferenceStartIndex(null);
+      } else {
+        setReferenceQuery(textAfterTrigger);
+      }
+    }
+
+    handleChange(newValue);
+  };
+
+  const handleReferenceSelect = (thread: Thread) => {
+    if (referenceStartIndex === null || !editorRef.current) return;
+
+    const before = content.slice(0, referenceStartIndex);
+    const after = content.slice(editorRef.current.selectionStart);
+    const reference = `[[${thread.name}]]`;
+
+    const newContent = before + reference + after;
+    setContent(newContent);
+    handleChange(newContent);
+
+    // Reset reference state
+    setShowReferenceMenu(false);
+    setReferenceQuery('');
+    setReferenceStartIndex(null);
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -369,7 +430,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
               <div className="h-full relative">
                 <CodeEditor
                   value={content}
-                  onChange={(e) => handleChange(e.target.value)}
+                  onChange={(e) => handleEditorChange(e)}
                   language="markdown"
                   placeholder="Start writing..."
                   padding={16}
@@ -535,7 +596,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
                     (note.linkedNotes?.length || 0) >= 1 ? "w-[3rem]" : "w-8",
                     "h-8"
                   )}
-                  aria-label={`${showLinkedNotes ? 'Hide' : 'Show'} linked notes (${note.linkedNotes?.length || 0})`}
+                  aria-label={`${showLinkedNotes ? 'Hide' : 'Show'} linked notes`}
                 >
                   <FileText className="h-4 w-4" />
                   {(note.linkedNotes?.length || 0) >= 1 && (
@@ -546,8 +607,8 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
                   </span>
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="left">
-                {showLinkedNotes ? 'Hide' : 'Show'} linked notes ({note.linkedNotes?.length || 0})
+              <TooltipContent side="left" className="text-xs mr-2">
+                {showLinkedNotes ? 'Hide' : 'Show'} linked Notes
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -574,6 +635,20 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
           </div>
         </div>
       )}
+
+      <ReferenceMenu
+        query={referenceQuery}
+        threads={allThreads}
+        currentThreadId={note.id}
+        onSelect={handleReferenceSelect}
+        onClose={() => {
+          setShowReferenceMenu(false);
+          setReferenceQuery('');
+          setReferenceStartIndex(null);
+        }}
+        open={showReferenceMenu}
+        onQueryChange={setReferenceQuery}
+      />
     </div>
   );
 };

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileText, Network, Search, Settings, Zap } from 'lucide-react';
+import { FileText, Network, Search, Settings } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -84,7 +84,7 @@ export const Footer: React.FC<FooterProps> = ({
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-
+{/* 
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -99,7 +99,7 @@ export const Footer: React.FC<FooterProps> = ({
                   Quick Actions
                 </TooltipContent>
               </Tooltip>
-            </TooltipProvider>
+            </TooltipProvider> */}
 
             <TooltipProvider>
               <Tooltip>

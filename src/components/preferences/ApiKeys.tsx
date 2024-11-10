@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ModelIcon } from '../ModelIcon';
 import { AVAILABLE_MODELS } from '../ModelSelector';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { cn, formatProviderName } from '@/lib/utils';
+import { formatProviderName } from '@/lib/utils';
 
 type VerificationStatus = 'idle' | 'verifying' | 'success' | 'error';
 
@@ -28,6 +28,7 @@ interface ApiKeysProps {
   };
   error: string | null;
   onKeyChange: (type: keyof typeof keys, value: string) => void;
+  onRetryVerification?: (type: keyof typeof keys) => void;
 }
 
 const API_KEY_URLS = {
@@ -38,14 +39,42 @@ const API_KEY_URLS = {
   google: 'https://makersuite.google.com/app/apikeys'
 };
 
-const StatusIcon = ({ status, provider }: { status: VerificationStatus, provider: keyof typeof API_KEY_URLS }) => {
+const StatusIcon = ({ 
+  status, 
+  provider,
+  onRetry 
+}: { 
+  status: VerificationStatus;
+  provider: keyof typeof API_KEY_URLS;
+  onRetry?: () => void;
+}) => {
   switch (status) {
     case 'verifying':
       return <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />;
     case 'success':
       return <CheckCircle2 className="h-4 w-4 text-green-500" />;
     case 'error':
-      return <XCircle className="h-4 w-4 text-destructive" />;
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 text-destructive hover:text-destructive"
+                onClick={onRetry}
+              >
+                <XCircle className="h-4 w-4" />
+                <span className="sr-only">Retry verification</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              Retry verification
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
     default:
       return (
         <a 
@@ -66,6 +95,7 @@ export const ApiKeys: React.FC<ApiKeysProps> = ({
   verificationStatus,
   error,
   onKeyChange,
+  onRetryVerification
 }) => {
   // Track visibility state for each key
   const [visibility, setVisibility] = useState({
@@ -139,24 +169,30 @@ export const ApiKeys: React.FC<ApiKeysProps> = ({
                 value={keys.anthropic}
                 onChange={(e) => onKeyChange('anthropic', e.target.value)}
                 placeholder="sk-ant-api03-..."
-                className="font-mono text-sm pr-10"
+                className="font-mono text-sm pr-20"
               />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6"
-                onClick={() => toggleVisibility('anthropic')}
-              >
-                {visibility.anthropic ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
-            <div className="flex-shrink-0">
-              <StatusIcon status={verificationStatus.anthropic} provider="anthropic" />
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                <div className="flex-shrink-0">
+                  <StatusIcon 
+                    status={verificationStatus.anthropic} 
+                    provider="anthropic"
+                    onRetry={() => onRetryVerification?.('anthropic')}
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => toggleVisibility('anthropic')}
+                >
+                  {visibility.anthropic ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -258,7 +294,7 @@ export const ApiKeys: React.FC<ApiKeysProps> = ({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="google-key">Google AI API Key</Label>
+          <Label htmlFor="google-key">Google AI/Gemini API Key</Label>
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
               <Input

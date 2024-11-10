@@ -1075,6 +1075,133 @@ function App() {
     loadKeys();
   }, []);
 
+  const verifyApiKey = async (type: keyof ApiKeys, key: string) => {
+    try {
+      console.log(`Verifying ${type} API key:`, {
+        keyLength: key?.length,
+        hasKey: !!key,
+        keyStart: key?.slice(0, 4)
+      });
+
+      setVerificationStatus(prev => ({
+        ...prev,
+        [type]: 'verifying'
+      }));
+
+      // Simple test message for verification
+      const testMessage = "Hello, this is a test message to verify the API key.";
+
+      switch (type) {
+        case 'anthropic':
+          const anthropicResponse = await invoke('send_message', {
+            request: {
+              message: testMessage,
+              model: 'claude-3-sonnet-20240229',
+              provider: 'anthropic'
+            }
+          });
+
+          if ('error' in anthropicResponse) {
+            throw new Error(anthropicResponse.error);
+          }
+
+          setVerificationStatus(prev => ({
+            ...prev,
+            [type]: 'success'
+          }));
+          break;
+
+        case 'perplexity':
+          const perplexityResponse = await invoke('send_message', {
+            request: {
+              message: testMessage,
+              model: 'llama-3.1-sonar-small-128k-online',
+              provider: 'perplexity'
+            }
+          });
+
+          if ('error' in perplexityResponse) {
+            throw new Error(perplexityResponse.error);
+          }
+
+          setVerificationStatus(prev => ({
+            ...prev,
+            [type]: 'success'
+          }));
+          break;
+
+        case 'openai':
+          const openaiResponse = await invoke('send_message', {
+            request: {
+              message: testMessage,
+              model: 'gpt-3.5-turbo-0125',
+              provider: 'openai'
+            }
+          });
+
+          if ('error' in openaiResponse) {
+            throw new Error(openaiResponse.error);
+          }
+
+          setVerificationStatus(prev => ({
+            ...prev,
+            [type]: 'success'
+          }));
+          break;
+
+        case 'xai':
+          const xaiResponse = await invoke('send_message', {
+            request: {
+              message: testMessage,
+              model: 'grok-beta',
+              provider: 'xai'
+            }
+          });
+
+          if ('error' in xaiResponse) {
+            throw new Error(xaiResponse.error);
+          }
+
+          setVerificationStatus(prev => ({
+            ...prev,
+            [type]: 'success'
+          }));
+          break;
+
+        case 'google':
+          const googleResponse = await invoke('send_message', {
+            request: {
+              message: testMessage,
+              model: 'gemini-1.0-pro',
+              provider: 'google'
+            }
+          });
+
+          if ('error' in googleResponse) {
+            throw new Error(googleResponse.error);
+          }
+
+          setVerificationStatus(prev => ({
+            ...prev,
+            [type]: 'success'
+          }));
+          break;
+
+        default:
+          throw new Error(`Unknown provider: ${type}`);
+      }
+
+      return null;
+    } catch (error) {
+      console.error(`Failed to verify ${type} API key:`, error);
+      setVerificationStatus(prev => ({
+        ...prev,
+        [type]: 'error'
+      }));
+      return error instanceof Error ? error.message : 'Unknown error occurred';
+    }
+  };
+
   return (
     <div className="flex h-screen bg-background/50 backdrop-blur-sm overflow-hidden">
       <TitleBar />

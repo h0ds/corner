@@ -7,6 +7,8 @@ import { CommandMenu } from './CommandMenu';
 import { AVAILABLE_MODELS } from './ModelSelector';
 import { exit } from '@tauri-apps/plugin-process';
 import { useToast } from "@/hooks/use-toast";
+import { ReferenceMenu } from './ReferenceMenu';
+import { Thread } from '@/types';
 
 interface ChatInputProps {
   onSendMessage: (message: string, overrideModel?: string) => void;
@@ -18,6 +20,8 @@ interface ChatInputProps {
   selectedModel: string;
   isDiscussing?: boolean;
   isPaused?: boolean;
+  allThreads: Thread[];
+  currentThreadId: string;
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({ 
@@ -29,7 +33,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   disabled,
   selectedModel,
   isDiscussing,
-  isPaused
+  isPaused,
+  allThreads,
+  currentThreadId
 }) => {
   const [message, setMessage] = useState('');
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
@@ -39,6 +45,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const [selectedCommand, setSelectedCommand] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const [showReferenceMenu, setShowReferenceMenu] = useState(false);
+  const [referenceQuery, setReferenceQuery] = useState('');
+  const [referenceStartIndex, setReferenceStartIndex] = useState<number | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -141,6 +150,19 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       e.preventDefault();
       handleSubmit(e);
     }
+
+    if (e.key === ':' && !referenceQuery) {
+      setReferenceStartIndex(e.currentTarget.selectionStart);
+      setReferenceQuery('');
+      setShowReferenceMenu(true);
+      return;
+    }
+
+    if (e.key === 'Escape') {
+      setShowReferenceMenu(false);
+      setReferenceQuery('');
+      setReferenceStartIndex(null);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -168,6 +190,20 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         setCommandStartIndex(null);
       } else {
         setCommandQuery(textAfterCommand);
+      }
+    }
+
+    // Handle reference query
+    if (referenceStartIndex !== null) {
+      const currentPosition = e.currentTarget.selectionStart;
+      const textAfterTrigger = newValue.slice(referenceStartIndex + 1, currentPosition);
+      
+      if (textAfterTrigger.includes(' ') || currentPosition <= referenceStartIndex) {
+        setShowReferenceMenu(false);
+        setReferenceQuery('');
+        setReferenceStartIndex(null);
+      } else {
+        setReferenceQuery(textAfterTrigger);
       }
     }
   };
@@ -270,6 +306,21 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     }
   };
 
+  const handleReferenceSelect = (thread: Thread) => {
+    if (referenceStartIndex === null || !inputRef.current) return;
+
+    const before = message.slice(0, referenceStartIndex);
+    const after = message.slice(inputRef.current.selectionStart);
+    const reference = `[[${thread.name}]]`;
+
+    setMessage(before + reference + after);
+
+    // Reset reference state
+    setShowReferenceMenu(false);
+    setReferenceQuery('');
+    setReferenceStartIndex(null);
+  };
+
   return (
     <div className="relative w-full">
       {mentionQuery !== null && (
@@ -353,6 +404,20 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           Mention a model to start a discussion with the currently selected model (@model-name)
         </div>
       )}
+
+      <ReferenceMenu
+        query={referenceQuery}
+        threads={allThreads}
+        currentThreadId={currentThreadId}
+        onSelect={handleReferenceSelect}
+        onClose={() => {
+          setShowReferenceMenu(false);
+          setReferenceQuery('');
+          setReferenceStartIndex(null);
+        }}
+        open={showReferenceMenu}
+        onQueryChange={setReferenceQuery}
+      />
     </div>
   );
 };
