@@ -65,7 +65,6 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
         max-width: 200px;
         font-family: 'Space Mono', monospace;
         font-size: 12px;
-        border: 1px solid ${isDark ? '#333' : '#ddd'};
       ">
         <div style="font-weight: bold; margin-bottom: 4px;">${node.label}</div>
         <div style="color: ${isDark ? '#999' : '#666'}; margin-bottom: 4px;">

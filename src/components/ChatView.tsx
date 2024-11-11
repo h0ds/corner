@@ -14,7 +14,9 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { AVAILABLE_MODELS } from './ModelSelector';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { invoke } from '@tauri-apps/api/core';
+import { useToast } from "@/hooks/use-toast";
 
 interface ChatViewProps {
   messages: Message[];
@@ -23,6 +25,7 @@ interface ChatViewProps {
   isDiscussing: boolean;
   selectedModel: string;
   isDiscussionPaused: boolean;
+  apiKeys: ApiKeys;
   onStopDiscussion: () => void;
   onOpenModelSelect: () => void;
   onSendMessage: (message: string, overrideModel?: string) => void;
@@ -39,6 +42,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
   isDiscussing,
   selectedModel,
   isDiscussionPaused,
+  apiKeys,
   onStopDiscussion,
   onOpenModelSelect,
   onSendMessage,
@@ -48,6 +52,9 @@ export const ChatView: React.FC<ChatViewProps> = ({
   onShowPreferences,
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [audioPlaying, setAudioPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const { toast } = useToast();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -58,45 +65,80 @@ export const ChatView: React.FC<ChatViewProps> = ({
     scrollToBottom();
   }, [messages, loading]);
 
+  const handleTextToSpeech = async (text: string) => {
+    try {
+      const audioData = await invoke<string>('text_to_speech', { text });
+      
+      if (audioRef.current) {
+        audioRef.current.src = audioData;
+        await audioRef.current.play();
+        setAudioPlaying(true);
+      } else {
+        const audio = new Audio(audioData);
+        audioRef.current = audio;
+        await audio.play();
+        setAudioPlaying(true);
+        
+        audio.onended = () => {
+          setAudioPlaying(false);
+        };
+      }
+    } catch (error) {
+      console.error('TTS error:', error);
+      toast({
+        variant: "destructive",
+        description: "Failed to convert text to speech",
+        duration: 2000,
+      });
+    }
+  };
+
   return (
     <>
-      <div className="flex-1 p-6 space-y-6 overflow-y-auto pb-[100px]">
-        <AnimatePresence>
-          {messages.length === 0 ? (
-            <div className="text-center text-muted-foreground/40 mt-1 text-sm tracking-tighter">
-              Start a conversation ({clearHistoryShortcut} to clear history)
-            </div>
-          ) : (
-            messages.map((message, index) => (
-              <div key={index} className="space-y-2 min-w-0">
-                <ChatMessage
-                  role={message.role}
-                  content={message.content}
-                  onErrorClick={onShowPreferences}
-                  modelId={message.modelId}
-                  comparison={message.comparison}
-                  citations={message.citations}
-                  images={message.images}
-                  relatedQuestions={message.relatedQuestions}
-                  onSendMessage={onSendMessage}
-                />
-                {message.file && (
-                  <FilePreview
-                    fileName={message.file.name}
-                    content={message.file.content}
-                  />
-                )}
+      <div className="flex-1 p-6 overflow-y-auto pb-[100px]">
+        <div className="flex flex-col space-y-6">
+          <AnimatePresence>
+            {messages.length === 0 ? (
+              <div className="text-center text-muted-foreground/40 mt-1 text-sm tracking-tighter">
+                Start a conversation ({clearHistoryShortcut} to clear history)
               </div>
-            ))
-          )}
-          {loading && (
-            <div className="flex justify-start">
-              <TypingIndicator />
-            </div>
-          )}
-        </AnimatePresence>
+            ) : (
+              // Render messages in chronological order
+              messages.map((message, index) => (
+                <div key={index} className="w-full">
+                  <ChatMessage
+                    role={message.role}
+                    content={message.content}
+                    onErrorClick={onShowPreferences}
+                    modelId={message.modelId}
+                    comparison={message.comparison}
+                    citations={message.citations}
+                    images={message.images}
+                    relatedQuestions={message.relatedQuestions}
+                    onSendMessage={onSendMessage}
+                    showTTS={!!apiKeys.elevenlabs}
+                    onTextToSpeech={handleTextToSpeech}
+                  />
+                  {message.file && (
+                    <FilePreview
+                      fileName={message.file.name}
+                      content={message.file.content}
+                    />
+                  )}
+                </div>
+              ))
+            )}
+            {loading && (
+              <div className="flex justify-start">
+                <TypingIndicator />
+              </div>
+            )}
+          </AnimatePresence>
+        </div>
         <div ref={messagesEndRef} />
       </div>
+
+      <audio ref={audioRef} className="hidden" />
 
       <div 
         className="flex-shrink-0 p-2 absolute left-4 right-4 bottom-0 mb-4 bg-gray-50 rounded-lg"

@@ -1,5 +1,5 @@
-import { type ClassValue, clsx } from "clsx"
-import { twMerge } from "tailwind-merge"
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -11,7 +11,8 @@ export const formatProviderName = (provider: string): string => {
     'anthropic': 'Anthropic',
     'perplexity': 'Perplexity',
     'xai': 'xAI',
-    'google': 'Google AI'
+    'google': 'Google AI',
+    'elevenlabs': 'ElevenLabs'
   };
 
   return providerMap[provider] || provider;

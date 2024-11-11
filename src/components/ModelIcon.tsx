@@ -4,6 +4,7 @@ import { ClaudeIcon } from './icons/ClaudeIcon';
 import { PerplexityIcon } from './icons/PerplexityIcon';
 import { XAIIcon } from './icons/XAIIcon';
 import { GoogleIcon } from './icons/GoogleIcon';
+import { ElevenLabsIcon } from './icons/ElevenLabsIcon';
 import { Bot } from 'lucide-react';
 
 interface ModelIconProps {
@@ -29,6 +30,8 @@ export const ModelIcon: React.FC<ModelIconProps> = ({ modelId, className }) => {
       return <XAIIcon className={className} />;
     case 'google':
       return <GoogleIcon className={className} />;
+    case 'elevenlabs':
+      return <ElevenLabsIcon className={className} />;
     default:
       return <Bot className={className} />;
   }

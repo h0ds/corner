@@ -6,7 +6,11 @@ export async function loadApiKeys(): Promise<ApiKeys> {
     const keys = await invoke<ApiKeys>('get_stored_api_keys');
     console.log('Loaded API keys:', {
       anthropic: keys.anthropic ? '***' : 'none',
-      perplexity: keys.perplexity ? '***' : 'none'
+      perplexity: keys.perplexity ? '***' : 'none',
+      openai: keys.openai ? '***' : 'none',
+      xai: keys.xai ? '***' : 'none',
+      google: keys.google ? '***' : 'none',
+      elevenlabs: keys.elevenlabs ? '***' : 'none'
     });
     return keys;
   } catch (error) {
@@ -15,7 +19,7 @@ export async function loadApiKeys(): Promise<ApiKeys> {
   }
 }
 
-export async function saveApiKey(provider: 'anthropic' | 'perplexity', key: string): Promise<void> {
+export async function saveApiKey(provider: 'anthropic' | 'perplexity' | 'openai' | 'xai' | 'google' | 'elevenlabs', key: string): Promise<void> {
   try {
     await invoke('store_api_key', { 
       request: {

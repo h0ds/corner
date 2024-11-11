@@ -76,6 +76,7 @@ struct ApiKeys {
     openai: Mutex<Option<String>>,
     xai: Mutex<Option<String>>,
     google: Mutex<Option<String>>,
+    elevenlabs: Mutex<Option<String>>,
 }
 
 #[derive(Serialize)]
@@ -667,6 +668,93 @@ async fn send_message(
                 }
             }
         }
+        "elevenlabs" => {
+            let stored_keys = load_stored_keys(&app_handle)?;
+            let api_key = if let Some(key) = stored_keys["elevenlabs"].as_str() {
+                key.to_string()
+            } else {
+                let state_key = state.elevenlabs.lock().unwrap();
+                match state_key.clone() {
+                    Some(key) if !key.is_empty() => key,
+                    _ => env::var("ELEVENLABS_API_KEY").unwrap_or_default(),
+                }
+            };
+
+            if api_key.is_empty() {
+                return Ok(ApiResponse {
+                    content: None,
+                    error: Some("ElevenLabs API key not configured. Please add your API key in settings.".to_string()),
+                    citations: None,
+                    images: None,
+                    related_questions: None,
+                });
+            }
+
+            let client = reqwest::Client::new();
+            let response = client
+                .get("https://api.elevenlabs.io/v1/user")
+                .header("xi-api-key", api_key)
+                .send()
+                .await
+                .map_err(|e| format!("Failed to send request: {}", e))?;
+
+            let status = response.status();
+            println!("\n=== ElevenLabs API Response ===");
+            println!("Status: {}", status);
+            println!("Headers: {:#?}", response.headers());
+
+            let body = response.text().await.map_err(|e| e.to_string())?;
+            println!("Response body: {}", body);
+
+            if status.is_success() {
+                // Parse the response to verify it's a valid user info response
+                if let Ok(user_info) = serde_json::from_str::<serde_json::Value>(&body) {
+                    if user_info["subscription"].is_object() {
+                        Ok(ApiResponse {
+                            content: Some("API key verified successfully".to_string()),
+                            error: None,
+                            citations: None,
+                            images: None,
+                            related_questions: None,
+                        })
+                    } else {
+                        Ok(ApiResponse {
+                            content: None,
+                            error: Some("Invalid response format from ElevenLabs API".to_string()),
+                            citations: None,
+                            images: None,
+                            related_questions: None,
+                        })
+                    }
+                } else {
+                    Ok(ApiResponse {
+                        content: None,
+                        error: Some("Failed to parse ElevenLabs API response".to_string()),
+                        citations: None,
+                        images: None,
+                        related_questions: None,
+                    })
+                }
+            } else {
+                if status.as_u16() == 401 {
+                    Ok(ApiResponse {
+                        content: None,
+                        error: Some("Invalid ElevenLabs API key. Please check your API key in settings.".to_string()),
+                        citations: None,
+                        images: None,
+                        related_questions: None,
+                    })
+                } else {
+                    Ok(ApiResponse {
+                        content: None,
+                        error: Some(format!("ElevenLabs API error (Status: {}): {}", status, body)),
+                        citations: None,
+                        images: None,
+                        related_questions: None,
+                    })
+                }
+            }
+        }
         _ => Ok(ApiResponse {
             content: None,
             error: Some("Invalid provider specified".to_string()),
@@ -694,17 +782,17 @@ fn set_api_keys(
     openai: Option<String>,
     xai: Option<String>,
     google: Option<String>,
+    elevenlabs: Option<String>,
 ) -> Result<(), String> {
-    // Create a JSON object with the new keys
     let mut keys = serde_json::json!({
         "anthropic": null,
         "perplexity": null,
         "openai": null,
         "xai": null,
-        "google": null
+        "google": null,
+        "elevenlabs": null
     });
 
-    // Use ref to avoid moving the values
     if let Some(ref key) = anthropic {
         keys["anthropic"] = serde_json::Value::String(key.clone());
     }
@@ -720,11 +808,12 @@ fn set_api_keys(
     if let Some(ref key) = google {
         keys["google"] = serde_json::Value::String(key.clone());
     }
+    if let Some(ref key) = elevenlabs {
+        keys["elevenlabs"] = serde_json::Value::String(key.clone());
+    }
 
-    // Save to file storage
     save_keys(&app_handle, &keys)?;
 
-    // Update in-memory state
     let state = app_handle.state::<ApiKeys>();
     if let Some(key) = anthropic {
         *state.anthropic.lock().unwrap() = Some(key);
@@ -740,6 +829,9 @@ fn set_api_keys(
     }
     if let Some(key) = google {
         *state.google.lock().unwrap() = Some(key);
+    }
+    if let Some(key) = elevenlabs {
+        *state.elevenlabs.lock().unwrap() = Some(key);
     }
 
     Ok(())
@@ -989,6 +1081,72 @@ async fn verify_api_key(request: VerifyRequest) -> Result<ApiResponse, String> {
                 })
             }
         },
+        "elevenlabs" => {
+            let client = reqwest::Client::new();
+            let response = client
+                .get("https://api.elevenlabs.io/v1/user")
+                .header("xi-api-key", &request.key)
+                .send()
+                .await
+                .map_err(|e| format!("Failed to send request: {}", e))?;
+
+            let status = response.status();
+            println!("\n=== ElevenLabs API Response ===");
+            println!("Status: {}", status);
+            println!("Headers: {:#?}", response.headers());
+
+            let body = response.text().await.map_err(|e| e.to_string())?;
+            println!("Response body: {}", body);
+
+            if status.is_success() {
+                // Parse the response to verify it's a valid user info response
+                if let Ok(user_info) = serde_json::from_str::<serde_json::Value>(&body) {
+                    if user_info["subscription"].is_object() {
+                        Ok(ApiResponse {
+                            content: Some("API key verified successfully".to_string()),
+                            error: None,
+                            citations: None,
+                            images: None,
+                            related_questions: None,
+                        })
+                    } else {
+                        Ok(ApiResponse {
+                            content: None,
+                            error: Some("Invalid response format from ElevenLabs API".to_string()),
+                            citations: None,
+                            images: None,
+                            related_questions: None,
+                        })
+                    }
+                } else {
+                    Ok(ApiResponse {
+                        content: None,
+                        error: Some("Failed to parse ElevenLabs API response".to_string()),
+                        citations: None,
+                        images: None,
+                        related_questions: None,
+                    })
+                }
+            } else {
+                if status.as_u16() == 401 {
+                    Ok(ApiResponse {
+                        content: None,
+                        error: Some("Invalid ElevenLabs API key. Please check your API key in settings.".to_string()),
+                        citations: None,
+                        images: None,
+                        related_questions: None,
+                    })
+                } else {
+                    Ok(ApiResponse {
+                        content: None,
+                        error: Some(format!("ElevenLabs API error (Status: {}): {}", status, body)),
+                        citations: None,
+                        images: None,
+                        related_questions: None,
+                    })
+                }
+            }
+        }
         _ => Err(format!("Unsupported provider: {}", request.provider)),
     }
 }
@@ -1138,7 +1296,24 @@ fn save_keys(app: &AppHandle, keys: &serde_json::Value) -> Result<(), String> {
 
 #[tauri::command]
 fn get_stored_api_keys(app_handle: AppHandle) -> Result<serde_json::Value, String> {
-    load_stored_keys(&app_handle)
+    let stored_keys = load_stored_keys(&app_handle)?;
+    
+    // Ensure all expected keys exist in the JSON
+    let mut keys = serde_json::json!({
+        "anthropic": null,
+        "perplexity": null,
+        "openai": null,
+        "xai": null,
+        "google": null,
+        "elevenlabs": null
+    });
+
+    // Copy stored values
+    for (key, value) in stored_keys.as_object().unwrap() {
+        keys[key] = value.clone();
+    }
+
+    Ok(keys)
 }
 
 #[tauri::command]
@@ -1151,6 +1326,18 @@ async fn store_api_key(app_handle: AppHandle, request: serde_json::Value) -> Res
     let mut keys = load_stored_keys(&app_handle)?;
     keys[provider] = serde_json::Value::String(key.to_string());
     save_keys(&app_handle, &keys)?;
+
+    // Update in-memory state
+    let state = app_handle.state::<ApiKeys>();
+    match provider {
+        "anthropic" => *state.anthropic.lock().unwrap() = Some(key.to_string()),
+        "perplexity" => *state.perplexity.lock().unwrap() = Some(key.to_string()),
+        "openai" => *state.openai.lock().unwrap() = Some(key.to_string()),
+        "xai" => *state.xai.lock().unwrap() = Some(key.to_string()),
+        "google" => *state.google.lock().unwrap() = Some(key.to_string()),
+        "elevenlabs" => *state.elevenlabs.lock().unwrap() = Some(key.to_string()),
+        _ => return Err(format!("Unknown provider: {}", provider)),
+    }
 
     Ok(())
 }
@@ -1292,6 +1479,57 @@ fn get_cache_dir() -> Result<PathBuf, String> {
     Ok(app_cache)
 }
 
+#[tauri::command]
+async fn text_to_speech(text: String, app_handle: AppHandle) -> Result<String, String> {
+    let stored_keys = load_stored_keys(&app_handle)?;
+    let api_key = stored_keys["elevenlabs"]
+        .as_str()
+        .ok_or("ElevenLabs API key not found")?;
+    
+    // Get voice ID from local storage via a new command
+    let voice_id = match stored_keys.get("elevenlabs_voice_id") {
+        Some(id) if !id.is_null() => id.as_str().unwrap_or_default(),
+        _ => "21m00Tcm4TlvDq8ikWAM", // Default voice ID if none selected
+    };
+
+    println!("Using voice ID: {}", voice_id);
+
+    let client = reqwest::Client::new();
+    let response = client
+        .post(&format!("https://api.elevenlabs.io/v1/text-to-speech/{}", voice_id))
+        .header("xi-api-key", api_key)
+        .header("Content-Type", "application/json")
+        .json(&serde_json::json!({
+            "text": text,
+            "model_id": "eleven_monolingual_v1",
+            "voice_settings": {
+                "stability": 0.5,
+                "similarity_boost": 0.5
+            }
+        }))
+        .send()
+        .await
+        .map_err(|e| {
+            println!("TTS request failed: {}", e);
+            e.to_string()
+        })?;
+
+    let status = response.status();
+    if !status.is_success() {
+        let error_text = response.text().await.map_err(|e| e.to_string())?;
+        println!("TTS API error: {} - {}", status, error_text);
+        return Err(format!("API error: {} - {}", status, error_text));
+    }
+
+    let bytes = response.bytes().await.map_err(|e| e.to_string())?;
+    
+    // Convert to base64
+    let base64 = base64::encode(&bytes);
+    println!("Successfully generated audio");
+    
+    Ok(format!("data:audio/mpeg;base64,{}", base64))
+}
+
 fn main() {
     dotenv().ok();
 
@@ -1306,6 +1544,7 @@ fn main() {
             openai: Mutex::new(None),
             xai: Mutex::new(None),
             google: Mutex::new(None),
+            elevenlabs: Mutex::new(None),
         })
         .invoke_handler(tauri::generate_handler![
             send_message,
@@ -1319,7 +1558,8 @@ fn main() {
             init_cache_dir,
             cache_file,
             load_cached_file,
-            delete_cached_file
+            delete_cached_file,
+            text_to_speech
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

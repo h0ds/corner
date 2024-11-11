@@ -109,7 +109,7 @@ const ThreadItem = ({
       )}
       style={
         {
-          backgroundColor: thread.color ? `${thread.color}4D` : undefined,
+          backgroundColor: thread.color ? `${thread.color}` : undefined,
           color: thread.textColor || undefined,
         } as React.CSSProperties
       }
@@ -123,14 +123,16 @@ const ThreadItem = ({
     >
       {activeThreadId === thread.id && (
         <div
-          className="absolute inset-0 rounded-md pointer-events-none !bg-gray-200"
+          className="absolute inset-0 rounded-md pointer-events-none"
           style={
             thread.color
               ? {
                   borderColor: thread.color,
+                  backgroundColor: `${thread.color}dd` // Add 85% opacity to darken
                 }
               : {
                   borderColor: "rgb(209 213 219)", // gray-300
+                  backgroundColor: "rgb(229 231 235)" // gray-200 for slight darkening
                 }
           }
         />

@@ -18,6 +18,7 @@ interface ApiKeysProps {
     openai: string;
     xai: string;
     google: string;
+    elevenlabs: string;
   };
   verificationStatus: {
     anthropic: VerificationStatus;
@@ -25,6 +26,7 @@ interface ApiKeysProps {
     openai: VerificationStatus;
     xai: VerificationStatus;
     google: VerificationStatus;
+    elevenlabs: VerificationStatus;
   };
   error: string | null;
   onKeyChange: (type: keyof ApiKeysProps['keys'], value: string) => void;
@@ -36,7 +38,8 @@ const API_KEY_URLS = {
   perplexity: 'https://www.perplexity.ai/settings/api',
   openai: 'https://platform.openai.com/api-keys',
   xai: 'https://grok.x.ai',
-  google: 'https://makersuite.google.com/app/apikeys'
+  google: 'https://makersuite.google.com/app/apikeys',
+  elevenlabs: 'https://elevenlabs.io/subscription'
 };
 
 const StatusIcon = ({ 
@@ -103,7 +106,8 @@ export const ApiKeys: React.FC<ApiKeysProps> = ({
     perplexity: false,
     openai: false,
     xai: false,
-    google: false
+    google: false,
+    elevenlabs: false
   });
 
   // Get first model ID for each provider
@@ -321,6 +325,38 @@ export const ApiKeys: React.FC<ApiKeysProps> = ({
             </div>
             <div className="flex-shrink-0">
               <StatusIcon status={verificationStatus.google} provider="google" />
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="elevenlabs-key">ElevenLabs API Key</Label>
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Input
+                id="elevenlabs-key"
+                type={visibility.elevenlabs ? "text" : "password"}
+                value={keys.elevenlabs}
+                onChange={(e) => onKeyChange('elevenlabs', e.target.value)}
+                placeholder="your-elevenlabs-api-key..."
+                className="font-mono text-sm pr-10"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6"
+                onClick={() => toggleVisibility('elevenlabs')}
+              >
+                {visibility.elevenlabs ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+            <div className="flex-shrink-0">
+              <StatusIcon status={verificationStatus.elevenlabs} provider="elevenlabs" />
             </div>
           </div>
         </div>

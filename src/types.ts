@@ -65,6 +65,7 @@ export interface ApiKeys {
   openai?: string;
   xai?: string;
   google?: string;
+  elevenlabs?: string;
 }
 
 export interface PluginModification {

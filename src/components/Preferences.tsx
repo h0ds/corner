@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { KeyRound, Palette, Bot, Keyboard, Network, Code, Zap } from "lucide-react";
+import { KeyRound, Palette, Bot, Keyboard, Network, Code, Zap, Volume2 } from "lucide-react";
 import { cn } from '@/lib/utils';
 import { KeyboardShortcut, loadShortcuts, saveShortcuts, resetShortcuts } from '@/lib/shortcuts';
 import { Plugin } from '@/lib/plugins';
@@ -22,6 +22,7 @@ import { Plugins } from './preferences/Plugins';
 import { Actions, Action } from './preferences/Actions';
 import { Storage } from './preferences/Storage';
 import { Database } from 'lucide-react';
+import { VoiceSettings } from './preferences/VoiceSettings';
 
 interface PreferencesProps {
   isOpen: boolean;
@@ -43,9 +44,10 @@ interface ApiKeys {
   openai: string;
   xai: string;
   google: string;
+  elevenlabs: string;
 }
 
-type PreferenceTab = 'api-keys' | 'appearance' | 'models' | 'shortcuts' | 'plugins' | 'connections' | 'actions' | 'storage';
+type PreferenceTab = 'api-keys' | 'appearance' | 'models' | 'shortcuts' | 'plugins' | 'connections' | 'actions' | 'storage' | 'voice';
 
 export const Preferences: React.FC<PreferencesProps> = ({ 
   isOpen, 
@@ -63,7 +65,8 @@ export const Preferences: React.FC<PreferencesProps> = ({
     perplexity: '', 
     openai: '',
     xai: '',
-    google: ''
+    google: '',
+    elevenlabs: ''
   });
   const [isSaving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,12 +77,14 @@ export const Preferences: React.FC<PreferencesProps> = ({
     openai: VerificationStatus;
     xai: VerificationStatus;
     google: VerificationStatus;
+    elevenlabs: VerificationStatus;
   }>({
     anthropic: 'idle',
     perplexity: 'idle',
     openai: 'idle',
     xai: 'idle',
-    google: 'idle'
+    google: 'idle',
+    elevenlabs: 'idle'
   });
   const [shortcuts, setShortcuts] = useState<KeyboardShortcut[]>([]);
   const [editingShortcutId, setEditingShortcutId] = useState<string | null>(null);
@@ -90,14 +95,15 @@ export const Preferences: React.FC<PreferencesProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      invoke<{ anthropic: string | null; perplexity: string | null; openai: string | null; xai: string | null; google: string | null }>('get_api_keys')
+      invoke<{ anthropic: string | null; perplexity: string | null; openai: string | null; xai: string | null; google: string | null; elevenlabs: string | null }>('get_api_keys')
         .then((storedKeys) => {
           console.log('Loaded stored keys:', {
             anthropic: storedKeys.anthropic ? '***' : 'none',
             perplexity: storedKeys.perplexity ? '***' : 'none',
             openai: storedKeys.openai ? '***' : 'none',
             xai: storedKeys.xai ? '***' : 'none',
-            google: storedKeys.google ? '***' : 'none'
+            google: storedKeys.google ? '***' : 'none',
+            elevenlabs: storedKeys.elevenlabs ? '***' : 'none'
           });
           
           setKeys({
@@ -105,7 +111,8 @@ export const Preferences: React.FC<PreferencesProps> = ({
             perplexity: storedKeys.perplexity || '',
             openai: storedKeys.openai || '',
             xai: storedKeys.xai || '',
-            google: storedKeys.google || ''
+            google: storedKeys.google || '',
+            elevenlabs: storedKeys.elevenlabs || ''
           });
 
           setVerificationStatus(prev => ({
@@ -113,7 +120,8 @@ export const Preferences: React.FC<PreferencesProps> = ({
             perplexity: storedKeys.perplexity ? 'success' : prev.perplexity,
             openai: storedKeys.openai ? 'success' : prev.openai,
             xai: storedKeys.xai ? 'success' : prev.xai,
-            google: storedKeys.google ? 'success' : prev.google
+            google: storedKeys.google ? 'success' : prev.google,
+            elevenlabs: storedKeys.elevenlabs ? 'success' : prev.elevenlabs
           }));
         })
         .catch(err => {
@@ -204,6 +212,7 @@ export const Preferences: React.FC<PreferencesProps> = ({
         openai: keys.openai || null,
         xai: keys.xai || null,
         google: keys.google || null,
+        elevenlabs: keys.elevenlabs || null
       });
 
       const verifyPromises = Object.entries(keys)
@@ -232,6 +241,7 @@ export const Preferences: React.FC<PreferencesProps> = ({
     { id: 'plugins', label: 'Plugins', icon: <Code className="h-4 w-4" /> },
     { id: 'actions', label: 'Actions', icon: <Zap className="h-4 w-4" /> },
     { id: 'storage', label: 'Storage', icon: <Database className="h-4 w-4" /> },
+    { id: 'voice', label: 'Voice', icon: <Volume2 className="h-4 w-4" /> },
   ];
 
   const renderContent = () => {
@@ -298,6 +308,12 @@ export const Preferences: React.FC<PreferencesProps> = ({
         );
       case 'storage':
         return <Storage />;
+      case 'voice':
+        return (
+          <VoiceSettings 
+            apiKey={keys.elevenlabs}
+          />
+        );
       default:
         return null;
     }
@@ -404,12 +420,13 @@ export const Preferences: React.FC<PreferencesProps> = ({
                   <Button 
                     onClick={handleSave} 
                     disabled={isSaving || 
-                      (!keys.anthropic && !keys.perplexity && !keys.openai && !keys.xai && !keys.google) || 
+                      (!keys.anthropic && !keys.perplexity && !keys.openai && !keys.xai && !keys.google && !keys.elevenlabs) || 
                       verificationStatus.anthropic === 'verifying' || 
                       verificationStatus.perplexity === 'verifying' || 
                       verificationStatus.openai === 'verifying' || 
                       verificationStatus.xai === 'verifying' ||
-                      verificationStatus.google === 'verifying'}
+                      verificationStatus.google === 'verifying' ||
+                      verificationStatus.elevenlabs === 'verifying'}
                     className="rounded-md text-sm"
                   >
                     {isSaving ? 'Saving...' : 'Save'}

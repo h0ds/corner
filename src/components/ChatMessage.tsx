@@ -2,12 +2,12 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 import { Message, PluginModification } from '@/types';
 import { ModelIcon } from './ModelIcon';
-import { User, XCircle, Copy, Check, ImageIcon } from 'lucide-react';
+import { User, XCircle, Copy, Check, ImageIcon, Volume2 } from 'lucide-react';
 import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { AVAILABLE_MODELS } from './ModelSelector';
 import ReactMarkdown from 'react-markdown';
@@ -16,6 +16,7 @@ import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import remarkGfm from 'remark-gfm';
 import { Citations } from './Citations';
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 interface ChatMessageProps {
   role: Message['role'];
@@ -28,6 +29,8 @@ interface ChatMessageProps {
   images?: string[];
   relatedQuestions?: string[];
   onSendMessage?: (message: string) => void;
+  onTextToSpeech?: (text: string) => Promise<void>;
+  showTTS?: boolean;
 }
 
 // Add this component to render plugin content
@@ -55,6 +58,8 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   images,
   relatedQuestions,
   onSendMessage,
+  onTextToSpeech,
+  showTTS = false,
 }) => {
   const [copied, setCopied] = React.useState(false);
 
@@ -291,127 +296,157 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   }
 
   return (
-    <div className={cn(
-      "group relative flex gap-3 px-4 py-3 rounded-lg select-text",
-      role === 'user' ? 'bg-accent/50' : 'bg-background border border-border',
-      role === 'error' && 'border-destructive/50 bg-destructive/10 text-destructive',
-      role === 'system' && 'bg-muted/50 text-muted-foreground text-sm',
-    )}>
-      {role === 'assistant' && (
-        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+    <div className="w-full flex">
+      <div className={cn(
+        "group relative inline-flex gap-3 px-4 py-3 rounded-lg select-text max-w-full",
+        role === 'user' ? 'bg-black text-white flex-row-reverse ml-auto' : 'bg-background border border-border',
+        role === 'system' && 'bg-muted/50 text-muted-foreground text-sm',
+        role === 'assistant' && ''
+      )}>
+        {role === 'assistant' && (
+          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+            {showTTS && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={() => onTextToSpeech?.(content)}
+                    >
+                      <Volume2 className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="sr-only">Text to speech</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="left">
+                    Convert to speech
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={copyToClipboard}
+                  >
+                    {copied ? (
+                      <Check className="h-3.5 w-3.5 text-green-500" />
+                    ) : (
+                      <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                    )}
+                    <span className="sr-only">Copy message</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                  {copied ? 'Copied!' : 'Copy message'}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+        )}
+
+        <div className="flex flex-col items-center gap-2">
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6"
-                  onClick={copyToClipboard}
-                >
-                  {copied ? (
-                    <Check className="h-3.5 w-3.5 text-green-500" />
-                  ) : (
-                    <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                <div className={cn(
+                  "w-8 h-8 flex items-center justify-center rounded-md shrink-0",
+                  role === 'assistant' ? "bg-accent text-accent-foreground" : "bg-white/10 text-white"
+                )}>
+                  {role === 'assistant' && modelId && (
+                    <ModelIcon modelId={modelId} className="h-4 w-4" />
                   )}
-                  <span className="sr-only">Copy message</span>
-                </Button>
+                  {role === 'user' && (
+                    <User className="h-4 w-4" />
+                  )}
+                </div>
               </TooltipTrigger>
-              <TooltipContent side="left">
-                {copied ? 'Copied!' : 'Copy message'}
-              </TooltipContent>
+              {role === 'assistant' && modelId && (
+                <TooltipContent side="top" className="text-xs">
+                  {(() => {
+                    const model = AVAILABLE_MODELS.find(m => m.id === modelId);
+                    return model ? (
+                      <div className="flex flex-col gap-0.5">
+                        <span className="font-medium">{model.name}</span>
+                        <span className="text-muted-foreground">
+                          {model.provider === 'anthropic' ? 'Anthropic' : 
+                           model.provider === 'openai' ? 'OpenAI' : 'Perplexity'}
+                        </span>
+                      </div>
+                    ) : modelId;
+                  })()}
+                </TooltipContent>
+              )}
             </Tooltip>
           </TooltipProvider>
         </div>
-      )}
 
-      <div className="flex flex-col items-center gap-2">
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className={cn(
-                "w-8 h-8 flex items-center justify-center rounded-md shrink-0",
-                role === 'assistant' ? "bg-accent text-accent-foreground" : "bg-accent text-accent-foreground"
-              )}>
-                {role === 'assistant' && modelId && (
-                  <ModelIcon modelId={modelId} className="h-4 w-4" />
-                )}
-                {role === 'user' && (
-                  <User className="h-4 w-4" />
-                )}
-              </div>
-            </TooltipTrigger>
-            {role === 'assistant' && modelId && (
-              <TooltipContent side="top" className="text-xs">
-                {(() => {
-                  const model = AVAILABLE_MODELS.find(m => m.id === modelId);
-                  return model ? (
-                    <div className="flex flex-col gap-0.5">
-                      <span className="font-medium">{model.name}</span>
-                      <span className="text-muted-foreground">
-                        {model.provider === 'anthropic' ? 'Anthropic' : 
-                         model.provider === 'openai' ? 'OpenAI' : 'Perplexity'}
-                      </span>
-                    </div>
-                  ) : modelId;
-                })()}
-              </TooltipContent>
-            )}
-          </Tooltip>
-        </TooltipProvider>
-      </div>
-
-      <div className="flex-1 space-y-2 overflow-hidden">
-        <div className="prose prose-sm dark:prose-invert max-w-none">
-          {renderContent()}
-        </div>
-
-        {/* Display images if present */}
-        {images && images.length > 0 && (
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            {images.map((url, index) => (
-              <div key={index} className="relative aspect-video group">
-                <img
-                  src={url}
-                  alt={`Generated image ${index + 1}`}
-                  className="rounded-md w-full h-full object-cover"
-                />
-                <a
-                  href={url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="absolute inset-0 flex items-center justify-center bg-black/50 
-                           opacity-0 group-hover:opacity-100 transition-opacity rounded-md"
-                >
-                  <ImageIcon className="h-6 w-6 text-white" />
-                </a>
-              </div>
-            ))}
+        <div className={cn(
+          "space-y-2 overflow-hidden min-w-0",
+          role === 'user' && 'text-right',
+          role === 'system' && 'text-left',
+          role === 'assistant' && 'text-left'
+        )}>
+          <div className={cn(
+            "prose prose-sm dark:prose-invert max-w-none break-words",
+            role === 'user' && 'text-white'
+          )}>
+            {renderContent()}
           </div>
-        )}
 
-        {/* Display related questions if present */}
-        {relatedQuestions && relatedQuestions.length > 0 && (
-          <div className="mt-4 space-y-2">
-            <h4 className="text-xs font-medium text-muted-foreground">Related Questions:</h4>
-            <div className="flex flex-wrap gap-2">
-              {relatedQuestions.map((question, index) => (
-                <button
-                  key={index}
-                  onClick={() => onSendMessage?.(question)}
-                  className="text-sm text-blue-500 hover:text-blue-600 dark:text-blue-400 
-                           dark:hover:text-blue-300 bg-accent/30 hover:bg-accent/50 
-                           px-3 py-1.5 rounded-md transition-colors"
-                >
-                  {question}
-                </button>
+          {/* Display images if present */}
+          {images && images.length > 0 && (
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              {images.map((url, index) => (
+                <div key={index} className="relative aspect-video group">
+                  <img
+                    src={url}
+                    alt={`Generated image ${index + 1}`}
+                    className="rounded-md w-full h-full object-cover"
+                  />
+                  <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="absolute inset-0 flex items-center justify-center bg-black/50 
+                           opacity-0 group-hover:opacity-100 transition-opacity rounded-md"
+                  >
+                    <ImageIcon className="h-6 w-6 text-white" />
+                  </a>
+                </div>
               ))}
             </div>
-          </div>
-        )}
+          )}
 
-        {citations && <Citations citations={citations} />}
-        
-        {/* ... other JSX ... */}
+          {/* Display related questions if present */}
+          {relatedQuestions && relatedQuestions.length > 0 && (
+            <div className="mt-4 space-y-2">
+              <h4 className="text-xs font-medium text-muted-foreground">Related Questions:</h4>
+              <div className="flex flex-wrap gap-2">
+                {relatedQuestions.map((question, index) => (
+                  <button
+                    key={index}
+                    onClick={() => onSendMessage?.(question)}
+                    className="text-sm text-blue-500 hover:text-blue-600 dark:text-blue-400 
+                           dark:hover:text-blue-300 bg-accent/30 hover:bg-accent/50 
+                           px-3 py-1.5 rounded-md transition-colors"
+                  >
+                    {question}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {citations && <Citations citations={citations} />}
+          
+          {/* ... other JSX ... */}
+        </div>
       </div>
     </div>
   );
