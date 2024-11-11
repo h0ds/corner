@@ -17,6 +17,7 @@ import { AVAILABLE_MODELS } from './ModelSelector';
 import { useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useToast } from "@/hooks/use-toast";
+import { AudioControls } from './AudioControls';
 
 interface ChatViewProps {
   messages: Message[];
@@ -53,6 +54,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [audioPlaying, setAudioPlaying] = useState(false);
+  const [audioLoading, setAudioLoading] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const { toast } = useToast();
 
@@ -67,21 +69,28 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
   const handleTextToSpeech = async (text: string) => {
     try {
+      setAudioLoading(true);
       const audioData = await invoke<string>('text_to_speech', { text });
       
       if (audioRef.current) {
         audioRef.current.src = audioData;
+        audioRef.current.onended = () => {
+          setAudioPlaying(false);
+          // Clear the audio source to ensure complete cleanup
+          audioRef.current!.src = '';
+        };
         await audioRef.current.play();
         setAudioPlaying(true);
       } else {
         const audio = new Audio(audioData);
         audioRef.current = audio;
-        await audio.play();
-        setAudioPlaying(true);
-        
         audio.onended = () => {
           setAudioPlaying(false);
+          // Clear the audio source to ensure complete cleanup
+          audio.src = '';
         };
+        await audio.play();
+        setAudioPlaying(true);
       }
     } catch (error) {
       console.error('TTS error:', error);
@@ -90,6 +99,31 @@ export const ChatView: React.FC<ChatViewProps> = ({
         description: "Failed to convert text to speech",
         duration: 2000,
       });
+    } finally {
+      setAudioLoading(false);
+    }
+  };
+
+  const handlePauseAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      setAudioPlaying(false);
+    }
+  };
+
+  const handlePlayAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.play();
+      setAudioPlaying(true);
+    }
+  };
+
+  const handleStopAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current.src = ''; // Clear the source
+      setAudioPlaying(false);
     }
   };
 
@@ -145,23 +179,14 @@ export const ChatView: React.FC<ChatViewProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="absolute right-4 -top-12 flex items-center gap-2">
-          {isDiscussing && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={onStopDiscussion}
-                    className="p-2 bg-destructive text-destructive-foreground 
-                            hover:bg-destructive/90 rounded-md transition-colors"
-                  >
-                    <Square className="h-4 w-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="text-xs">
-                  Stop Discussion
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+          {(audioPlaying || audioLoading) && audioRef.current?.src && (
+            <AudioControls
+              isPlaying={audioPlaying}
+              isLoading={audioLoading}
+              onPause={handlePauseAudio}
+              onPlay={handlePlayAudio}
+              onStop={handleStopAudio}
+            />
           )}
           <TooltipProvider>
             <Tooltip>

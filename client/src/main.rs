@@ -1282,7 +1282,11 @@ fn load_stored_keys(app: &AppHandle) -> Result<serde_json::Value, String> {
         Ok(serde_json::json!({
             "anthropic": null,
             "perplexity": null,
-            "openai": null
+            "openai": null,
+            "xai": null,
+            "google": null,
+            "elevenlabs": null,
+            "elevenlabs_voice_id": null
         }))
     }
 }
@@ -1324,6 +1328,15 @@ async fn store_api_key(app_handle: AppHandle, request: serde_json::Value) -> Res
     let key = request["key"].as_str().ok_or("Missing key".to_string())?;
 
     let mut keys = load_stored_keys(&app_handle)?;
+    
+    // Special handling for voice ID
+    if provider == "elevenlabs_voice_id" {
+        keys["elevenlabs_voice_id"] = serde_json::Value::String(key.to_string());
+        save_keys(&app_handle, &keys)?;
+        return Ok(());
+    }
+
+    // Normal API key handling
     keys[provider] = serde_json::Value::String(key.to_string());
     save_keys(&app_handle, &keys)?;
 

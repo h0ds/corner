@@ -12,7 +12,7 @@ import { formatProviderName } from '@/lib/utils';
 export interface Model {
   id: string;
   name: string;
-  provider: 'anthropic' | 'perplexity' | 'openai' | 'xai' | 'google';
+  provider: 'anthropic' | 'perplexity' | 'openai' | 'xai' | 'google' | 'elevenlabs';
 }
 
 export const DEFAULT_MODEL = 'claude-3-sonnet-20240229';
