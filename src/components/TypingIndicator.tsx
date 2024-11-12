@@ -3,9 +3,9 @@ import { motion } from "framer-motion";
 export const TypingIndicator = () => {
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 10 }}
       transition={{ duration: 0.2 }}
       className="flex items-center gap-2 px-4 py-3 bg-card dark:bg-card/80 rounded-md shadow-none w-fit"
     >
@@ -21,24 +21,20 @@ export const TypingIndicator = () => {
           },
         }}
       >
-        {[0, 1, 2, 3].map((i) => (
+        {[0, 1, 2].map((i) => (
           <motion.div
             key={i}
-            className="w-4 h-4 bg-black dark:bg-white"
-            style={{
-              transformStyle: "preserve-3d",
-              perspective: "1000px"
-            }}
+            className="w-2 h-2 rounded-full bg-gradient-to-r from-blue-400 via-blue-500 to-blue-600 
+                     dark:from-blue-500 dark:via-blue-600 dark:to-blue-700
+                     animate-gradient-x bg-[length:200%_200%] [animation-duration:0.5s]"
             variants={{
-              initial: { opacity: 0, rotateX: 0, rotateY: 0 },
+              initial: { y: 0 },
               animate: {
-                opacity: 1,
-                rotateX: 360,
-                rotateY: 360,
+                y: [0, -5, 0],
                 transition: {
-                  duration: 1.5,
+                  duration: 0.6,
                   repeat: Infinity,
-                  ease: "linear"
+                  repeatType: "reverse",
                 },
               },
             }}

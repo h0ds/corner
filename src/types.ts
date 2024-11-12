@@ -13,6 +13,8 @@ export interface Message {
   images?: string[];
   relatedQuestions?: string[];
   isAudioResponse?: boolean;
+  audioData?: string;
+  timestamp: number;
 }
 
 export interface FileAttachment {

@@ -5,7 +5,6 @@ import { FilePreview } from './FilePreview';
 import { TypingIndicator } from './TypingIndicator';
 import { AnimatePresence } from 'framer-motion';
 import { ModelIcon } from './ModelIcon';
-import { Square } from 'lucide-react';
 import { ChatInput } from './ChatInput';
 import {
   Tooltip,
@@ -127,6 +126,14 @@ export const ChatView: React.FC<ChatViewProps> = ({
     }
   };
 
+  const handleRestartAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = 0;
+      audioRef.current.play();
+      setAudioPlaying(true);
+    }
+  };
+
   const handleSendMessage = async (message: string, overrideModel?: string) => {
     // ... existing code
 
@@ -228,9 +235,9 @@ export const ChatView: React.FC<ChatViewProps> = ({
             <AudioControls
               isPlaying={audioPlaying}
               isLoading={audioLoading}
-              onPause={handlePauseAudio}
               onPlay={handlePlayAudio}
               onStop={handleStopAudio}
+              onRestart={handleRestartAudio}
             />
           )}
           <TooltipProvider>

@@ -1,22 +1,21 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Pause, Play, Square, Volume2 } from 'lucide-react';
+import { Play, Square, Volume2, RotateCcw, Loader2 } from 'lucide-react';
 import { Button } from './ui/button';
-import { cn } from '@/lib/utils';
 
 interface AudioControlsProps {
   isPlaying: boolean;
   isLoading?: boolean;
-  onPause: () => void;
   onPlay: () => void;
   onStop: () => void;
+  onRestart: () => void;
 }
 
 export const AudioControls: React.FC<AudioControlsProps> = ({
   isPlaying,
   isLoading,
-  onPause,
   onPlay,
-  onStop
+  onStop,
+  onRestart
 }) => {
   const [audioLevel, setAudioLevel] = useState<number[]>([]);
   const animationFrameRef = useRef<number>();
@@ -25,7 +24,15 @@ export const AudioControls: React.FC<AudioControlsProps> = ({
   useEffect(() => {
     if (isPlaying) {
       const animate = () => {
-        setAudioLevel(Array.from({ length: 5 }, () => Math.random() * 100));
+        // Generate 5 audio levels with smooth transitions
+        setAudioLevel(prev => {
+          return Array.from({ length: 5 }, (_, i) => {
+            const target = Math.random() * 80 + 20; // Random value between 20-100
+            const current = prev[i] || 0;
+            // Smooth transition by moving 20% toward target
+            return current + (target - current) * 0.2;
+          });
+        });
         animationFrameRef.current = requestAnimationFrame(animate);
       };
       animationFrameRef.current = requestAnimationFrame(animate);
@@ -33,7 +40,8 @@ export const AudioControls: React.FC<AudioControlsProps> = ({
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
-      setAudioLevel([]);
+      // Gradually fade out audio levels
+      setAudioLevel(prev => prev.map(level => level * 0.9));
     }
 
     return () => {
@@ -44,16 +52,16 @@ export const AudioControls: React.FC<AudioControlsProps> = ({
   }, [isPlaying]);
 
   return (
-    <div className="flex items-center gap-2 bg-accent/50 rounded-md px-2 py-1">
+    <div className="flex items-center gap-2 bg-accent rounded-md px-3 py-1.5">
       {isLoading ? (
-        <Volume2 className="h-4 w-4 animate-pulse" />
+        <Loader2 className="h-4 w-4 animate-spin" />
       ) : (
         <div className="flex items-end gap-0.5 h-4">
           {audioLevel.length > 0 ? (
             audioLevel.map((level, i) => (
               <div
                 key={i}
-                className="w-0.5 bg-foreground transition-all duration-150"
+                className="w-0.5 bg-foreground transition-all duration-75"
                 style={{ height: `${Math.max(20, level)}%` }}
               />
             ))
@@ -64,19 +72,27 @@ export const AudioControls: React.FC<AudioControlsProps> = ({
       )}
       
       <div className="flex items-center gap-1">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6"
-          onClick={isPlaying ? onPause : onPlay}
-          disabled={isLoading}
-        >
-          {isPlaying ? (
-            <Pause className="h-3 w-3" />
-          ) : (
+        {isPlaying ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            onClick={onRestart}
+            disabled={isLoading}
+          >
+            <RotateCcw className="h-3 w-3" />
+          </Button>
+        ) : (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            onClick={onPlay}
+            disabled={isLoading}
+          >
             <Play className="h-3 w-3" />
-          )}
-        </Button>
+          </Button>
+        )}
         <Button
           variant="ghost"
           size="icon"
@@ -89,4 +105,4 @@ export const AudioControls: React.FC<AudioControlsProps> = ({
       </div>
     </div>
   );
-}; 
+};
