@@ -127,6 +127,51 @@ export const ChatView: React.FC<ChatViewProps> = ({
     }
   };
 
+  const handleSendMessage = async (message: string, overrideModel?: string) => {
+    // ... existing code
+
+    try {
+      const model = AVAILABLE_MODELS.find(m => m.id === modelToUse);
+      if (!model) throw new Error('Invalid model selected');
+
+      const response = await invoke<ApiResponse>('send_message', {
+        request: {
+          message,
+          model: modelToUse,
+          provider: model.provider,
+          file_content: undefined,
+          file_name: undefined
+        }
+      });
+
+      if (response.error) {
+        // ... existing error handling
+      } else if (response.content) {
+        // Check if this is an audio response by looking at the content
+        const isAudioResponse = response.content.startsWith('data:audio/');
+        
+        setThreads(prev => prev.map(thread => {
+          if (thread.id === activeThreadId && !thread.isNote) {
+            return {
+              ...thread,
+              messages: [...thread.messages, { 
+                role: 'assistant', 
+                content: response.content!,
+                modelId: modelToUse,
+                citations: response.citations,
+                isAudioResponse
+              }],
+              updatedAt: Date.now(),
+            };
+          }
+          return thread;
+        }));
+      }
+    } catch (error) {
+      // ... existing error handling
+    }
+  };
+
   return (
     <>
       <div className="flex-1 p-6 overflow-y-auto pb-[100px]">

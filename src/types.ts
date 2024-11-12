@@ -12,6 +12,7 @@ export interface Message {
   citations?: { url: string; title?: string }[];
   images?: string[];
   relatedQuestions?: string[];
+  isAudioResponse?: boolean;
 }
 
 export interface FileAttachment {

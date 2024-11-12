@@ -690,70 +690,51 @@ async fn send_message(
                 });
             }
 
+            // Get voice ID from local storage
+            let voice_id = match stored_keys.get("elevenlabs_voice_id") {
+                Some(id) if !id.is_null() => id.as_str().unwrap_or_default(),
+                _ => "21m00Tcm4TlvDq8ikWAM", // Default voice ID if none selected
+            };
+
             let client = reqwest::Client::new();
             let response = client
-                .get("https://api.elevenlabs.io/v1/user")
+                .post(&format!("https://api.elevenlabs.io/v1/text-to-speech/{}", voice_id))
                 .header("xi-api-key", api_key)
+                .header("Content-Type", "application/json")
+                .json(&serde_json::json!({
+                    "text": request.message,
+                    "model_id": "eleven_monolingual_v1",
+                    "voice_settings": {
+                        "stability": 0.5,
+                        "similarity_boost": 0.5
+                    }
+                }))
                 .send()
                 .await
-                .map_err(|e| format!("Failed to send request: {}", e))?;
+                .map_err(|e| e.to_string())?;
 
             let status = response.status();
-            println!("\n=== ElevenLabs API Response ===");
-            println!("Status: {}", status);
-            println!("Headers: {:#?}", response.headers());
-
-            let body = response.text().await.map_err(|e| e.to_string())?;
-            println!("Response body: {}", body);
-
-            if status.is_success() {
-                // Parse the response to verify it's a valid user info response
-                if let Ok(user_info) = serde_json::from_str::<serde_json::Value>(&body) {
-                    if user_info["subscription"].is_object() {
-                        Ok(ApiResponse {
-                            content: Some("API key verified successfully".to_string()),
-                            error: None,
-                            citations: None,
-                            images: None,
-                            related_questions: None,
-                        })
-                    } else {
-                        Ok(ApiResponse {
-                            content: None,
-                            error: Some("Invalid response format from ElevenLabs API".to_string()),
-                            citations: None,
-                            images: None,
-                            related_questions: None,
-                        })
-                    }
-                } else {
-                    Ok(ApiResponse {
-                        content: None,
-                        error: Some("Failed to parse ElevenLabs API response".to_string()),
-                        citations: None,
-                        images: None,
-                        related_questions: None,
-                    })
-                }
-            } else {
-                if status.as_u16() == 401 {
-                    Ok(ApiResponse {
-                        content: None,
-                        error: Some("Invalid ElevenLabs API key. Please check your API key in settings.".to_string()),
-                        citations: None,
-                        images: None,
-                        related_questions: None,
-                    })
-                } else {
-                    Ok(ApiResponse {
-                        content: None,
-                        error: Some(format!("ElevenLabs API error (Status: {}): {}", status, body)),
-                        citations: None,
-                        images: None,
-                        related_questions: None,
-                    })
-                }
+            if !status.is_success() {
+                let error_text = response.text().await.map_err(|e| e.to_string())?;
+                return Ok(ApiResponse {
+                    content: None,
+                    error: Some(format!("ElevenLabs API error: {}", error_text)),
+                    citations: None,
+                    images: None,
+                    related_questions: None,
+                });
             }
+
+            let bytes = response.bytes().await.map_err(|e| e.to_string())?;
+            let base64_audio = base64::encode(&bytes);
+            
+            Ok(ApiResponse {
+                content: Some(format!("data:audio/mpeg;base64,{}", base64_audio)),
+                error: None,
+                citations: None,
+                images: None,
+                related_questions: None,
+            })
         }
         _ => Ok(ApiResponse {
             content: None,

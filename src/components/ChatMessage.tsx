@@ -16,7 +16,6 @@ import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import remarkGfm from 'remark-gfm';
 import { Citations } from './Citations';
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
 
 interface ChatMessageProps {
   role: Message['role'];
@@ -31,6 +30,7 @@ interface ChatMessageProps {
   onSendMessage?: (message: string) => void;
   onTextToSpeech?: (text: string) => Promise<void>;
   showTTS?: boolean;
+  isAudioResponse?: boolean;
 }
 
 // Add this component to render plugin content
@@ -60,6 +60,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   onSendMessage,
   onTextToSpeech,
   showTTS = false,
+  isAudioResponse = false,
 }) => {
   const [copied, setCopied] = React.useState(false);
 
@@ -91,6 +92,22 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   const processedContent = processContent(content);
 
   const renderContent = () => {
+    // Check if content is an audio data URL
+    if (content.startsWith('data:audio/') || isAudioResponse) {
+      return (
+        <div className="flex flex-col gap-2">
+          <audio 
+            controls 
+            src={content} 
+            className="w-full max-w-[500px]"
+            preload="metadata"
+          >
+            Your browser does not support the audio element.
+          </audio>
+        </div>
+      );
+    }
+
     let result = (
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
@@ -99,6 +116,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             inline?: boolean;
             className?: string;
             children: React.ReactNode;
+            [key: string]: any;
           }) {
             const match = /language-(\w+)/.exec(className || '');
             const language = match ? match[1] : '';
@@ -145,9 +163,13 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
           ul: ({children}) => <ul className="list-disc p-6 mb-6 last:mb-0 space-y-2">{children}</ul>,
           ol: ({children}) => <ol className="list-decimal px-8 py-6 last:mb-0 space-y-2">{children}</ol>,
           li: ({children}) => <li className="mb-2 last:mb-0">{children}</li>,
-          a: ({ node, ...props }) => {
+          a: ({ node, children, ...props }: {
+            node?: any;
+            children?: React.ReactNode;
+            [key: string]: any;
+          }) => {
             // Check if this is a citation link
-            const isCitation = props.children?.[0]?.toString().match(/^\[\d+\]$/);
+            const isCitation = children?.[0]?.toString?.().match(/^\[\d+\]$/);
             
             return (
               <a
@@ -303,7 +325,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         role === 'system' && 'bg-muted/50 text-muted-foreground text-sm',
         role === 'assistant' && ''
       )}>
-        {role === 'assistant' && (
+        {role === 'assistant' && !content.startsWith('data:audio/') && (
           <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
             {showTTS && (
               <TooltipProvider>
@@ -325,28 +347,30 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                 </Tooltip>
               </TooltipProvider>
             )}
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6"
-                    onClick={copyToClipboard}
-                  >
-                    {copied ? (
-                      <Check className="h-3.5 w-3.5 text-green-500" />
-                    ) : (
-                      <Copy className="h-3.5 w-3.5 text-muted-foreground" />
-                    )}
-                    <span className="sr-only">Copy message</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="left">
-                  {copied ? 'Copied!' : 'Copy message'}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            {!content.startsWith('data:audio/') && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={copyToClipboard}
+                    >
+                      {copied ? (
+                        <Check className="h-3.5 w-3.5 text-green-500" />
+                      ) : (
+                        <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                      )}
+                      <span className="sr-only">Copy message</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="left">
+                    {copied ? 'Copied!' : 'Copy message'}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
           </div>
         )}
 
