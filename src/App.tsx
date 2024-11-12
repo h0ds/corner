@@ -1314,7 +1314,7 @@ function App() {
               ) : activeThread ? (
                 activeThread.isNote ? (
                   <NoteEditor 
-                    note={activeThread}
+                    note={activeThread as NoteThread}
                     onUpdate={handleNoteUpdate}
                     initialContent={activeThread.content}
                     allNotes={threads.filter((t): t is NoteThread => t.isNote === true)}
@@ -1325,6 +1325,8 @@ function App() {
                       setActiveThreadId(noteId);
                       setNoteNavigationStack(prev => [...prev, activeThreadId!]);
                     }}
+                    allThreads={threads}
+                    selectedModel={selectedModel}
                   />
                 ) : (
                   <ChatView

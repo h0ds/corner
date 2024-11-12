@@ -3,7 +3,7 @@ import { NoteThread, Thread } from '@/types';
 import { cn } from '@/lib/utils';
 import {
   Bold, Italic, Code as CodeIcon, Eye, ArrowLeft, Copy,
-  List, ListOrdered, Quote, Link, Image, Heading1, Heading2, Heading3, NotebookIcon, FileText
+  List, ListOrdered, Quote, Link, Image, Heading1, Heading2, Heading3, NotebookIcon, FileText, MessageSquare
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -15,6 +15,7 @@ import { LinkedNotes } from './LinkedNotes';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { ReferenceMenu } from './ReferenceMenu';
+import { ChatNoteOverlay } from './ChatNoteOverlay';
 
 interface NoteEditorProps {
   note: NoteThread;
@@ -26,6 +27,7 @@ interface NoteEditorProps {
   onLinkNotes?: (sourceNoteId: string, targetNoteId: string) => void;
   onNavigateToNote?: (noteId: string) => void;
   allThreads: Thread[];
+  selectedModel: string;
 }
 
 const CACHE_PREFIX = 'note_cache_';
@@ -43,6 +45,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   onLinkNotes,
   onNavigateToNote,
   allThreads,
+  selectedModel,
 }) => {
   const [content, setContent] = useState(initialContent);
   const [showLinkMenu, setShowLinkMenu] = useState(false);
@@ -54,6 +57,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   const [referenceQuery, setReferenceQuery] = useState('');
   const [referenceStartIndex, setReferenceStartIndex] = useState<number | null>(null);
   const editorRef = useRef<HTMLTextAreaElement>(null);
+  const [showChatOverlay, setShowChatOverlay] = useState(false);
 
   // Update content when note changes
   useEffect(() => {
@@ -99,6 +103,21 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     const selectedText = content.substring(start, end);
     const newContent = `${content.substring(0, start)}[[${selectedText}]]${content.substring(end)}`;
     handleChange(newContent);
+  };
+
+  // Add handler for chat responses
+  const handleChatResponse = (response: string) => {
+    // Insert response at cursor position or at end if no selection
+    const textarea = document.querySelector('textarea');
+    if (textarea) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const newContent = content.substring(0, start) + response + content.substring(end);
+      handleChange(newContent);
+    } else {
+      // Fallback to appending at the end
+      handleChange(content + '\n\n' + response);
+    }
   };
 
   // Toolbar items
@@ -266,6 +285,13 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
       label: 'Link Note',
       action: () => setShowLinkMenu(true),
       shortcut: '⌘L'
+    },
+    { type: 'divider' },
+    {
+      icon: <MessageSquare className="h-4 w-4" />,
+      label: 'Ask AI',
+      action: () => setShowChatOverlay(true),
+      shortcut: '⌘/'
     }
   ];
 
@@ -334,6 +360,15 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
 
   return (
     <div className="flex flex-col h-full">
+      {/* Add ChatNoteOverlay */}
+      {showChatOverlay && (
+        <ChatNoteOverlay
+          onClose={() => setShowChatOverlay(false)}
+          onResponse={handleChatResponse}
+          selectedModel={selectedModel}
+        />
+      )}
+      
       {/* Header */}
       <div className="flex items-center justify-between gap-2 p-3 border-b border-border h-[40px]">
         {/* Left section */}
