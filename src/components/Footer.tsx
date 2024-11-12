@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { FileText, Network, Search, Settings } from 'lucide-react';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { FileMenu } from './FileMenu';
 import { FileAttachment, Thread } from '@/types';
@@ -34,7 +34,7 @@ export const Footer: React.FC<FooterProps> = ({
   return (
     <>
       <div className="absolute bottom-0 left-0 right-0 flex justify-center z-50">
-        <div className="bg-gray-50 m-4 rounded-lg h-[50px] flex items-center">
+        <div className="bg-gray-50 m-4 rounded-md h-[50px] flex items-center">
           <div className="flex items-center justify-center gap-2 p-2 px-3">
             <TooltipProvider>
               <Tooltip>

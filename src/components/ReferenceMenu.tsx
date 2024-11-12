@@ -35,7 +35,7 @@ export const ReferenceMenu: React.FC<ReferenceMenuProps> = ({
   return (
     <Dialog open={open} onOpenChange={() => onClose()}>
       <DialogContent className="max-w-[500px] gap-0 p-0">
-        <Command className="rounded-lg border shadow-md">
+        <Command className="rounded-md border shadow-md">
           <div className="flex items-center border-b px-3" cmdk-input-wrapper="">
             <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
             <input

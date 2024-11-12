@@ -2,7 +2,7 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 import { Message, PluginModification } from '@/types';
 import { ModelIcon } from './ModelIcon';
-import { User, XCircle, Copy, Check, ImageIcon, Volume2 } from 'lucide-react';
+import { User, XCircle, Copy, Check, ImageIcon, Volume2, Trash2 } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -31,6 +31,7 @@ interface ChatMessageProps {
   onTextToSpeech?: (text: string) => Promise<void>;
   showTTS?: boolean;
   isAudioResponse?: boolean;
+  onDelete?: () => void;
 }
 
 // Add this component to render plugin content
@@ -61,6 +62,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   onTextToSpeech,
   showTTS = false,
   isAudioResponse = false,
+  onDelete,
 }) => {
   const [copied, setCopied] = React.useState(false);
 
@@ -320,21 +322,21 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   return (
     <div className="w-full flex">
       <div className={cn(
-        "group relative inline-flex gap-3 px-4 py-3 rounded-lg select-text max-w-full",
-        role === 'user' ? 'bg-black text-white flex-row-reverse ml-auto' : 'bg-background border border-border',
-        role === 'system' && 'bg-muted/50 text-muted-foreground text-sm',
-        role === 'assistant' && ''
+        "group relative inline-flex gap-3 p-4 rounded-md select-text max-w-full",
+        role === 'user' && 'bg-black text-white flex-row-reverse ml-auto',
+        role === 'system' && 'bg-white/10 text-muted-foreground text-sm',
+        role === 'assistant' && 'bg-white border border-border text-accent-foreground'
       )}>
-        {role === 'assistant' && !content.startsWith('data:audio/') && (
-          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-            {showTTS && (
+        {role === 'assistant' && (
+          <div className="absolute p-1 top-2 right-2 opacity-0 group-hover:opacity-100 bg-accent border border-border rounded-md transition-opacity flex gap-2">
+            {showTTS && !content.startsWith('data:audio/') && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-6 w-6"
+                      className="h-6 w-6 hover:bg-accent-foreground/10"
                       onClick={() => onTextToSpeech?.(content)}
                     >
                       <Volume2 className="h-3.5 w-3.5 text-muted-foreground" />
@@ -354,7 +356,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-6 w-6"
+                      className="h-6 w-6 hover:bg-accent-foreground/10"
                       onClick={copyToClipboard}
                     >
                       {copied ? (
@@ -367,6 +369,26 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                   </TooltipTrigger>
                   <TooltipContent side="left">
                     {copied ? 'Copied!' : 'Copy message'}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+            {onDelete && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 hover:bg-accent-foreground/10"
+                      onClick={onDelete}
+                    >
+                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                      <span className="sr-only">Delete message</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="left">
+                    Delete message
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>

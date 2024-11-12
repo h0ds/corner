@@ -9,6 +9,13 @@ export function saveThread(thread: Thread): void {
     const threadsJson = localStorage.getItem(THREADS_KEY);
     const threads: Thread[] = threadsJson ? JSON.parse(threadsJson) : [];
     
+    if (!thread.isNote) {
+      thread.messages = thread.messages.map(msg => ({
+        ...msg,
+        timestamp: msg.timestamp || Date.now()
+      }));
+    }
+    
     const index = threads.findIndex(t => t.id === thread.id);
     if (index >= 0) {
       threads[index] = {
@@ -53,8 +60,15 @@ export function loadThreads(): Thread[] {
           isNote: true as const
         };
       }
+      
+      const messages = thread.messages.map(msg => ({
+        ...msg,
+        timestamp: msg.timestamp || thread.createdAt
+      }));
+      
       return {
         ...thread,
+        messages,
         linkedNotes: thread.linkedNotes || [],
         isNote: false as const
       };

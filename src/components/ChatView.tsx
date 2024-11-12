@@ -3,7 +3,7 @@ import { Message } from '@/types';
 import { ChatMessage } from './ChatMessage';
 import { FilePreview } from './FilePreview';
 import { TypingIndicator } from './TypingIndicator';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { ModelIcon } from './ModelIcon';
 import { ChatInput } from './ChatInput';
 import {
@@ -13,10 +13,18 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { AVAILABLE_MODELS } from './ModelSelector';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useToast } from "@/hooks/use-toast";
 import { AudioControls } from './AudioControls';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 interface ChatViewProps {
   messages: Message[];
@@ -26,6 +34,8 @@ interface ChatViewProps {
   selectedModel: string;
   isDiscussionPaused: boolean;
   apiKeys: ApiKeys;
+  activeThreadId: string;
+  setThreads: React.Dispatch<React.SetStateAction<Thread[]>>;
   onStopDiscussion: () => void;
   onOpenModelSelect: () => void;
   onSendMessage: (message: string, overrideModel?: string) => void;
@@ -43,6 +53,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
   selectedModel,
   isDiscussionPaused,
   apiKeys,
+  activeThreadId,
+  setThreads,
   onStopDiscussion,
   onOpenModelSelect,
   onSendMessage,
@@ -56,6 +68,9 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const [audioLoading, setAudioLoading] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const { toast } = useToast();
+  const [messageToDelete, setMessageToDelete] = useState<{ timestamp: number; content: string } | null>(null);
+  const [isLoadingThread, setIsLoadingThread] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -135,75 +150,205 @@ export const ChatView: React.FC<ChatViewProps> = ({
   };
 
   const handleSendMessage = async (message: string, overrideModel?: string) => {
-    // ... existing code
-
-    try {
-      const model = AVAILABLE_MODELS.find(m => m.id === modelToUse);
-      if (!model) throw new Error('Invalid model selected');
-
-      const response = await invoke<ApiResponse>('send_message', {
-        request: {
-          message,
-          model: modelToUse,
-          provider: model.provider,
-          file_content: undefined,
-          file_name: undefined
-        }
-      });
-
-      if (response.error) {
-        // ... existing error handling
-      } else if (response.content) {
-        // Check if this is an audio response by looking at the content
-        const isAudioResponse = response.content.startsWith('data:audio/');
-        
-        setThreads(prev => prev.map(thread => {
-          if (thread.id === activeThreadId && !thread.isNote) {
-            return {
-              ...thread,
-              messages: [...thread.messages, { 
-                role: 'assistant', 
-                content: response.content!,
-                modelId: modelToUse,
-                citations: response.citations,
-                isAudioResponse
-              }],
-              updatedAt: Date.now(),
-            };
-          }
-          return thread;
-        }));
-      }
-    } catch (error) {
-      // ... existing error handling
+    if (isDiscussing && isDiscussionPaused) {
+      setIsDiscussionPaused(false);
+      handleStartDiscussion(message, overrideModel || selectedModel, selectedModel);
+      return;
     }
+
+    setLoading(true);
+    
+    if (message && activeThreadId) {
+      const modelToUse = overrideModel || selectedModel;
+      
+      // Add timestamp to user message
+      const userMessage: Message = { 
+        role: 'user', 
+        content: message,
+        timestamp: Date.now()  // Add timestamp
+      };
+
+      setThreads(prev => prev.map(thread => {
+        if (thread.id === activeThreadId) {
+          return {
+            ...thread,
+            messages: [...thread.messages, userMessage],
+            lastUsedModel: modelToUse,
+            updatedAt: Date.now(),
+          };
+        }
+        return thread;
+      }));
+
+      try {
+        const model = AVAILABLE_MODELS.find(m => m.id === modelToUse);
+        if (!model) throw new Error('Invalid model selected');
+
+        const response = await invoke<ApiResponse>('send_message', {
+          request: {
+            message,
+            model: modelToUse,
+            provider: model.provider,
+            file_content: undefined,
+            file_name: undefined
+          }
+        });
+        
+        if (response.error) {
+          setThreads(prev => prev.map(thread => {
+            if (thread.id === activeThreadId) {
+              return {
+                ...thread,
+                messages: [...thread.messages, { 
+                  role: 'error', 
+                  content: response.error!,
+                  timestamp: Date.now()  // Add timestamp
+                }],
+                updatedAt: Date.now(),
+              };
+            }
+            return thread;
+          }));
+        } else if (response.content) {
+          const isAudioResponse = response.content.startsWith('data:audio/');
+          
+          setThreads(prev => prev.map(thread => {
+            if (thread.id === activeThreadId && !thread.isNote) {
+              return {
+                ...thread,
+                messages: [...thread.messages, { 
+                  role: 'assistant', 
+                  content: response.content!,
+                  modelId: modelToUse,
+                  citations: response.citations,
+                  isAudioResponse,
+                  timestamp: Date.now()  // Add timestamp
+                }],
+                updatedAt: Date.now(),
+              };
+            }
+            return thread;
+          }));
+        }
+      } catch (error) {
+        console.error('Failed to send message:', error);
+        toast({
+          variant: "destructive",
+          description: "Failed to send message",
+          duration: 2000,
+        });
+      }
+    }
+
+    setLoading(false);
   };
+
+  // Update the sortedMessages useMemo to sort in chronological order (oldest first)
+  const sortedMessages = useMemo(() => {
+    // Sort by timestamp in ascending order (oldest first)
+    return [...messages].sort((a, b) => {
+      const timestampA = a.timestamp || 0;
+      const timestampB = b.timestamp || 0;
+      return timestampA - timestampB;  // Oldest first
+    });
+  }, [messages, activeThreadId]);
+
+  const handleDeleteMessage = (timestamp: number, content: string) => {
+    setMessageToDelete({ timestamp, content });
+  };
+
+  const handleConfirmDelete = () => {
+    if (!messageToDelete) return;
+
+    setThreads(prev => prev.map(thread => {
+      if (thread.id === activeThreadId && !thread.isNote) {
+        return {
+          ...thread,
+          messages: thread.messages.filter(msg => msg.timestamp !== messageToDelete.timestamp),
+          updatedAt: Date.now(),
+        };
+      }
+      return thread;
+    }));
+
+    setMessageToDelete(null);
+  };
+
+  // Add effect to handle thread switching
+  useEffect(() => {
+    setIsLoadingThread(true);
+    
+    // Brief timeout to allow for visual feedback
+    const timeout = setTimeout(() => {
+      setIsLoadingThread(false);
+      // After loading, scroll to bottom
+      if (containerRef.current) {
+        containerRef.current.scrollTop = containerRef.current.scrollHeight;
+      }
+    }, 100);
+    
+    return () => clearTimeout(timeout);
+  }, [activeThreadId]);
+
+  // Add a new useEffect to handle scrolling when messages change
+  useEffect(() => {
+    // Scroll to bottom whenever messages change
+    if (containerRef.current && !isLoadingThread) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight;
+    }
+  }, [messages, isLoadingThread]);
+
+  // Add a new useEffect to handle initial scroll
+  useEffect(() => {
+    // Initial scroll to bottom when component mounts
+    if (containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight;
+    }
+  }, []); // Empty dependency array for mount only
 
   return (
     <>
-      <div className="flex-1 p-6 overflow-y-auto pb-[100px]">
+      <div 
+        ref={containerRef}
+        className="flex-1 p-6 overflow-y-auto pb-[100px] min-h-0"
+      >
         <div className="flex flex-col space-y-6">
-          <AnimatePresence>
-            {messages.length === 0 ? (
-              <div className="text-center text-muted-foreground/40 mt-1 text-sm tracking-tighter">
+          <AnimatePresence mode="wait">
+            {isLoadingThread ? (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex justify-start h-[50px] items-center"
+              >
+                <TypingIndicator />
+              </motion.div>
+            ) : messages.length === 0 ? (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="text-center text-muted-foreground/40 mt-1 text-sm tracking-tighter h-[50px] flex items-center justify-center"
+              >
                 Start a conversation ({clearHistoryShortcut} to clear history)
-              </div>
+              </motion.div>
             ) : (
-              // Render messages in chronological order
-              messages.map((message, index) => (
-                <div key={index} className="w-full">
+              sortedMessages.map((message, index) => (
+                <motion.div
+                  key={message.timestamp || index}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.2 }}
+                  className="w-full"
+                >
                   <ChatMessage
-                    role={message.role}
-                    content={message.content}
+                    {...message}
                     onErrorClick={onShowPreferences}
-                    modelId={message.modelId}
-                    comparison={message.comparison}
-                    citations={message.citations}
-                    images={message.images}
-                    relatedQuestions={message.relatedQuestions}
                     onSendMessage={onSendMessage}
                     showTTS={!!apiKeys.elevenlabs}
                     onTextToSpeech={handleTextToSpeech}
+                    onDelete={() => message.timestamp ? handleDeleteMessage(message.timestamp, message.content) : undefined}
                   />
                   {message.file && (
                     <FilePreview
@@ -211,10 +356,10 @@ export const ChatView: React.FC<ChatViewProps> = ({
                       content={message.file.content}
                     />
                   )}
-                </div>
+                </motion.div>
               ))
             )}
-            {loading && (
+            {loading && !isLoadingThread && (
               <div className="flex justify-start">
                 <TypingIndicator />
               </div>
@@ -227,7 +372,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
       <audio ref={audioRef} className="hidden" />
 
       <div 
-        className="flex-shrink-0 p-2 absolute left-4 right-4 bottom-0 mb-4 bg-gray-50 rounded-lg"
+        className="flex-shrink-0 p-2 absolute left-4 right-4 bottom-0 mb-4 bg-gray-50 rounded-md"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="absolute right-4 -top-12 flex items-center gap-2">
@@ -280,6 +425,45 @@ export const ChatView: React.FC<ChatViewProps> = ({
           isPaused={isDiscussionPaused}
         />
       </div>
+
+      <Dialog 
+        open={messageToDelete !== null} 
+        onOpenChange={(open) => {
+          if (!open) setMessageToDelete(null);
+        }}
+      >
+        <DialogContent onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            handleConfirmDelete();
+          }
+        }}>
+          <DialogHeader>
+            <DialogTitle>Delete Message</DialogTitle>
+          </DialogHeader>
+          <div className="text-sm text-muted-foreground">
+            Are you sure you want to delete this message? This action cannot be undone.
+          </div>
+          <div className="mt-2 text-sm bg-muted p-4 rounded-md max-h-[200px] overflow-y-auto">
+            {messageToDelete?.content}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setMessageToDelete(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDelete}
+              autoFocus
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }; 

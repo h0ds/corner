@@ -353,6 +353,7 @@ const SortableThreadItem = ({
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
+          transition={{ duration: 0.15 }}
           className={cn("relative", isThisItemDragging && "z-50")}
         >
           {isDragging &&
@@ -636,7 +637,11 @@ export const ThreadList: React.FC<ThreadListProps> = ({
           items={sortedThreads.map((t) => t.id)}
           strategy={verticalListSortingStrategy}
         >
-          <AnimatePresence mode="popLayout">
+          <AnimatePresence 
+            mode="popLayout" 
+            initial={false} 
+            presenceAffectsLayout={true}
+          >
             {sortedThreads.map((thread) => (
               <SortableThreadItem
                 key={thread.id}

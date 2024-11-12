@@ -58,16 +58,14 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
   const getNodeTooltip = useCallback((node: any) => {
     return `
       <div style="
-        background: ${isDark ? 'rgba(0,0,0,0.9)' : 'rgba(255,255,255,0.9)'};
-        color: ${isDark ? '#fff' : '#000'};
-        padding: 8px;
-        border-radius: 4px;
+        color: ${isDark ? '#000' : '#fff'};
+        padding: 4px;
         max-width: 200px;
         font-family: 'Space Mono', monospace;
         font-size: 12px;
       ">
         <div style="font-weight: bold; margin-bottom: 4px;">${node.label}</div>
-        <div style="color: ${isDark ? '#999' : '#666'}; margin-bottom: 4px;">
+        <div style="color: ${isDark ? '#999' : '#eee'}; margin-bottom: 4px;">
           ${node.data.linkedCount} linked note${node.data.linkedCount !== 1 ? 's' : ''}
         </div>
       </div>

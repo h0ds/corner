@@ -128,7 +128,19 @@ function App() {
   // Get active thread messages
   const messages = useMemo(() => {
     const activeThread = threads.find(t => t.id === activeThreadId);
-    return activeThread?.messages || [];
+    console.log('Getting messages for thread:', {
+      threadId: activeThread?.id,
+      messageCount: activeThread?.messages?.length || 0,
+      isNote: activeThread?.isNote
+    });
+    
+    // Only return messages if we have an active thread and it's not a note
+    if (!activeThread || activeThread.isNote) {
+      return [];
+    }
+    
+    // Ensure we're returning a new array to avoid reference issues
+    return [...activeThread.messages].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
   }, [threads, activeThreadId]);
 
   // Update thread storage when threads change
@@ -177,11 +189,24 @@ function App() {
       lastUsedModel: selectedModel,
     };
     
-    console.log('Creating new thread:', newThread);
+    console.log('Creating new thread:', {
+      id: newThread.id,
+      isNote: newThread.isNote,
+      messageCount: isNote ? undefined : 0
+    });
     
-    setThreads(prev => [newThread, ...prev]);
+    // Add the new thread to the beginning of the list
+    setThreads(prev => {
+      // Create a completely new array to avoid reference issues
+      const updatedThreads = [newThread, ...prev];
+      return updatedThreads;
+    });
+
+    // Set the active thread ID after the state update
     setActiveThreadId(newThread.id);
     setView(isNote ? 'note' : 'thread');
+
+    // Save the new thread
     saveThread(newThread);
 
     return newThread.id;
@@ -299,28 +324,25 @@ function App() {
   ]); // Add all necessary dependencies
 
   const handleSendMessage = async (message: string, overrideModel?: string) => {
-    if (isDiscussing && isDiscussionPaused) {
-      // Resume the discussion with the new message
-      setIsDiscussionPaused(false);
-      handleStartDiscussion(message, overrideModel || selectedModel, selectedModel);
-      return;
-    }
-
     setLoading(true);
     
     if (message && activeThreadId) {
-      // Use the overrideModel if provided, otherwise use selectedModel
       const modelToUse = overrideModel || selectedModel;
       
-      // Store the clean message in the thread
+      // Create user message with timestamp
       const userMessage: Message = { 
         role: 'user', 
-        content: message
+        content: message,
+        timestamp: Date.now()
       };
 
       // Update thread with user message
       setThreads(prev => prev.map(thread => {
         if (thread.id === activeThreadId) {
+          console.log('Adding message to thread:', {
+            threadId: thread.id,
+            messageContent: message.slice(0, 50)
+          });
           return {
             ...thread,
             messages: [...thread.messages, userMessage],
@@ -335,31 +357,33 @@ function App() {
         const model = AVAILABLE_MODELS.find(m => m.id === modelToUse);
         if (!model) throw new Error('Invalid model selected');
 
-        // Send the clean message to the API
         const response = await invoke<ApiResponse>('send_message', {
           request: {
             message,
             model: modelToUse,
-            provider: model.provider,
-            file_content: undefined,
-            file_name: undefined
+            provider: model.provider
           }
         });
         
         if (response.error) {
-          // Add error message to thread
+          // Add error message with timestamp
           setThreads(prev => prev.map(thread => {
             if (thread.id === activeThreadId) {
               return {
                 ...thread,
-                messages: [...thread.messages, { role: 'error', content: response.error! }],
+                messages: [...thread.messages, { 
+                  role: 'error', 
+                  content: response.error!,
+                  timestamp: Date.now()
+                }],
                 updatedAt: Date.now(),
               };
             }
             return thread;
           }));
         } else if (response.content) {
-          setThreads(threads => threads.map(thread => {
+          // Add assistant message with timestamp
+          setThreads(prev => prev.map(thread => {
             if (thread.id === activeThreadId && !thread.isNote) {
               return {
                 ...thread,
@@ -367,7 +391,9 @@ function App() {
                   role: 'assistant', 
                   content: response.content!,
                   modelId: modelToUse,
-                  citations: response.citations
+                  citations: response.citations,
+                  isAudioResponse: response.content.startsWith('data:audio/'),
+                  timestamp: Date.now()
                 }],
                 updatedAt: Date.now(),
               };
@@ -1309,6 +1335,8 @@ function App() {
                     selectedModel={selectedModel}
                     isDiscussionPaused={isDiscussionPaused}
                     apiKeys={apiKeys}
+                    activeThreadId={activeThreadId}
+                    setThreads={setThreads}
                     onStopDiscussion={handleStopDiscussion}
                     onOpenModelSelect={() => {
                       setPreferenceTab('models');
