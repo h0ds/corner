@@ -53,6 +53,9 @@ export const AVAILABLE_MODELS: Model[] = [
   { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', provider: 'google' },
   { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', provider: 'google' },
   { id: 'gemini-1.0-pro', name: 'Gemini 1.0 Pro', provider: 'google' },
+
+  // ElevenLabs Models
+  { id: 'elevenlabs-v1', name: 'ElevenLabs TTS', provider: 'elevenlabs' },
 ];
 
 interface ModelSelectorProps {
