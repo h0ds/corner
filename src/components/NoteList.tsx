@@ -29,6 +29,19 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
 
 interface NoteListProps {
   notes: NoteThread[];
@@ -440,22 +453,54 @@ export const NoteList: React.FC<NoteListProps> = ({
   onTextColorChange,
   onReorderNotes,
 }) => {
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: any) => {
+    const {active, over} = event;
+    
+    if (active.id !== over.id) {
+      const oldIndex = notes.findIndex((note) => note.id === active.id);
+      const newIndex = notes.findIndex((note) => note.id === over.id);
+      
+      const newNotes = [...notes];
+      const [movedItem] = newNotes.splice(oldIndex, 1);
+      newNotes.splice(newIndex, 0, movedItem);
+      
+      onReorderNotes(newNotes);
+    }
+  };
+
   return (
-    <div className="flex-1 overflow-y-auto p-2 space-y-2">
-      {notes.map((note) => (
-        <div key={note.id}>
-          <SortableNoteItem
-            note={note}
-            activeNoteId={activeNoteId}
-            onNoteSelect={onNoteSelect}
-            onDeleteNote={onDeleteNote}
-            onRenameNote={onRenameNote}
-            onColorChange={onColorChange}
-            onIconChange={onIconChange}
-            onTextColorChange={onTextColorChange}
-          />
+    <DndContext 
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={handleDragEnd}
+    >
+      <SortableContext 
+        items={notes.map(note => note.id)}
+        strategy={verticalListSortingStrategy}
+      >
+        <div className="flex-1 overflow-y-auto p-2 space-y-2">
+          {notes.map((note) => (
+            <SortableNoteItem
+              key={note.id}
+              note={note}
+              activeNoteId={activeNoteId}
+              onNoteSelect={onNoteSelect}
+              onDeleteNote={onDeleteNote}
+              onRenameNote={onRenameNote}
+              onColorChange={onColorChange}
+              onIconChange={onIconChange}
+              onTextColorChange={onTextColorChange}
+            />
+          ))}
         </div>
-      ))}
-    </div>
+      </SortableContext>
+    </DndContext>
   );
 };

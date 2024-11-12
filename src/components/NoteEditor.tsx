@@ -9,7 +9,6 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import DOMPurify from 'dompurify';
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { NoteLinkMenu } from './NoteLinkMenu';
 import CodeEditor from '@uiw/react-textarea-code-editor';
 import { LinkedNotes } from './LinkedNotes';
@@ -351,7 +350,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
           )}
           
           {isEditing ? (
-            <Input
+            <input
               value={editValue}
               onChange={(e) => setEditValue(e.target.value)}
               onKeyDown={(e) => {
@@ -363,7 +362,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
                 }
               }}
               onBlur={handleFinishRename}
-              className="h-6 text-sm px-2 py-0.5 focus-visible:ring-1"
+              className="h-6 text-sm px-2 py-0.5 border-none outline-none bg-transparent"
               autoFocus
             />
           ) : (
