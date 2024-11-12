@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { MessageSquare, Loader2, Check } from 'lucide-react';
+import { MessageSquare, Loader2, Check, Volume2 } from 'lucide-react';
 import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger,
+    ContextMenu,
+    ContextMenuContent,
+    ContextMenuItem,
+    ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { ModelIcon } from './ModelIcon';
 import { Button } from './ui/button';
@@ -12,11 +12,11 @@ import { invoke } from '@tauri-apps/api/core';
 import { useToast } from "@/hooks/use-toast";
 import { AVAILABLE_MODELS } from './ModelSelector';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -24,12 +24,16 @@ interface NoteContextMenuProps {
   children: React.ReactNode;
   selectedModel: string;
   onInsertResponse?: (response: string) => void;
+  onConvertToSpeech?: (text: string) => Promise<void>;
+  showTTS: boolean;
 }
 
 export const NoteContextMenu: React.FC<NoteContextMenuProps> = ({
   children,
   selectedModel: initialModel,
-  onInsertResponse
+  onInsertResponse,
+  onConvertToSpeech,
+  showTTS
 }) => {
   const [selectedText, setSelectedText] = useState('');
   const [showDialog, setShowDialog] = useState(false);
@@ -44,7 +48,6 @@ export const NoteContextMenu: React.FC<NoteContextMenuProps> = ({
   };
 
   const stripCitations = (text: string): string => {
-    // Remove citations in square brackets (e.g., [1], [2,3])
     return text.replace(/\[\d+(?:,\s*\d+)*\]/g, '');
   };
 
@@ -95,6 +98,28 @@ export const NoteContextMenu: React.FC<NoteContextMenuProps> = ({
     }
   };
 
+  const handleConvertToSpeech = async () => {
+    if (!selectedText.trim() || !onConvertToSpeech) return;
+
+    try {
+      setIsLoading(true);
+      await onConvertToSpeech(selectedText);
+      toast({
+        description: "Text converted to speech successfully",
+        duration: 2000,
+      });
+    } catch (error) {
+      console.error('Failed to convert text to speech:', error);
+      toast({
+        variant: "destructive",
+        description: "Failed to convert text to speech",
+        duration: 2000,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <ContextMenu>
       <ContextMenuTrigger>
@@ -118,8 +143,17 @@ export const NoteContextMenu: React.FC<NoteContextMenuProps> = ({
         >
           <MessageSquare className="h-4 w-4" />
           <span>Ask AI about selection</span>
-          <ModelIcon modelId={selectedModel} className="h-4 w-4 ml-auto text-muted-foreground" />
         </ContextMenuItem>
+        {showTTS && onConvertToSpeech && (
+          <ContextMenuItem
+            onClick={handleConvertToSpeech}
+            className="flex items-center gap-2"
+            disabled={!selectedText.trim() || isLoading}
+          >
+            <Volume2 className="h-4 w-4" />
+            <span>Convert to Speech</span>
+          </ContextMenuItem>
+        )}
       </ContextMenuContent>
 
       <Dialog open={showDialog} onOpenChange={setShowDialog}>

@@ -19,6 +19,8 @@ import { ChatNoteOverlay } from './ChatNoteOverlay';
 import { NoteContextMenu } from './NoteContextMenu';
 import { useTextHighlight } from '@/hooks/use-text-highlight';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { invoke } from '@tauri-apps/api/core';
+import { AudioControls } from './AudioControls';
 
 interface NoteEditorProps {
   note: NoteThread;
@@ -31,6 +33,7 @@ interface NoteEditorProps {
   onNavigateToNote?: (noteId: string) => void;
   allThreads: Thread[];
   selectedModel: string;
+  showTTS: boolean;
 }
 
 const CACHE_PREFIX = 'note_cache_';
@@ -49,6 +52,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   onNavigateToNote,
   allThreads,
   selectedModel,
+  showTTS,
 }) => {
   const [content, setContent] = useState(initialContent);
   const [showLinkMenu, setShowLinkMenu] = useState(false);
@@ -63,6 +67,9 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   const [showChatOverlay, setShowChatOverlay] = useState(false);
   const [showAIDialog, setShowAIDialog] = useState(false);
   const [highlightedText, setHighlightedText] = useState('');
+  const [audioPlaying, setAudioPlaying] = useState(false);
+  const [audioLoading, setAudioLoading] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Add text highlight hook
   useTextHighlight({
@@ -426,6 +433,69 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     }, 100);
   };
 
+  const handleConvertToSpeech = async (text: string) => {
+    try {
+      setAudioLoading(true);
+      const response = await invoke<string>('text_to_speech', { text });
+      
+      if (audioRef.current) {
+        audioRef.current.src = response;
+        audioRef.current.onended = () => {
+          setAudioPlaying(false);
+          audioRef.current!.src = '';
+        };
+        await audioRef.current.play();
+        setAudioPlaying(true);
+      } else {
+        const audio = new Audio(response);
+        audioRef.current = audio;
+        audio.onended = () => {
+          setAudioPlaying(false);
+          audio.src = '';
+        };
+        await audio.play();
+        setAudioPlaying(true);
+      }
+    } catch (error) {
+      console.error('Failed to convert text to speech:', error);
+      throw error;
+    } finally {
+      setAudioLoading(false);
+    }
+  };
+
+  // Add audio control handlers
+  const handlePauseAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      setAudioPlaying(false);
+    }
+  };
+
+  const handlePlayAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.play();
+      setAudioPlaying(true);
+    }
+  };
+
+  const handleStopAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current.src = '';
+      setAudioPlaying(false);
+    }
+  };
+
+  const handleRestartAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = 0;
+      audioRef.current.play();
+      setAudioPlaying(true);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Add ChatNoteOverlay */}
@@ -530,24 +600,9 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
           {viewMode === 'edit' ? (
             <NoteContextMenu
               selectedModel={selectedModel}
-              onInsertResponse={(response) => {
-                if (editorRef.current) {
-                  const start = editorRef.current.selectionStart;
-                  const end = editorRef.current.selectionEnd;
-                  const newContent = content.substring(0, start) + '\n\n' + response + '\n\n' + content.substring(end);
-                  handleChange(newContent);
-                  // Set cursor position after inserted text
-                  setTimeout(() => {
-                    if (editorRef.current) {
-                      const newPosition = start + response.length + 4; // +4 for the new line characters
-                      editorRef.current.setSelectionRange(newPosition, newPosition);
-                      editorRef.current.focus();
-                    }
-                  }, 0);
-                } else {
-                  handleChange(content + '\n\n' + response);
-                }
-              }}
+              onInsertResponse={handleChatResponse}
+              onConvertToSpeech={handleConvertToSpeech}
+              showTTS={showTTS}
             >
               <div className="h-full">
                 <CodeEditor
@@ -566,8 +621,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
                     "w-full h-full resize-none bg-transparent",
                     "focus:outline-none focus:ring-0 border-0"
                   )}
-                  onChange={handleEditorChange}
-                  ref={editorRef}
+                  onChange={(evn) => handleEditorChange(evn.target.value)}
                   onKeyDown={handleKeyDown}
                 />
               </div>
@@ -575,18 +629,9 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
           ) : (
             <NoteContextMenu
               selectedModel={selectedModel}
-              onInsertResponse={(response) => {
-                // Insert at cursor position or append to end
-                const textarea = document.querySelector('textarea');
-                if (textarea) {
-                  const start = textarea.selectionStart;
-                  const end = textarea.selectionEnd;
-                  const newContent = content.substring(0, start) + '\n\n' + response + '\n\n' + content.substring(end);
-                  handleChange(newContent);
-                } else {
-                  handleChange(content + '\n\n' + response);
-                }
-              }}
+              onInsertResponse={handleChatResponse}
+              onConvertToSpeech={handleConvertToSpeech}
+              showTTS={showTTS}
             >
               <div className="h-full overflow-y-auto p-4">
                 <article className={cn(
@@ -809,6 +854,22 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Add audio element */}
+      <audio ref={audioRef} className="hidden" />
+
+      {/* Add audio controls */}
+      {(audioPlaying || audioLoading) && audioRef.current?.src && (
+        <div className="absolute bottom-4 left-4">
+          <AudioControls
+            isPlaying={audioPlaying}
+            isLoading={audioLoading}
+            onPlay={handlePlayAudio}
+            onStop={handleStopAudio}
+            onRestart={handleRestartAudio}
+          />
+        </div>
+      )}
     </div>
   );
 };

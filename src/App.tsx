@@ -1327,6 +1327,7 @@ function App() {
                     }}
                     allThreads={threads}
                     selectedModel={selectedModel}
+                    showTTS={!!apiKeys.elevenlabs}
                   />
                 ) : (
                   <ChatView
