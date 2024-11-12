@@ -16,6 +16,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { ReferenceMenu } from './ReferenceMenu';
 import { ChatNoteOverlay } from './ChatNoteOverlay';
+import { NoteContextMenu } from './NoteContextMenu';
+import { useTextHighlight } from '@/hooks/use-text-highlight';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface NoteEditorProps {
   note: NoteThread;
@@ -58,6 +61,59 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   const [referenceStartIndex, setReferenceStartIndex] = useState<number | null>(null);
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const [showChatOverlay, setShowChatOverlay] = useState(false);
+  const [showAIDialog, setShowAIDialog] = useState(false);
+  const [highlightedText, setHighlightedText] = useState('');
+
+  // Add text highlight hook
+  useTextHighlight({
+    onHighlight: (text) => {
+      if (text.length > 10) { // Only show for selections longer than 10 chars
+        setHighlightedText(text);
+        // Show a floating button near the selection
+        const selection = window.getSelection();
+        if (selection && selection.rangeCount > 0) {
+          const range = selection.getRangeAt(0);
+          const rect = range.getBoundingClientRect();
+          
+          // Create or update floating button
+          let floatingButton = document.getElementById('floating-ai-button');
+          if (!floatingButton) {
+            floatingButton = document.createElement('button');
+            floatingButton.id = 'floating-ai-button';
+            floatingButton.className = 'fixed z-50 bg-primary text-primary-foreground rounded-md px-2 py-1 text-xs flex items-center gap-1 shadow-lg hover:bg-primary/90 transition-colors';
+            floatingButton.innerHTML = `
+              <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-4l-4 4-4-4Z"/>
+              </svg>
+              Ask AI
+            `;
+            document.body.appendChild(floatingButton);
+          }
+
+          // Position the button
+          floatingButton.style.left = `${rect.left + window.scrollX}px`;
+          floatingButton.style.top = `${rect.top + window.scrollY - 30}px`;
+          floatingButton.style.display = 'flex';
+
+          // Add click handler
+          floatingButton.onclick = () => {
+            setShowAIDialog(true);
+            floatingButton.style.display = 'none';
+          };
+        }
+      }
+    }
+  });
+
+  // Clean up floating button on unmount
+  useEffect(() => {
+    return () => {
+      const floatingButton = document.getElementById('floating-ai-button');
+      if (floatingButton) {
+        floatingButton.remove();
+      }
+    };
+  }, []);
 
   // Update content when note changes
   useEffect(() => {
@@ -320,14 +376,14 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     }
   };
 
-  const handleEditorChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newValue = e.target.value;
-    setContent(newValue);
+  const handleEditorChange = (value: string) => {
+    setContent(value);
+    handleChange(value);
 
     // Handle reference query
-    if (referenceStartIndex !== null) {
-      const currentPosition = e.currentTarget.selectionStart;
-      const textAfterTrigger = newValue.slice(referenceStartIndex + 1, currentPosition);
+    if (referenceStartIndex !== null && editorRef.current) {
+      const currentPosition = editorRef.current.selectionStart;
+      const textAfterTrigger = value.slice(referenceStartIndex + 1, currentPosition);
       
       if (textAfterTrigger.includes(' ') || currentPosition <= referenceStartIndex) {
         setShowReferenceMenu(false);
@@ -337,8 +393,6 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         setReferenceQuery(textAfterTrigger);
       }
     }
-
-    handleChange(newValue);
   };
 
   const handleReferenceSelect = (thread: Thread) => {
@@ -358,8 +412,22 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     setReferenceStartIndex(null);
   };
 
+  // Add handler for context menu AI prompt
+  const handleContextMenuAsk = (selectedText: string) => {
+    setShowChatOverlay(true);
+    // Wait for overlay to mount before setting value
+    setTimeout(() => {
+      const input = document.querySelector('input');
+      if (input) {
+        input.value = `Help me understand this text: "${selectedText}"`;
+        // Trigger input event to update state
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    }, 100);
+  };
+
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full overflow-hidden">
       {/* Add ChatNoteOverlay */}
       {showChatOverlay && (
         <ChatNoteOverlay
@@ -432,9 +500,9 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         </div>
       </div>
 
-      {/* Toolbar */}
+      {/* Toolbar with fixed height */}
       {viewMode === 'edit' && (
-        <div className="border-b border-border px-2 py-1">
+        <div className="flex-shrink-0 border-b border-border px-2 py-1">
           <div className="flex items-center gap-1">
             {toolbarItems.map((item, index) => 
               item.type === 'divider' ? (
@@ -456,15 +524,34 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         </div>
       )}
 
-      {/* Main content area */}
-      <div className="flex-1 overflow-hidden relative">
-        <div className="h-full flex">
-          <div className="flex-1 flex flex-col">
-            {viewMode === 'edit' ? (
-              <div className="h-full relative">
+      {/* Main content area with proper scrolling */}
+      <div className="flex-1 min-h-0 flex">
+        <div className="flex-1 overflow-y-auto">
+          {viewMode === 'edit' ? (
+            <NoteContextMenu
+              selectedModel={selectedModel}
+              onInsertResponse={(response) => {
+                if (editorRef.current) {
+                  const start = editorRef.current.selectionStart;
+                  const end = editorRef.current.selectionEnd;
+                  const newContent = content.substring(0, start) + '\n\n' + response + '\n\n' + content.substring(end);
+                  handleChange(newContent);
+                  // Set cursor position after inserted text
+                  setTimeout(() => {
+                    if (editorRef.current) {
+                      const newPosition = start + response.length + 4; // +4 for the new line characters
+                      editorRef.current.setSelectionRange(newPosition, newPosition);
+                      editorRef.current.focus();
+                    }
+                  }, 0);
+                } else {
+                  handleChange(content + '\n\n' + response);
+                }
+              }}
+            >
+              <div className="h-full">
                 <CodeEditor
                   value={content}
-                  onChange={(e) => handleEditorChange(e)}
                   language="markdown"
                   placeholder="Start writing..."
                   padding={16}
@@ -472,18 +559,38 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
                     fontFamily: 'Space Mono, monospace',
                     fontSize: '14px',
                     backgroundColor: 'transparent',
-                    minHeight: '100%'
+                    height: '100%',
+                    overflow: 'auto'
                   }}
                   className={cn(
                     "w-full h-full resize-none bg-transparent",
                     "focus:outline-none focus:ring-0 border-0"
                   )}
+                  onChange={handleEditorChange}
+                  ref={editorRef}
+                  onKeyDown={handleKeyDown}
                 />
               </div>
-            ) : (
+            </NoteContextMenu>
+          ) : (
+            <NoteContextMenu
+              selectedModel={selectedModel}
+              onInsertResponse={(response) => {
+                // Insert at cursor position or append to end
+                const textarea = document.querySelector('textarea');
+                if (textarea) {
+                  const start = textarea.selectionStart;
+                  const end = textarea.selectionEnd;
+                  const newContent = content.substring(0, start) + '\n\n' + response + '\n\n' + content.substring(end);
+                  handleChange(newContent);
+                } else {
+                  handleChange(content + '\n\n' + response);
+                }
+              }}
+            >
               <div className="h-full overflow-y-auto p-4">
                 <article className={cn(
-                  "prose prose-sm dark:prose-invert max-w-none font-mono",
+                  "prose prose-sm dark:prose-invert max-w-none",
                   // Custom heading styles
                   "prose-h1:text-2xl prose-h1:font-bold prose-h1:tracking-tight",
                   "prose-h2:text-xl prose-h2:font-semibold prose-h2:tracking-tight",
@@ -587,66 +694,66 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
                       ),
                     }}
                   >
-                    {DOMPurify.sanitize(content)}
-                  </ReactMarkdown>
+                  {DOMPurify.sanitize(content)}
+                </ReactMarkdown>
                 </article>
               </div>
-            )}
-          </div>
+            </NoteContextMenu>
+          )}
+        </div>
 
-          {/* Linked Notes Panel with animation */}
-          <AnimatePresence>
-            {showLinkedNotes && (
-              <motion.div
-                initial={{ width: 0, opacity: 0 }}
-                animate={{ width: 250, opacity: 1 }}
-                exit={{ width: 0, opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="shrink-0"
+        {/* Linked Notes Panel */}
+        <AnimatePresence>
+          {showLinkedNotes && (
+            <motion.div
+              initial={{ width: 0, opacity: 0 }}
+              animate={{ width: 250, opacity: 1 }}
+              exit={{ width: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="shrink-0 overflow-hidden"
+            >
+              <LinkedNotes
+                currentNote={note}
+                allNotes={allNotes}
+                onNavigateToNote={onNavigateToNote || (() => {})}
+                onUnlinkNote={handleUnlinkNote}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Linked Notes Toggle Button */}
+      <div className="absolute bottom-4 right-4">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowLinkedNotes(!showLinkedNotes)}
+                className={cn(
+                  "gap-2",
+                  showLinkedNotes && "bg-accent text-accent-foreground",
+                  (note.linkedNotes?.length || 0) >= 1 ? "w-[3rem]" : "w-8",
+                  "h-8"
+                )}
+                aria-label={`${showLinkedNotes ? 'Hide' : 'Show'} linked notes`}
               >
-                <LinkedNotes
-                  currentNote={note}
-                  allNotes={allNotes}
-                  onNavigateToNote={onNavigateToNote || (() => {})}
-                  onUnlinkNote={handleUnlinkNote}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {/* Linked Notes Toggle Button */}
-        <div className="absolute bottom-4 right-4">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowLinkedNotes(!showLinkedNotes)}
-                  className={cn(
-                    "gap-2",
-                    showLinkedNotes && "bg-accent text-accent-foreground",
-                    (note.linkedNotes?.length || 0) >= 1 ? "w-[3rem]" : "w-8",
-                    "h-8"
-                  )}
-                  aria-label={`${showLinkedNotes ? 'Hide' : 'Show'} linked notes`}
-                >
-                  <FileText className="h-4 w-4" />
-                  {(note.linkedNotes?.length || 0) >= 1 && (
-                    <span className="text-xs">{note.linkedNotes?.length}</span>
-                  )}
-                  <span className="sr-only">
-                    {showLinkedNotes ? 'Hide Links' : 'Show Links'} ({note.linkedNotes?.length || 0})
-                  </span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="left" className="text-xs mr-2">
-                {showLinkedNotes ? 'Hide' : 'Show'} linked Notes
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
+                <FileText className="h-4 w-4" />
+                {(note.linkedNotes?.length || 0) >= 1 && (
+                  <span className="text-xs">{note.linkedNotes?.length}</span>
+                )}
+                <span className="sr-only">
+                  {showLinkedNotes ? 'Hide Links' : 'Show Links'} ({note.linkedNotes?.length || 0})
+                </span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="left" className="text-xs mr-2">
+              {showLinkedNotes ? 'Hide' : 'Show'} linked Notes
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
 
       {/* Link Menu Modal */}
@@ -683,6 +790,25 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         open={showReferenceMenu}
         onQueryChange={setReferenceQuery}
       />
+
+      <Dialog open={showAIDialog} onOpenChange={setShowAIDialog}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Ask AI about Selection</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Selected Text:</label>
+              <div className="text-sm bg-muted p-3 rounded-md whitespace-pre-wrap">
+                {highlightedText}
+              </div>
+            </div>
+
+            {/* ... rest of dialog content from NoteContextMenu ... */}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
