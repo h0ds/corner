@@ -325,11 +325,6 @@ const SortableThreadItem = ({
     disabled: editingThreadId === thread.id || thread.isPinned,
   });
 
-  const shouldShowSeparator = (targetId: string) => {
-    const targetThread = threads.find((t) => t.id === targetId);
-    return !thread.isPinned && !targetThread?.isPinned;
-  };
-
   const style = {
     transform: CSS.Transform.toString(transform),
     transition: transition || undefined,
@@ -352,12 +347,6 @@ const SortableThreadItem = ({
           transition={{ duration: 0.15 }}
           className={cn("relative", isThisItemDragging && "z-50")}
         >
-          {isDragging &&
-            dropTarget?.id === thread.id &&
-            dropTarget.position === "before" &&
-            shouldShowSeparator(dropTarget.id) && (
-              <div className="absolute -top-0.5 left-0 right-0 h-0.5 bg-primary rounded-full" />
-            )}
           <ThreadItem
             thread={thread}
             activeThreadId={activeThreadId}
@@ -375,12 +364,6 @@ const SortableThreadItem = ({
             isDragging={isThisItemDragging}
             dragHandleProps={{ ...attributes, ...listeners }}
           />
-          {isDragging &&
-            dropTarget?.id === thread.id &&
-            dropTarget.position === "after" &&
-            shouldShowSeparator(dropTarget.id) && (
-              <div className="absolute -bottom-0.5 left-0 right-0 h-0.5 bg-primary rounded-full" />
-            )}
           {isThisItemDragging && (
             <div className="absolute inset-0 bg-primary/10 border-2 border-primary rounded-md pointer-events-none" />
           )}

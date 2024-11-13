@@ -21,28 +21,28 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     const links: GraphEdge[] = [];
     const processedLinks = new Set<string>();
 
-    // First, create nodes for all notes
-    const notes = threads.filter((t): t is NoteThread => t.isNote);
-    notes.forEach(note => {
+    // Create nodes for all threads and notes
+    threads.forEach(thread => {
       nodes.push({
-        id: note.id,
-        label: note.name,
+        id: thread.id,
+        label: thread.name,
         data: {
-          color: note.color,
+          color: thread.color,
           size: 10,
-          content: note.content.slice(0, 100),
-          linkedCount: note.linkedNotes?.length || 0
+          content: thread.isNote ? thread.content.slice(0, 100) : thread.messages[0]?.content.slice(0, 100),
+          linkedCount: thread.linkedNotes?.length || 0,
+          type: thread.isNote ? 'note' : 'thread'
         }
       });
 
-      // Add links for linked notes
-      if (note.linkedNotes) {
-        note.linkedNotes.forEach(targetId => {
-          const linkId = [note.id, targetId].sort().join('-');
+      // Add links for linked notes/threads
+      if (thread.linkedNotes) {
+        thread.linkedNotes.forEach(targetId => {
+          const linkId = [thread.id, targetId].sort().join('-');
           if (!processedLinks.has(linkId)) {
             links.push({
               id: linkId,
-              source: note.id,
+              source: thread.id,
               target: targetId
             });
             processedLinks.add(linkId);
@@ -56,6 +56,7 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
 
   // Custom tooltip renderer
   const getNodeTooltip = useCallback((node: any) => {
+    const type = node.data.type === 'note' ? 'Note' : 'Thread';
     return `
       <div style="
         color: ${isDark ? '#000' : '#fff'};
@@ -66,7 +67,7 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
       ">
         <div style="font-weight: bold; margin-bottom: 4px;">${node.label}</div>
         <div style="color: ${isDark ? '#999' : '#eee'}; margin-bottom: 4px;">
-          ${node.data.linkedCount} linked note${node.data.linkedCount !== 1 ? 's' : ''}
+          ${type} • ${node.data.linkedCount} connection${node.data.linkedCount !== 1 ? 's' : ''}
         </div>
       </div>
     `;
@@ -76,9 +77,9 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
   const handleNodeClick = useCallback((node: any) => {
     if (onNodeClick) {
       onNodeClick(node.id);
-      // Dispatch event to switch to notes tab
+      // Dispatch event to switch to appropriate tab
       window.dispatchEvent(new CustomEvent('switch-tab', {
-        detail: { tab: 'notes' }
+        detail: { tab: node.data.type === 'note' ? 'notes' : 'threads' }
       }));
     }
   }, [onNodeClick]);
@@ -88,7 +89,7 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
       <ForceGraph2D
         graphData={{ nodes, links }}
         nodeLabel={getNodeTooltip}
-        nodeColor={node => node.data.color}
+        nodeColor={node => node.data.color || (isDark ? '#666' : '#999')}
         nodeRelSize={8}
         linkColor={() => isDark ? '#444' : '#ddd'}
         backgroundColor="transparent"
