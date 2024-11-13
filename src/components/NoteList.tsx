@@ -227,7 +227,7 @@ const SortableNoteItem: React.FC<{
         >
           <div
             className={cn(
-              "group flex items-center gap-2 px-3 py-2 rounded-md cursor-pointer relative bg-gray-50",
+              "group flex items-center gap-2 px-3 py-2 mb-2 rounded-md cursor-pointer relative bg-gray-50",
               "hover:bg-accent hover:text-accent-foreground transition-colors",
               isDragging && "opacity-50"
             )}

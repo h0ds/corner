@@ -1228,7 +1228,7 @@ function App() {
     }
   };
 
-  // Add the handler function
+  // Update the handler function
   const handleSplitToNote = (sourceNoteId: string, text: string) => {
     // Create new note with selected text
     const newNoteId = handleNewThread(true);
@@ -1239,6 +1239,18 @@ function App() {
         return {
           ...thread,
           content: text,
+          updatedAt: Date.now()
+        };
+      }
+      // Remove the selected text from the source note
+      if (thread.id === sourceNoteId) {
+        const sourceNote = thread as NoteThread;
+        const newContent = sourceNote.content.replace(text, '');
+        // Clean up any double newlines that might have been created
+        const cleanedContent = newContent.replace(/\n{3,}/g, '\n\n').trim();
+        return {
+          ...thread,
+          content: cleanedContent,
           updatedAt: Date.now()
         };
       }
