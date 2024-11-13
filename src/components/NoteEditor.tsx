@@ -71,43 +71,46 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   const [audioLoading, setAudioLoading] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Add text highlight hook
+  // Update the text highlight hook usage
   useTextHighlight({
-    onHighlight: (text) => {
+    onHighlight: (text, rect) => {
       if (text.length > 10) { // Only show for selections longer than 10 chars
         setHighlightedText(text);
+        
         // Show a floating button near the selection
-        const selection = window.getSelection();
-        if (selection && selection.rangeCount > 0) {
-          const range = selection.getRangeAt(0);
-          const rect = range.getBoundingClientRect();
-          
-          // Create or update floating button
-          let floatingButton = document.getElementById('floating-ai-button');
-          if (!floatingButton) {
-            floatingButton = document.createElement('button');
-            floatingButton.id = 'floating-ai-button';
-            floatingButton.className = 'fixed z-50 bg-primary text-primary-foreground rounded-md px-2 py-1 text-xs flex items-center gap-1 shadow-lg hover:bg-primary/90 transition-colors';
-            floatingButton.innerHTML = `
-              <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-4l-4 4-4-4Z"/>
-              </svg>
-              Ask AI
-            `;
-            document.body.appendChild(floatingButton);
-          }
-
-          // Position the button
-          floatingButton.style.left = `${rect.left + window.scrollX}px`;
-          floatingButton.style.top = `${rect.top + window.scrollY - 30}px`;
-          floatingButton.style.display = 'flex';
-
-          // Add click handler
-          floatingButton.onclick = () => {
-            setShowAIDialog(true);
-            floatingButton.style.display = 'none';
-          };
+        let floatingButton = document.getElementById('floating-ai-button');
+        if (!floatingButton) {
+          floatingButton = document.createElement('button');
+          floatingButton.id = 'floating-ai-button';
+          floatingButton.className = 'fixed z-50 bg-primary text-primary-foreground rounded-md px-2 py-1 text-xs flex items-center gap-1 shadow-lg hover:bg-primary/90 transition-colors';
+          floatingButton.innerHTML = `
+            <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-4l-4 4-4-4Z"/>
+            </svg>
+            Ask AI
+          `;
+          document.body.appendChild(floatingButton);
         }
+
+        if (rect) {
+          // Position relative to the editor container
+          const editorRect = document.querySelector('.CodeEditor')?.getBoundingClientRect();
+          if (editorRect) {
+            const top = rect.top - editorRect.top;
+            const left = rect.left - editorRect.left;
+            
+            floatingButton.style.position = 'absolute';
+            floatingButton.style.left = `${left}px`;
+            floatingButton.style.top = `${top - 30}px`; // 30px above selection
+            floatingButton.style.display = 'flex';
+          }
+        }
+
+        // Add click handler
+        floatingButton.onclick = () => {
+          setShowAIDialog(true);
+          floatingButton.style.display = 'none';
+        };
       }
     }
   });
@@ -604,7 +607,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
               onConvertToSpeech={handleConvertToSpeech}
               showTTS={showTTS}
             >
-              <div className="h-full">
+              <div className="h-full overflow-y-auto">
                 <CodeEditor
                   value={content}
                   language="markdown"
@@ -614,15 +617,17 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
                     fontFamily: 'Space Mono, monospace',
                     fontSize: '14px',
                     backgroundColor: 'transparent',
-                    height: '100%',
-                    overflow: 'auto'
+                    width: '100%',
+                    minHeight: '100%'
                   }}
                   className={cn(
-                    "w-full h-full resize-none bg-transparent",
-                    "focus:outline-none focus:ring-0 border-0"
+                    "w-full resize-none bg-transparent",
+                    "focus:outline-none focus:ring-0 border-0",
+                    "selection:bg-black/30"
                   )}
                   onChange={(evn) => handleEditorChange(evn.target.value)}
                   onKeyDown={handleKeyDown}
+                  data-enable-grammarly="false"
                 />
               </div>
             </NoteContextMenu>
