@@ -1,12 +1,12 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Command } from 'cmdk';
 import { Thread } from '@/types';
 import { FileText, MessageSquare, Search } from 'lucide-react';
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { loadThreads } from '@/lib/storage';
 
 interface ReferenceMenuProps {
   query: string;
-  threads: Thread[] | undefined;
   currentThreadId: string;
   onSelect: (thread: Thread) => void;
   onClose: () => void;
@@ -16,7 +16,6 @@ interface ReferenceMenuProps {
 
 export const ReferenceMenu: React.FC<ReferenceMenuProps> = ({
   query,
-  threads = [],
   currentThreadId,
   onSelect,
   onClose,
@@ -25,12 +24,28 @@ export const ReferenceMenu: React.FC<ReferenceMenuProps> = ({
 }) => {
   const cleanQuery = query.startsWith(':') ? query.slice(1) : query;
 
-  const filteredThreads = (threads || [])
-    .filter(thread => 
-      thread.id !== currentThreadId &&
-      thread.name.toLowerCase().includes(cleanQuery.toLowerCase())
-    )
-    .slice(0, 10);
+  // Load and memoize threads
+  const threads = useMemo(() => {
+    return loadThreads();
+  }, []);
+
+  const filteredThreads = useMemo(() => {
+    return (threads || [])
+      .filter(thread => {
+        if (thread.id === currentThreadId) return false;
+
+        const nameMatch = thread.name.toLowerCase().includes(cleanQuery.toLowerCase());
+        
+        if (thread.isNote) {
+          return nameMatch || thread.content.toLowerCase().includes(cleanQuery.toLowerCase());
+        }
+        
+        return nameMatch || thread.messages.some(msg => 
+          msg.content.toLowerCase().includes(cleanQuery.toLowerCase())
+        );
+      })
+      .slice(0, 10);
+  }, [threads, currentThreadId, cleanQuery]);
 
   return (
     <Dialog open={open} onOpenChange={() => onClose()}>

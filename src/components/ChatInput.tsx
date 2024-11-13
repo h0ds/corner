@@ -407,7 +407,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
       <ReferenceMenu
         query={referenceQuery}
-        threads={allThreads}
         currentThreadId={currentThreadId}
         onSelect={handleReferenceSelect}
         onClose={() => {

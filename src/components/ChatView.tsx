@@ -43,6 +43,7 @@ interface ChatViewProps {
   onStartDiscussion: (message: string, model1: string, model2: string) => void;
   onClearThread: () => void;
   onShowPreferences: () => void;
+  allThreads: Thread[];
 }
 
 export const ChatView: React.FC<ChatViewProps> = ({
@@ -62,6 +63,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
   onStartDiscussion,
   onClearThread,
   onShowPreferences,
+  allThreads,
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [audioPlaying, setAudioPlaying] = useState(false);
@@ -423,6 +425,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
           selectedModel={selectedModel}
           isDiscussing={isDiscussing}
           isPaused={isDiscussionPaused}
+          allThreads={allThreads}
+          currentThreadId={activeThreadId}
         />
       </div>
 

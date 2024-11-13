@@ -839,7 +839,6 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
 
       <ReferenceMenu
         query={referenceQuery}
-        threads={allThreads}
         currentThreadId={note.id}
         onSelect={handleReferenceSelect}
         onClose={() => {
