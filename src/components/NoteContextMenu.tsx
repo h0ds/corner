@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MessageSquare, Loader2, Check, Volume2 } from 'lucide-react';
+import { MessageSquare, Loader2, Check, Volume2, Scissors } from 'lucide-react';
 import {
     ContextMenu,
     ContextMenuContent,
@@ -25,6 +25,7 @@ interface NoteContextMenuProps {
   selectedModel: string;
   onInsertResponse?: (response: string) => void;
   onConvertToSpeech?: (text: string) => Promise<void>;
+  onSplitToNote?: (text: string) => void;
   showTTS: boolean;
 }
 
@@ -33,6 +34,7 @@ export const NoteContextMenu: React.FC<NoteContextMenuProps> = ({
   selectedModel: initialModel,
   onInsertResponse,
   onConvertToSpeech,
+  onSplitToNote,
   showTTS
 }) => {
   const [selectedText, setSelectedText] = useState('');
@@ -152,6 +154,20 @@ export const NoteContextMenu: React.FC<NoteContextMenuProps> = ({
           >
             <Volume2 className="h-4 w-4" />
             <span>Convert to Speech</span>
+          </ContextMenuItem>
+        )}
+        {onSplitToNote && (
+          <ContextMenuItem
+            onClick={() => {
+              if (selectedText.trim()) {
+                onSplitToNote(selectedText);
+              }
+            }}
+            className="flex items-center gap-2"
+            disabled={!selectedText.trim()}
+          >
+            <Scissors className="h-4 w-4" />
+            <span>Split into own note</span>
           </ContextMenuItem>
         )}
       </ContextMenuContent>

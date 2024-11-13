@@ -1228,6 +1228,30 @@ function App() {
     }
   };
 
+  // Add the handler function
+  const handleSplitToNote = (sourceNoteId: string, text: string) => {
+    // Create new note with selected text
+    const newNoteId = handleNewThread(true);
+    
+    // Update the new note's content
+    setThreads(prev => prev.map(thread => {
+      if (thread.id === newNoteId) {
+        return {
+          ...thread,
+          content: text,
+          updatedAt: Date.now()
+        };
+      }
+      return thread;
+    }));
+
+    // Link the notes together
+    handleLinkNotes(sourceNoteId, newNoteId);
+    
+    // Switch to the new note
+    setActiveThreadId(newNoteId);
+  };
+
   return (
     <div className="flex h-screen bg-background/50 backdrop-blur-sm overflow-hidden">
       <TitleBar />
@@ -1328,6 +1352,7 @@ function App() {
                     allThreads={threads}
                     selectedModel={selectedModel}
                     showTTS={!!apiKeys.elevenlabs}
+                    onSplitToNote={handleSplitToNote}
                   />
                 ) : (
                   <ChatView

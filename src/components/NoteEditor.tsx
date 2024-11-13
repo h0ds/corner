@@ -34,6 +34,7 @@ interface NoteEditorProps {
   allThreads: Thread[];
   selectedModel: string;
   showTTS: boolean;
+  onSplitToNote?: (sourceNoteId: string, text: string) => void;
 }
 
 const CACHE_PREFIX = 'note_cache_';
@@ -53,6 +54,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   allThreads,
   selectedModel,
   showTTS,
+  onSplitToNote,
 }) => {
   const [content, setContent] = useState(initialContent);
   const [showLinkMenu, setShowLinkMenu] = useState(false);
@@ -499,6 +501,12 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     }
   };
 
+  const handleSplitToNote = (selectedText: string) => {
+    if (onSplitToNote) {
+      onSplitToNote(note.id, selectedText);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Add ChatNoteOverlay */}
@@ -605,6 +613,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
               selectedModel={selectedModel}
               onInsertResponse={handleChatResponse}
               onConvertToSpeech={handleConvertToSpeech}
+              onSplitToNote={handleSplitToNote}
               showTTS={showTTS}
             >
               <div className="h-full overflow-y-auto">
@@ -636,6 +645,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
               selectedModel={selectedModel}
               onInsertResponse={handleChatResponse}
               onConvertToSpeech={handleConvertToSpeech}
+              onSplitToNote={handleSplitToNote}
               showTTS={showTTS}
             >
               <div className="h-full overflow-y-auto p-4">
