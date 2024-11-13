@@ -3,15 +3,14 @@ import { NoteThread, Thread } from '@/types';
 import { cn } from '@/lib/utils';
 import {
   Bold, Italic, Code as CodeIcon, Eye, ArrowLeft, Copy,
-  List, ListOrdered, Quote, Link, Image, Heading1, Heading2, Heading3, NotebookIcon, FileText, MessageSquare
+  List, ListOrdered, Quote, Link, Image, Heading1, Heading2, Heading3, NotebookIcon, MessageSquare, Link2
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import DOMPurify from 'dompurify';
 import { Button } from "@/components/ui/button";
-import { NoteLinkMenu } from './NoteLinkMenu';
 import CodeEditor from '@uiw/react-textarea-code-editor';
-import { LinkedNotes } from './LinkedNotes';
+import { LinkedItems } from './LinkedItems';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { ReferenceMenu } from './ReferenceMenu';
@@ -21,6 +20,7 @@ import { useTextHighlight } from '@/hooks/use-text-highlight';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { invoke } from '@tauri-apps/api/core';
 import { AudioControls } from './AudioControls';
+import { NoteLinkMenu } from './NoteLinkMenu';
 
 interface NoteEditorProps {
   note: NoteThread;
@@ -72,6 +72,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   const [audioPlaying, setAudioPlaying] = useState(false);
   const [audioLoading, setAudioLoading] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [showNoteLinkMenu, setShowNoteLinkMenu] = useState(false);
 
   // Update the text highlight hook usage
   useTextHighlight({
@@ -349,13 +350,6 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     },
     { type: 'divider' },
     {
-      icon: <NotebookIcon className="h-4 w-4" />,
-      label: 'Link Note',
-      action: () => setShowLinkMenu(true),
-      shortcut: '⌘L'
-    },
-    { type: 'divider' },
-    {
       icon: <MessageSquare className="h-4 w-4" />,
       label: 'Ask AI',
       action: () => setShowChatOverlay(true),
@@ -408,20 +402,44 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   };
 
   const handleReferenceSelect = (thread: Thread) => {
-    if (referenceStartIndex === null || !editorRef.current) return;
+    if (referenceStartIndex === null || !editorRef.current) {
+      // If no cursor position (opened from toolbar), just link the thread
+      onUpdate({
+        ...note,
+        linkedNotes: [...(note.linkedNotes || []), thread.id],
+        updatedAt: Date.now()
+      });
 
+      // Show the linked panels
+      setShowLinkedNotes(true);
+      // Close the reference menu
+      setShowReferenceMenu(false);
+      setReferenceQuery('');
+      setReferenceStartIndex(null);
+      return;
+    }
+
+    // If we have a cursor position, insert the reference and link the thread
     const before = content.slice(0, referenceStartIndex);
     const after = content.slice(editorRef.current.selectionStart);
     const reference = `[[${thread.name}]]`;
-
     const newContent = before + reference + after;
-    setContent(newContent);
-    handleChange(newContent);
+    
+    // Update content and link the thread
+    onUpdate({
+      ...note,
+      content: newContent,
+      linkedNotes: [...(note.linkedNotes || []), thread.id],
+      updatedAt: Date.now()
+    });
 
     // Reset reference state
     setShowReferenceMenu(false);
     setReferenceQuery('');
     setReferenceStartIndex(null);
+
+    // Show the linked panels
+    setShowLinkedNotes(true);
   };
 
   // Add handler for context menu AI prompt
@@ -505,6 +523,16 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     if (onSplitToNote) {
       onSplitToNote(note.id, selectedText);
     }
+  };
+
+  // Add handler for linking notes
+  const handleLinkNote = (targetNoteId: string) => {
+    onUpdate({
+      ...note,
+      linkedNotes: [...(note.linkedNotes || []), targetNoteId],
+      updatedAt: Date.now()
+    });
+    setShowLinkedNotes(true);  // Show the linked items panel
   };
 
   return (
@@ -762,7 +790,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
           )}
         </div>
 
-        {/* Linked Notes Panel */}
+        {/* Linked Panels */}
         <AnimatePresence>
           {showLinkedNotes && (
             <motion.div
@@ -772,70 +800,29 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
               transition={{ duration: 0.2 }}
               className="shrink-0 overflow-hidden"
             >
-              <LinkedNotes
+              <LinkedItems
                 currentNote={note}
-                allNotes={allNotes}
-                onNavigateToNote={onNavigateToNote || (() => {})}
-                onUnlinkNote={handleUnlinkNote}
+                allThreads={allThreads}
+                onNavigateToItem={(threadId, isNote) => {
+                  // Dispatch event to switch tabs if needed
+                  if (!isNote) {
+                    window.dispatchEvent(new CustomEvent('switch-tab', {
+                      detail: { tab: 'threads' }
+                    }));
+                  }
+                  onNavigateToNote?.(threadId);
+                }}
+                onUnlinkItem={handleUnlinkNote}
+                onOpenLinkNote={() => setShowNoteLinkMenu(true)}
+                onOpenLinkThread={() => {
+                  setShowReferenceMenu(true);
+                  setReferenceQuery('');
+                }}
               />
             </motion.div>
           )}
         </AnimatePresence>
       </div>
-
-      {/* Linked Notes Toggle Button */}
-      <div className="absolute bottom-4 right-4">
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowLinkedNotes(!showLinkedNotes)}
-                className={cn(
-                  "gap-2",
-                  showLinkedNotes && "bg-accent text-accent-foreground",
-                  (note.linkedNotes?.length || 0) >= 1 ? "w-[3rem]" : "w-8",
-                  "h-8"
-                )}
-                aria-label={`${showLinkedNotes ? 'Hide' : 'Show'} linked notes`}
-              >
-                <FileText className="h-4 w-4" />
-                {(note.linkedNotes?.length || 0) >= 1 && (
-                  <span className="text-xs">{note.linkedNotes?.length}</span>
-                )}
-                <span className="sr-only">
-                  {showLinkedNotes ? 'Hide Links' : 'Show Links'} ({note.linkedNotes?.length || 0})
-                </span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="left" className="text-xs mr-2">
-              {showLinkedNotes ? 'Hide' : 'Show'} linked Notes
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      </div>
-
-      {/* Link Menu Modal */}
-      {showLinkMenu && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50">
-          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-            <NoteLinkMenu
-              query=""
-              notes={allNotes.filter(n => n.id !== note.id)}
-              onLinkNote={(targetNoteId) => {
-                if (onLinkNotes) {
-                  onLinkNotes(note.id, targetNoteId);
-                }
-                setShowLinkMenu(false);
-                setShowLinkedNotes(true);
-              }}
-              onClose={() => setShowLinkMenu(false)}
-              currentNoteId={note.id}
-            />
-          </div>
-        </div>
-      )}
 
       <ReferenceMenu
         query={referenceQuery}
@@ -848,6 +835,8 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         }}
         open={showReferenceMenu}
         onQueryChange={setReferenceQuery}
+        linkedIds={note.linkedNotes}
+        showThreadsOnly={referenceStartIndex === null}
       />
 
       <Dialog open={showAIDialog} onOpenChange={setShowAIDialog}>
@@ -884,6 +873,41 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
           />
         </div>
       )}
+
+      {/* Add toggle button for LinkedItems */}
+      <div className="absolute bottom-4 right-4">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className={cn(
+                  "h-8 w-8 rounded-md",
+                  showLinkedNotes && "bg-accent text-accent-foreground"
+                )}
+                onClick={() => setShowLinkedNotes(!showLinkedNotes)}
+              >
+                <Link2 className="h-4 w-4" />
+                <span className="sr-only">Toggle linked items</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="left">
+              {showLinkedNotes ? 'Hide linked items' : 'Show linked items'}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
+
+      {/* Add NoteLinkMenu */}
+      <NoteLinkMenu
+        currentNoteId={note.id}
+        notes={allNotes}
+        onSelect={handleLinkNote}
+        onClose={() => setShowNoteLinkMenu(false)}
+        open={showNoteLinkMenu}
+        linkedNoteIds={note.linkedNotes}
+      />
     </div>
   );
 };

@@ -4,6 +4,7 @@ import { Thread } from '@/types';
 import { FileText, MessageSquare, Search } from 'lucide-react';
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { loadThreads } from '@/lib/storage';
+import { cn } from '@/lib/utils';
 
 interface ReferenceMenuProps {
   query: string;
@@ -12,6 +13,8 @@ interface ReferenceMenuProps {
   onClose: () => void;
   open: boolean;
   onQueryChange: (query: string) => void;
+  linkedIds?: string[];
+  showThreadsOnly?: boolean;
 }
 
 export const ReferenceMenu: React.FC<ReferenceMenuProps> = ({
@@ -20,7 +23,9 @@ export const ReferenceMenu: React.FC<ReferenceMenuProps> = ({
   onSelect,
   onClose,
   open,
-  onQueryChange
+  onQueryChange,
+  linkedIds = [],
+  showThreadsOnly = false
 }) => {
   const cleanQuery = query.startsWith(':') ? query.slice(1) : query;
 
@@ -34,6 +39,8 @@ export const ReferenceMenu: React.FC<ReferenceMenuProps> = ({
       .filter(thread => {
         if (thread.id === currentThreadId) return false;
 
+        if (showThreadsOnly && thread.isNote) return false;
+
         const nameMatch = thread.name.toLowerCase().includes(cleanQuery.toLowerCase());
         
         if (thread.isNote) {
@@ -45,7 +52,7 @@ export const ReferenceMenu: React.FC<ReferenceMenuProps> = ({
         );
       })
       .slice(0, 10);
-  }, [threads, currentThreadId, cleanQuery]);
+  }, [threads, currentThreadId, cleanQuery, showThreadsOnly]);
 
   return (
     <Dialog open={open} onOpenChange={() => onClose()}>
@@ -70,8 +77,11 @@ export const ReferenceMenu: React.FC<ReferenceMenuProps> = ({
                     onSelect(thread);
                     onClose();
                   }}
-                  className="flex items-center gap-2 px-2 py-1.5 text-sm rounded-md cursor-default
-                           hover:bg-accent hover:text-accent-foreground"
+                  className={cn(
+                    "flex items-center gap-2 px-2 py-1.5 text-sm rounded-md cursor-default",
+                    "hover:bg-accent hover:text-accent-foreground",
+                    linkedIds.includes(thread.id) && "opacity-50"
+                  )}
                 >
                   {thread.isNote ? (
                     <FileText className="h-4 w-4 text-muted-foreground" />
@@ -80,7 +90,7 @@ export const ReferenceMenu: React.FC<ReferenceMenuProps> = ({
                   )}
                   <span className="font-medium flex-1">{thread.name}</span>
                   <span className="text-xs text-muted-foreground">
-                    {thread.isNote ? 'Note' : 'Thread'}
+                    {linkedIds.includes(thread.id) ? 'Already Linked' : thread.isNote ? 'Note' : 'Thread'}
                   </span>
                 </Command.Item>
               ))
