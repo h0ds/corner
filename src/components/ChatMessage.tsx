@@ -114,11 +114,9 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          code({inline, className, children, ...props}: {
+          code({inline, className, children, ...props}: React.ComponentPropsWithoutRef<'code'> & {
             inline?: boolean;
             className?: string;
-            children: React.ReactNode;
-            [key: string]: any;
           }) {
             const match = /language-(\w+)/.exec(className || '');
             const language = match ? match[1] : '';
@@ -154,9 +152,9 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                   customStyle={{
                     margin: 0,
                     borderRadius: '2px',
-                    padding: '1.25rem',
+                    padding: '1rem',
                     background: 'transparent',
-                    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+                    fontFamily: '"Server Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
                     fontSize: '0.875rem',
                   }}
                   {...props}
@@ -167,8 +165,8 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             );
           },
           p: ({children}) => <p className="mb-4 text-sm first:mt-1 last:mb-0 ">{children}</p>,
-          ul: ({children}) => <ul className="list-disc p-6 mb-6 last:mb-0 space-y-2">{children}</ul>,
-          ol: ({children}) => <ol className="list-decimal px-8 py-6 last:mb-0 space-y-2">{children}</ol>,
+          ul: ({children}) => <ul className="list-disc p-6 mb-6 last:mb-0 space-y-2 text-sm">{children}</ul>,
+          ol: ({children}) => <ol className="list-decimal px-8 py-6 last:mb-0 space-y-2 text-sm">{children}</ol>,
           li: ({children}) => <li className="mb-2 last:mb-0">{children}</li>,
           a: ({ node, children, ...props }: {
             node?: any;

@@ -68,7 +68,11 @@
     }
 
     .font-mono {
-        font-family: 'Geist', monospace;
+        font-family: 'Server Mono', monospace;
+    }
+
+    .font-instrument {
+        font-family: 'Instrument Serif', serif;
     }
 
     /* Rest of your CSS... */

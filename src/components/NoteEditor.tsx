@@ -9,7 +9,6 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import DOMPurify from 'dompurify';
 import { Button } from "@/components/ui/button";
-import CodeEditor from '@uiw/react-textarea-code-editor';
 import { LinkedItems } from './LinkedItems';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
@@ -652,26 +651,20 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
               showTTS={showTTS}
             >
               <div className="h-full overflow-y-auto">
-                <CodeEditor
+                <textarea
+                  ref={editorRef}
                   value={content}
-                  language="markdown"
-                  placeholder="Start writing..."
-                  padding={16}
-                  style={{
-                    fontFamily: 'Geist, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif',
-                    fontSize: '14px',
-                    backgroundColor: 'transparent',
-                    width: '100%',
-                    minHeight: '100%'
-                  }}
-                  className={cn(
-                    "w-full resize-none bg-transparent",
-                    "focus:outline-none focus:ring-0 border-0",
-                    "selection:bg-black/30",
-                    "[&_pre]:font-mono [&_code]:font-mono"
-                  )}
-                  onChange={(evn) => handleEditorChange(evn.target.value)}
+                  onChange={(e) => handleEditorChange(e.target.value)}
                   onKeyDown={handleKeyDown}
+                  placeholder="Start writing..."
+                  className={cn(
+                    "w-full h-full resize-none bg-transparent p-4",
+                    "focus:outline-none focus:ring-0 border-0",
+                    "selection:bg-accent/30",
+                    "font-mono text-sm leading-relaxed",
+                    "min-h-[calc(100vh-12rem)]"
+                  )}
+                  spellCheck={false}
                   data-enable-grammarly="false"
                 />
               </div>
