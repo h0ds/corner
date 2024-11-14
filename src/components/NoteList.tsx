@@ -2,45 +2,47 @@ import React, { useState } from "react";
 import { NoteThread } from "@/types";
 import { cn } from "@/lib/utils";
 import {
-  GripVertical,
-  Pencil,
-  Trash2,
-  X,
-  SmilePlus,
-  Palette,
-  Type
+    GripVertical,
+    Pencil,
+    Trash2,
+    X,
+    SmilePlus,
+    Palette,
+    Type,
+    ChevronRight,
+    Plus
 } from "lucide-react";
 import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger,
+    ContextMenu,
+    ContextMenuContent,
+    ContextMenuItem,
+    ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { THREAD_COLORS, THREAD_ICONS } from "@/types";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { motion } from "framer-motion";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
 } from '@dnd-kit/core';
 import {
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 
 interface NoteListProps {
@@ -53,6 +55,8 @@ interface NoteListProps {
   onIconChange: (noteId: string, icon: string) => void;
   onTextColorChange: (noteId: string, color: string) => void;
   onReorderNotes: (notes: NoteThread[]) => void;
+  parentId?: string | null;
+  level?: number;
 }
 
 interface ColorPickerModalProps {
@@ -75,7 +79,7 @@ const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
     >
       <div
         className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 
-                 bg-background border border-border rounded-md shadow-lg p-6 min-w-[280px]"
+                 bg-background border border-border rounded-xl shadow-lg p-6 min-w-[280px]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex flex-col gap-4">
@@ -102,7 +106,7 @@ const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
                   key={name}
                   onClick={() => onColorSelect(color)}
                   className={cn(
-                    "w-10 h-10 rounded-md relative group",
+                    "w-10 h-10 rounded-xl relative group",
                     "hover:scale-110 transition-transform",
                     !color && "bg-background",
                     name === "white" && "border border-border",
@@ -115,7 +119,7 @@ const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
                   <span
                     className="absolute inset-0 flex items-center justify-center opacity-0 
                                  group-hover:opacity-100 transition-opacity bg-background/80 
-                                 text-xs font-medium rounded-md"
+                                 text-xs font-medium rounded-xl"
                   >
                     {name.charAt(0).toUpperCase() + name.slice(1)}
                   </span>
@@ -126,7 +130,7 @@ const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
             <button
               onClick={() => onColorSelect("")}
               className="w-full py-2 text-xs text-muted-foreground hover:text-foreground 
-                       transition-colors border border-border rounded-md hover:bg-accent"
+                       transition-colors border border-border rounded-xl hover:bg-accent"
             >
               Reset Color
             </button>
@@ -148,7 +152,7 @@ const IconPicker: React.FC<{
           key={icon}
           onClick={() => onIconSelect(icon)}
           className={cn(
-            "w-8 h-8 rounded-md flex items-center justify-center",
+            "w-8 h-8 rounded-xl flex items-center justify-center",
             "hover:bg-accent hover:text-accent-foreground transition-colors",
             currentIcon === icon && "bg-accent text-accent-foreground"
           )}
@@ -160,7 +164,7 @@ const IconPicker: React.FC<{
   );
 };
 
-const SortableNoteItem: React.FC<{
+interface SortableNoteItemProps {
   note: NoteThread;
   activeNoteId: string | null;
   onNoteSelect: (noteId: string) => void;
@@ -169,7 +173,11 @@ const SortableNoteItem: React.FC<{
   onColorChange: (noteId: string, color: string) => void;
   onIconChange: (noteId: string, icon: string) => void;
   onTextColorChange: (noteId: string, color: string) => void;
-}> = ({
+  level: number;
+  hasChildren: boolean;
+}
+
+const SortableNoteItem: React.FC<SortableNoteItemProps> = ({
   note,
   activeNoteId,
   onNoteSelect,
@@ -178,6 +186,8 @@ const SortableNoteItem: React.FC<{
   onColorChange,
   onIconChange,
   onTextColorChange,
+  level,
+  hasChildren,
 }) => {
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showIconPicker, setShowIconPicker] = useState(false);
@@ -185,6 +195,7 @@ const SortableNoteItem: React.FC<{
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(note.name);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const {
     attributes,
@@ -227,7 +238,7 @@ const SortableNoteItem: React.FC<{
         >
           <div
             className={cn(
-              "group flex items-center gap-2 px-3 py-2 mb-2 rounded-md cursor-pointer relative bg-gray-50",
+              "group flex items-center gap-2 px-3 py-2 mb-2 rounded-xl cursor-pointer relative bg-gray-50",
               "hover:bg-accent hover:text-accent-foreground transition-colors",
               isDragging && "opacity-50"
             )}
@@ -242,7 +253,7 @@ const SortableNoteItem: React.FC<{
           >
             {activeNoteId === note.id && (
               <div
-                className="absolute inset-0 rounded-md pointer-events-none !bg-gray-200"
+                className="absolute inset-0 rounded-xl pointer-events-none !bg-gray-200"
                 style={
                   note.color
                     ? {
@@ -256,6 +267,23 @@ const SortableNoteItem: React.FC<{
             )}
 
             <div className="relative z-10 flex items-center gap-2 w-full">
+              {hasChildren && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsCollapsed(!isCollapsed);
+                  }}
+                  className="p-1 hover:bg-accent rounded-md transition-colors"
+                >
+                  <ChevronRight 
+                    className={cn(
+                      "h-4 w-4 transition-transform",
+                      !isCollapsed && "rotate-90"
+                    )} 
+                  />
+                </button>
+              )}
+
               {note.icon ? (
                 <div
                   {...listeners}
@@ -306,7 +334,7 @@ const SortableNoteItem: React.FC<{
                     e.stopPropagation();
                     setShowDeleteDialog(true);
                   }}
-                  className="opacity-0 group-hover:opacity-100 p-1 hover:bg-accent rounded-md transition-all"
+                  className="opacity-0 group-hover:opacity-100 p-1 hover:bg-accent rounded-xl transition-all"
                 >
                   <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
                 </button>
@@ -352,6 +380,15 @@ const SortableNoteItem: React.FC<{
           <Trash2 className="h-4 w-4" />
           <span>Delete</span>
         </ContextMenuItem>
+        <ContextMenuItem
+          onClick={() => {
+            // Handle creating a new child note
+          }}
+          className="flex items-center gap-2 cursor-pointer"
+        >
+          <Plus className="h-4 w-4" />
+          <span>Add Child Note</span>
+        </ContextMenuItem>
       </ContextMenuContent>
 
       {showColorPicker && (
@@ -373,7 +410,7 @@ const SortableNoteItem: React.FC<{
         >
           <div
             className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 
-                     bg-background border border-border rounded-md shadow-lg p-4"
+                     bg-background border border-border rounded-xl shadow-lg p-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex flex-col gap-4">
@@ -442,6 +479,22 @@ const SortableNoteItem: React.FC<{
   );
 };
 
+// Helper function to organize notes into a tree structure
+const organizeNotesIntoTree = (notes: NoteThread[]) => {
+  const rootNotes = notes.filter(note => !note.parentId);
+  const noteMap = new Map(notes.map(note => [note.id, note]));
+
+  const addChildren = (note: NoteThread) => {
+    const children = notes.filter(n => n.parentId === note.id);
+    return {
+      ...note,
+      children: children.map(child => addChildren(child))
+    };
+  };
+
+  return rootNotes.map(note => addChildren(note));
+};
+
 export const NoteList: React.FC<NoteListProps> = ({
   notes,
   activeNoteId,
@@ -452,6 +505,8 @@ export const NoteList: React.FC<NoteListProps> = ({
   onIconChange,
   onTextColorChange,
   onReorderNotes,
+  parentId = null,
+  level = 0
 }) => {
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -460,18 +515,38 @@ export const NoteList: React.FC<NoteListProps> = ({
     })
   );
 
+  // Add debug logging
+  console.log('NoteList render:', {
+    totalNotes: notes.length,
+    noteDetails: notes.map(n => ({
+      id: n.id,
+      name: n.name,
+      isNote: n.isNote,
+      parentId: n.parentId
+    })),
+    parentId,
+    level,
+    activeNoteId
+  });
+
+  // Filter notes for current level
+  const currentLevelNotes = notes.filter(note => note.parentId === parentId);
+
   const handleDragEnd = (event: any) => {
     const {active, over} = event;
     
     if (active.id !== over.id) {
-      const oldIndex = notes.findIndex((note) => note.id === active.id);
-      const newIndex = notes.findIndex((note) => note.id === over.id);
+      const oldIndex = currentLevelNotes.findIndex((note) => note.id === active.id);
+      const newIndex = currentLevelNotes.findIndex((note) => note.id === over.id);
       
-      const newNotes = [...notes];
-      const [movedItem] = newNotes.splice(oldIndex, 1);
-      newNotes.splice(newIndex, 0, movedItem);
+      const updatedNotes = [...notes];
+      const movedNote = updatedNotes.find(n => n.id === active.id);
+      if (movedNote) {
+        // Update parentId of the moved note
+        movedNote.parentId = over.data.current?.parentId || null;
+      }
       
-      onReorderNotes(newNotes);
+      onReorderNotes(updatedNotes);
     }
   };
 
@@ -482,22 +557,44 @@ export const NoteList: React.FC<NoteListProps> = ({
       onDragEnd={handleDragEnd}
     >
       <SortableContext 
-        items={notes.map(note => note.id)}
+        items={currentLevelNotes.map(note => note.id)}
         strategy={verticalListSortingStrategy}
       >
         <div className="flex-1 overflow-y-auto p-2 space-y-2">
-          {notes.map((note) => (
-            <SortableNoteItem
-              key={note.id}
-              note={note}
-              activeNoteId={activeNoteId}
-              onNoteSelect={onNoteSelect}
-              onDeleteNote={onDeleteNote}
-              onRenameNote={onRenameNote}
-              onColorChange={onColorChange}
-              onIconChange={onIconChange}
-              onTextColorChange={onTextColorChange}
-            />
+          {currentLevelNotes.map((note) => (
+            <div key={note.id} className={cn("pl-" + (level * 4))}>
+              <SortableNoteItem
+                note={note}
+                activeNoteId={activeNoteId}
+                onNoteSelect={onNoteSelect}
+                onDeleteNote={onDeleteNote}
+                onRenameNote={onRenameNote}
+                onColorChange={onColorChange}
+                onIconChange={onIconChange}
+                onTextColorChange={onTextColorChange}
+                level={level}
+                hasChildren={notes.some(n => n.parentId === note.id)}
+              />
+              
+              {/* Recursively render child notes */}
+              {notes.some(n => n.parentId === note.id) && (
+                <div className="ml-4 mt-2">
+                  <NoteList
+                    notes={notes}
+                    activeNoteId={activeNoteId}
+                    onNoteSelect={onNoteSelect}
+                    onDeleteNote={onDeleteNote}
+                    onRenameNote={onRenameNote}
+                    onColorChange={onColorChange}
+                    onIconChange={onIconChange}
+                    onTextColorChange={onTextColorChange}
+                    onReorderNotes={onReorderNotes}
+                    parentId={note.id}
+                    level={level + 1}
+                  />
+                </div>
+              )}
+            </div>
           ))}
         </div>
       </SortableContext>

@@ -1,11 +1,11 @@
 import React from 'react';
 import { FileUp, Command, Keyboard } from 'lucide-react';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from './ui/button';
 
@@ -28,7 +28,7 @@ export function Shortcuts() {
           <Button 
             variant="outline" 
             size="icon"
-            className="rounded-md"
+            className="rounded-xl"
           >
             <FileUp className="h-4 w-4" />
           </Button>
@@ -41,13 +41,13 @@ export function Shortcuts() {
             {shortcuts.map((shortcut, index) => (
               <div
                 key={index}
-                className="flex items-center justify-between px-3 py-2 rounded-md bg-muted"
+                className="flex items-center justify-between px-3 py-2 rounded-xl bg-muted"
               >
                 <div className="flex items-center gap-2">
                   {shortcut.icon}
                   <span className="text-sm">{shortcut.description}</span>
                 </div>
-                <kbd className="px-2 py-1 text-xs bg-background rounded-md border">
+                <kbd className="px-2 py-1 text-xs bg-background rounded-xl border">
                   {shortcut.key}
                 </kbd>
               </div>

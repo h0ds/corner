@@ -36,7 +36,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
   if (selectedFile) {
     return (
-      <div className="flex items-center gap-2 px-3 py-1.5 bg-accent rounded-md text-sm">
+      <div className="flex items-center gap-2 px-3 py-1.5 bg-accent rounded-xl text-sm">
         <span className="truncate max-w-[200px]">{selectedFile.name}</span>
         <Button
           variant="ghost"
@@ -55,7 +55,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
     <div
       {...getRootProps()}
       className={`
-        cursor-pointer p-2 rounded-md transition-colors
+        cursor-pointer p-2 rounded-xl transition-colors
         ${isDragActive ? 'bg-accent' : 'hover:bg-accent'}
         ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
       `}

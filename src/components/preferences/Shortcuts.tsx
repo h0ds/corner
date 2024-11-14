@@ -24,7 +24,7 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
         {shortcuts.map((shortcut) => (
           <div
             key={shortcut.id}
-            className="flex items-center justify-between p-3 rounded-md bg-muted"
+            className="flex items-center justify-between p-3 rounded-xl bg-muted"
           >
             <div className="space-y-1">
               <div className="text-sm font-medium">{shortcut.name}</div>
@@ -33,7 +33,7 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <kbd className="px-2 py-1 text-xs bg-background rounded-md border">
+              <kbd className="px-2 py-1 text-xs bg-background rounded-xl border">
                 {editingShortcutId === shortcut.id ? 'Press keys...' : shortcut.currentKey}
               </kbd>
               <Button

@@ -1,10 +1,10 @@
 import React from 'react';
 import { Upload } from 'lucide-react';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
 } from "@/components/ui/dialog";
 import { useDropzone } from 'react-dropzone';
 
@@ -53,7 +53,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
         <div
           {...getRootProps()}
           className={`
-            border-2 border-dashed rounded-md p-8 text-center cursor-pointer
+            border-2 border-dashed rounded-xl p-8 text-center cursor-pointer
             transition-colors
             ${isDragActive ? 'border-primary bg-primary/5' : 'border-border'}
           `}

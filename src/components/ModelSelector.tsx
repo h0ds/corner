@@ -1,10 +1,10 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { ModelIcon } from './ModelIcon';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger
 } from "@/components/ui/select";
 import { ApiKeys } from '@/types';
 import { formatProviderName } from '@/lib/utils';
@@ -148,7 +148,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         onValueChange={onModelChange}
       >
         <SelectTrigger 
-          className="rounded-md text-sm"
+          className="rounded-xl text-sm"
           style={{ width: `${triggerWidth}px` }}
         >
           <div className="flex items-center gap-2 truncate">

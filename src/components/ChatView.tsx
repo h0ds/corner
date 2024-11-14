@@ -281,7 +281,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
       <audio ref={audioRef} className="hidden" />
 
       <div 
-        className="flex-shrink-0 p-2 absolute left-4 right-4 bottom-0 mb-4 bg-gray-50 rounded-md"
+        className="flex-shrink-0 p-2 absolute left-4 right-4 bottom-0 mb-4 bg-gray-50 rounded-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="absolute right-4 -top-12 flex items-center gap-2">
@@ -357,7 +357,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
           <div className="text-sm text-muted-foreground">
             Are you sure you want to delete this message? This action cannot be undone.
           </div>
-          <div className="mt-2 text-sm bg-muted p-4 rounded-md max-h-[200px] overflow-y-auto">
+          <div className="mt-2 text-sm bg-muted p-4 rounded-xl max-h-[200px] overflow-y-auto">
             {messageToDelete?.content}
           </div>
           <DialogFooter>

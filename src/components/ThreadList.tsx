@@ -1,41 +1,41 @@
 import React, { useState } from "react";
 import {
-  Trash2,
-  Pencil,
-  GripVertical,
-  FileText,
-  Pin,
-  Palette,
-  X,
-  SmilePlus, Type
+    Trash2,
+    Pencil,
+    GripVertical,
+    FileText,
+    Pin,
+    Palette,
+    X,
+    SmilePlus, Type
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { Thread } from "@/types";
 import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger,
+    ContextMenu,
+    ContextMenuContent,
+    ContextMenuItem,
+    ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-  DragStartEvent,
-  DragOverlay,
-  DragOverEvent,
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent,
+    DragStartEvent,
+    DragOverlay,
+    DragOverEvent,
 } from "@dnd-kit/core";
 import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    useSortable,
+    verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { FileViewer } from "./FileViewer";
@@ -97,7 +97,7 @@ const ThreadItem = ({
   return (
     <div
       className={cn(
-        "group flex items-center gap-2 px-3 py-2 rounded-md cursor-pointer relative bg-gray-50",
+        "group flex items-center gap-2 px-3 py-2 rounded-xl cursor-pointer relative bg-gray-50",
         "hover:bg-accent hover:text-accent-foreground transition-colors",
         isDragging && "opacity-50",
         isOverlay &&
@@ -119,7 +119,7 @@ const ThreadItem = ({
     >
       {activeThreadId === thread.id && (
         <div
-          className="absolute inset-0 rounded-md pointer-events-none"
+          className="absolute inset-0 rounded-xl pointer-events-none"
           style={
             thread.color
               ? {
@@ -232,7 +232,7 @@ const ColorPickerModal: React.FC<{
     >
       <div
         className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 
-                 bg-background border border-border rounded-md shadow-lg p-6 min-w-[280px]"
+                 bg-background border border-border rounded-xl shadow-lg p-6 min-w-[280px]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex flex-col gap-4">
@@ -260,7 +260,7 @@ const ColorPickerModal: React.FC<{
                   key={name}
                   onClick={() => onColorSelect(color)}
                   className={cn(
-                    "w-10 h-10 rounded-md relative group",
+                    "w-10 h-10 rounded-xl relative group",
                     "hover:scale-110 transition-transform",
                     !color && "bg-background",
                     name === "white" && "border border-border",
@@ -273,7 +273,7 @@ const ColorPickerModal: React.FC<{
                   <span
                     className="absolute inset-0 flex items-center justify-center opacity-0 
                                  group-hover:opacity-100 transition-opacity bg-background/80 
-                                 text-xs font-medium rounded-md"
+                                 text-xs font-medium rounded-xl"
                   >
                     {name.charAt(0).toUpperCase() + name.slice(1)}
                   </span>
@@ -284,7 +284,7 @@ const ColorPickerModal: React.FC<{
             <button
               onClick={() => onColorSelect("")}
               className="w-full py-2 text-xs text-muted-foreground hover:text-foreground 
-                       transition-colors border border-border rounded-md hover:bg-accent"
+                       transition-colors border border-border rounded-xl hover:bg-accent"
             >
               Reset Color
             </button>
@@ -365,7 +365,7 @@ const SortableThreadItem = ({
             dragHandleProps={{ ...attributes, ...listeners }}
           />
           {isThisItemDragging && (
-            <div className="absolute inset-0 bg-primary/10 border-2 border-primary rounded-md pointer-events-none" />
+            <div className="absolute inset-0 bg-primary/10 border-2 border-primary rounded-xl pointer-events-none" />
           )}
         </motion.div>
       </ContextMenuTrigger>
@@ -433,7 +433,7 @@ const SortableThreadItem = ({
         >
           <div
             className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 
-                     bg-background border border-border rounded-md shadow-lg p-4"
+                     bg-background border border-border rounded-xl shadow-lg p-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex flex-col gap-4">
@@ -484,7 +484,7 @@ const IconPicker: React.FC<{
           key={icon}
           onClick={() => onIconSelect(icon)}
           className={cn(
-            "w-8 h-8 rounded-md flex items-center justify-center",
+            "w-8 h-8 rounded-xl flex items-center justify-center",
             "hover:bg-accent hover:text-accent-foreground transition-colors",
             currentIcon === icon && "bg-accent text-accent-foreground"
           )}

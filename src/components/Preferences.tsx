@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -371,7 +371,7 @@ export const Preferences: React.FC<PreferencesProps> = ({
         }
       }}
     >
-      <DialogContent className="rounded-md bg-background border-border sm:max-w-[700px] p-0 gap-0">
+      <DialogContent className="rounded-xl bg-background border-border sm:max-w-[700px] p-0 gap-0">
         <div className="flex h-[500px]">
           <div className="w-[200px] border-r border-border p-2 space-y-1 shrink-0">
             {tabs.map((tab) => (
@@ -379,7 +379,7 @@ export const Preferences: React.FC<PreferencesProps> = ({
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  "flex items-center gap-2 w-full px-3 py-2 text-sm rounded-md",
+                  "flex items-center gap-2 w-full px-3 py-2 text-sm rounded-xl",
                   "hover:bg-accent hover:text-accent-foreground transition-colors",
                   activeTab === tab.id ? "bg-accent text-accent-foreground" : "text-muted-foreground"
                 )}
@@ -401,7 +401,7 @@ export const Preferences: React.FC<PreferencesProps> = ({
               {renderContent()}
 
               {error && (
-                <Alert variant="destructive" className="rounded-md mt-4">
+                <Alert variant="destructive" className="rounded-xl mt-4">
                   <AlertDescription className="text-sm">
                     {error}
                   </AlertDescription>
@@ -413,7 +413,7 @@ export const Preferences: React.FC<PreferencesProps> = ({
                   <Button 
                     variant="outline" 
                     onClick={onClose}
-                    className="rounded-md text-sm"
+                    className="rounded-xl text-sm"
                   >
                     Cancel
                   </Button>
@@ -427,7 +427,7 @@ export const Preferences: React.FC<PreferencesProps> = ({
                       verificationStatus.xai === 'verifying' ||
                       verificationStatus.google === 'verifying' ||
                       verificationStatus.elevenlabs === 'verifying'}
-                    className="rounded-md text-sm"
+                    className="rounded-xl text-sm"
                   >
                     {isSaving ? 'Saving...' : 'Save'}
                   </Button>

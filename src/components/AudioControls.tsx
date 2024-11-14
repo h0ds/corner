@@ -52,7 +52,7 @@ export const AudioControls: React.FC<AudioControlsProps> = ({
   }, [isPlaying]);
 
   return (
-    <div className="flex items-center gap-2 bg-accent rounded-md px-3 py-1.5">
+    <div className="flex items-center gap-2 bg-accent rounded-xl px-3 py-1.5">
       {isLoading ? (
         <Loader2 className="h-4 w-4 animate-spin" />
       ) : (

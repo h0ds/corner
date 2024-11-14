@@ -48,6 +48,8 @@ export interface ChatThread extends BaseThread {
 export interface NoteThread extends BaseThread {
   isNote: true;
   content: string;
+  parentId?: string | null;
+  children?: string[];
 }
 
 export type Thread = ChatThread | NoteThread;

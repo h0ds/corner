@@ -1,5 +1,5 @@
 import React from 'react';
-import { Thread, NoteThread, ChatThread } from '@/types';
+import { Thread, NoteThread } from '@/types';
 import { X, MessageSquare, FileText, Plus } from 'lucide-react';
 import { Button } from './ui/button';
 import { cn } from '@/lib/utils';
@@ -74,7 +74,7 @@ export const LinkedItems: React.FC<LinkedItemsProps> = ({
               <div
                 key={item.id}
                 className={cn(
-                  "group flex items-center justify-between gap-2 px-2 py-1.5 rounded-md",
+                  "group flex items-center justify-between gap-2 px-2 py-1.5 rounded-xl",
                   "hover:bg-accent hover:text-accent-foreground transition-colors",
                   "cursor-pointer text-sm"
                 )}

@@ -53,7 +53,7 @@ export const ThreadHeader: React.FC<ThreadHeaderProps> = ({
             }}
             className={cn(
               "h-8 text-sm text-center font-medium",
-              "w-[200px]"
+              "border-none"
             )}
             autoFocus
           />
@@ -61,7 +61,7 @@ export const ThreadHeader: React.FC<ThreadHeaderProps> = ({
           <h1 
             className={cn(
               "text-sm cursor-pointer hover:text-foreground/80",
-              "font-mono tracking-tighter leading-tighter",
+              "font-geist tracking-tighter leading-tighter",
               "transition-colors"
             )}
             onDoubleClick={handleDoubleClick}

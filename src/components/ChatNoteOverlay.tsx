@@ -17,13 +17,15 @@ interface ChatNoteOverlayProps {
   onResponse: (response: string) => void;
   selectedModel: string;
   className?: string;
+  hideCloseButton?: boolean;
 }
 
 export const ChatNoteOverlay: React.FC<ChatNoteOverlayProps> = ({
   onClose,
   onResponse,
   selectedModel,
-  className
+  className,
+  hideCloseButton
 }) => {
   const [prompt, setPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -70,7 +72,7 @@ export const ChatNoteOverlay: React.FC<ChatNoteOverlayProps> = ({
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[550px] p-0 gap-0 bg-background !rounded-xl backdrop-blur-xl shadow-2xl border border-border/50">
+      <DialogContent className="sm:max-w-[550px] p-0 gap-0 bg-background !rounded-xl backdrop-blur-xl shadow-2xl border border-border/50" hideCloseButton={hideCloseButton}>
         <form onSubmit={handleSubmit}>
           <div className="p-3 border-b border-border/50">
             <div className="flex items-center gap-2 px-2">

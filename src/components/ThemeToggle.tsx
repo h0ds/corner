@@ -1,16 +1,16 @@
 import { Moon, Sun, Monitor } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useTheme } from "next-themes"
 import { useEffect, useState } from "react"
-import { sanitizeCssVar } from '@/lib/utils';
-import { defaultColors } from './preferences/Appearance';
+import { sanitizeCssVar } from '@/lib/utils'
+import { defaultColors } from './preferences/Appearance'
 
 interface CustomTheme {
   id: string;
@@ -86,7 +86,7 @@ export function ThemeToggle() {
             {Object.values(customTheme.colors).slice(0, 2).map((color, i) => (
               <div
                 key={i}
-                className="w-2 h-2 rounded-md"
+                className="w-2 h-2 rounded-xl"
                 style={{ backgroundColor: color }}
               />
             ))}
@@ -165,7 +165,7 @@ export function ThemeToggle() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="default" className="rounded-md w-[200px] justify-start">
+        <Button variant="outline" size="default" className="rounded-xl w-[200px] justify-start">
           {getIcon()}
           <span className="-mb-1 ml-2">
             {customThemes.find(t => sanitizeCssVar(t.name) === theme)?.name || 
@@ -175,7 +175,7 @@ export function ThemeToggle() {
           </span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="rounded-md">
+      <DropdownMenuContent align="end" className="rounded-xl">
         <DropdownMenuItem onClick={() => handleThemeChange("light")} className="text-sm">
           <Sun className="h-4 w-4 mr-2" />
           <span className="-mb-1">Light</span>
@@ -203,7 +203,7 @@ export function ThemeToggle() {
                     {Object.values(customTheme.colors).map((color, i) => (
                       <div
                         key={i}
-                        className="w-2 h-2 rounded-md"
+                        className="w-2 h-2 rounded-xl"
                         style={{ backgroundColor: color }}
                       />
                     ))}

@@ -24,7 +24,7 @@ export const LinkedNotes: React.FC<LinkedNotesProps> = ({
     .filter((note): note is NoteThread => note !== undefined);
 
   return (
-    <div className="w-[250px] border border-border flex flex-col m-2 rounded-md">
+    <div className="w-[250px] border border-border flex flex-col m-2 rounded-xl">
       <div className="p-3 border-b border-border">
         <h3 className="text-sm font-medium">Linked Notes</h3>
       </div>
@@ -44,7 +44,7 @@ export const LinkedNotes: React.FC<LinkedNotesProps> = ({
                 <button
                   onClick={() => onNavigateToNote(note.id)}
                   className={cn(
-                    "flex-1 flex items-center gap-2 px-2 py-1.5 text-sm rounded-md",
+                    "flex-1 flex items-center gap-2 px-2 py-1.5 text-sm rounded-xl",
                     "hover:bg-accent hover:text-accent-foreground transition-colors",
                     "text-left"
                   )}

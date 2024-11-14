@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, Upload, Eye, Trash2, FolderOpen } from 'lucide-react';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from './ui/button';
 import { FileAttachment } from '@/types';
@@ -116,7 +116,7 @@ export const FileMenu: React.FC<FileMenuProps> = ({
               {files.map((file, index) => (
                 <div
                   key={index}
-                  className="flex items-center justify-between p-2 rounded-md bg-muted group"
+                  className="flex items-center justify-between p-2 rounded-xl bg-muted group"
                 >
                   <div className="flex items-center gap-2">
                     <FileText className="h-4 w-4 text-muted-foreground" />

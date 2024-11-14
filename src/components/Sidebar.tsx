@@ -62,9 +62,37 @@ export const Sidebar: React.FC<SidebarProps> = ({
     return () => window.removeEventListener('switch-tab', handleTabChange as any);
   }, []);
 
-  // Type-safe filtering
-  const notes = threads.filter((t): t is NoteThread => t.isNote === true);
-  const chatThreads = threads.filter((t): t is ChatThread => t.isNote !== true);
+  // Add more detailed logging for thread filtering
+  console.log('Raw threads:', threads.map(t => ({
+    id: t.id,
+    name: t.name,
+    isNote: t.isNote,
+    type: t.isNote ? 'note' : 'chat'
+  })));
+
+  // Update type filtering to be more explicit
+  const notes = threads.filter((thread): thread is NoteThread => {
+    const isNote = thread.isNote === true;
+    console.log(`Thread ${thread.id} (${thread.name}) isNote:`, isNote);
+    return isNote;
+  });
+  
+  const chatThreads = threads.filter((thread): thread is ChatThread => {
+    const isChat = thread.isNote !== true;
+    console.log(`Thread ${thread.id} (${thread.name}) isChat:`, isChat);
+    return isChat;
+  });
+
+  // Add debug logging
+  console.log('Filtered threads:', {
+    total: threads.length,
+    notes: notes.length,
+    chats: chatThreads.length,
+    noteIds: notes.map(n => n.id),
+    chatIds: chatThreads.map(c => c.id),
+    activeTab,
+    activeThreadId
+  });
 
   // Auto-select top thread/note when switching tabs
   useEffect(() => {
@@ -113,7 +141,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="p-2 border-b border-border">
           <button
             onClick={activeTab === 'threads' ? props.onNewThread : handleCreateNote}
-            className="w-full flex items-center gap-2 p-3 text-sm rounded-md 
+            className="w-full flex items-center gap-2 p-3 text-sm rounded-xl 
                      bg-primary text-primary-foreground hover:bg-primary/90 transition-colors
                      justify-start pl-3"
           >

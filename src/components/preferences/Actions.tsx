@@ -41,7 +41,7 @@ export const Actions: React.FC<ActionsProps> = ({
             key={slot.id}
             className={cn(
               "flex flex-col items-center justify-center p-4",
-              "border border-border rounded-md",
+              "border border-border rounded-xl",
               "hover:bg-accent hover:text-accent-foreground", 
               "transition-colors cursor-pointer",
               "aspect-square",

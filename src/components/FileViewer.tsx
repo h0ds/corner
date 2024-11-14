@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
 } from "@/components/ui/dialog";
 import { FileAttachment } from '@/types';
 import { FileText, Image, FileType, Eye } from 'lucide-react';
@@ -83,9 +83,9 @@ export const FileViewer: React.FC<FileViewerProps> = ({
                   {sortedFiles.map((file, index) => (
                     <div
                       key={index}
-                      className="flex items-center gap-3 p-3 rounded-md hover:bg-accent group"
+                      className="flex items-center gap-3 p-3 rounded-xl hover:bg-accent group"
                     >
-                      <div className="p-2 bg-primary/10 rounded-md">
+                      <div className="p-2 bg-primary/10 rounded-xl">
                         {getFileIcon(file.name)}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -105,7 +105,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({
                             e.stopPropagation();
                             setPreviewFile(file);
                           }}
-                          className="p-1 hover:bg-background rounded-md"
+                          className="p-1 hover:bg-background rounded-xl"
                           title="Preview file"
                         >
                           <Eye className="h-4 w-4" />

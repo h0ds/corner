@@ -1,9 +1,8 @@
 import React from 'react';
 import {
-  Dialog,
-  DialogContent,
+    Dialog,
+    DialogContent,
 } from "@/components/ui/dialog";
-import { cn } from '@/lib/utils';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
@@ -13,7 +12,7 @@ interface PluginDocsProps {
 }
 
 const CodeBlock = ({ children, className }: { children: string, className?: string }) => (
-  <div className="relative group bg-[#282c34] rounded-md">
+  <div className="relative group bg-[#282c34] rounded-xl">
     <SyntaxHighlighter
       language="typescript"
       style={oneDark}

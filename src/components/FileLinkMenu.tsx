@@ -106,7 +106,7 @@ export const FileLinkMenu: React.FC<FileLinkMenuProps> = ({
                   key={`${item.type}-${item.name}`}
                   ref={index === selectedIndex ? selectedItemRef : undefined}
                   onSelect={() => onSelect(item.name, item.type)}
-                  className={`flex items-center gap-2 px-2 py-1.5 text-sm rounded-md cursor-default
+                  className={`flex items-center gap-2 px-2 py-1.5 text-sm rounded-xl cursor-default
                            ${index === selectedIndex ? 'bg-accent text-accent-foreground' : ''}
                            hover:bg-accent hover:text-accent-foreground`}
                 >

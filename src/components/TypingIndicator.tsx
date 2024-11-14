@@ -7,7 +7,7 @@ export const TypingIndicator = () => {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 10 }}
       transition={{ duration: 0.2 }}
-      className="flex items-center gap-2 px-4 py-3 bg-card dark:bg-card/80 rounded-md shadow-none w-fit"
+      className="flex items-center gap-2 px-4 py-3 bg-card dark:bg-card/80 rounded-xl shadow-none w-fit"
     >
       <motion.div
         className="flex gap-2"

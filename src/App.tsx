@@ -7,13 +7,13 @@ import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { getFileHandler } from '@/lib/fileHandlers';
 import {
-  saveThread,
-  loadThreads,
-  deleteThread,
-  saveActiveThreadId,
-  loadActiveThreadId, saveSelectedModel,
-  loadSelectedModel,
-  saveThreadOrder
+    saveThread,
+    loadThreads,
+    deleteThread,
+    saveActiveThreadId,
+    loadActiveThreadId, saveSelectedModel,
+    loadSelectedModel,
+    saveThreadOrder
 } from '@/lib/storage';
 import { ModelIcon } from './components/ModelIcon';
 import { nanoid } from 'nanoid';
@@ -59,7 +59,7 @@ const ComparisonView: React.FC<{
         Comparing responses for: "{message}"
       </div>
       <div className="flex gap-4">
-        <div className="flex-1 border border-border rounded-md p-4">
+        <div className="flex-1 border border-border rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
             <ModelIcon modelId={model1Id} className="h-4 w-4" />
             <span className="text-sm font-medium">
@@ -70,7 +70,7 @@ const ComparisonView: React.FC<{
             {model1Response}
           </div>
         </div>
-        <div className="flex-1 border border-border rounded-md p-4">
+        <div className="flex-1 border border-border rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
             <ModelIcon modelId={model2Id} className="h-4 w-4" />
             <span className="text-sm font-medium">
@@ -182,6 +182,8 @@ function App() {
       ...baseThread,
       isNote: true,
       content: '',
+      parentId: null,
+      children: [],
     } : {
       ...baseThread,
       isNote: false,
@@ -192,13 +194,19 @@ function App() {
     console.log('Creating new thread:', {
       id: newThread.id,
       isNote: newThread.isNote,
+      type: isNote ? 'note' : 'chat',
       messageCount: isNote ? undefined : 0
     });
     
     // Add the new thread to the beginning of the list
     setThreads(prev => {
-      // Create a completely new array to avoid reference issues
       const updatedThreads = [newThread, ...prev];
+      console.log('Updated threads:', updatedThreads.map(t => ({
+        id: t.id,
+        name: t.name,
+        isNote: t.isNote,
+        type: t.isNote ? 'note' : 'chat'
+      })));
       return updatedThreads;
     });
 

@@ -2,7 +2,7 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 import { Message, PluginModification } from '@/types';
 import { ModelIcon } from './ModelIcon';
-import { User, XCircle, Copy, Check, ImageIcon, Volume2, Trash2 } from 'lucide-react';
+import { User, XCircle, Copy, ImageIcon } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -15,7 +15,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import remarkGfm from 'remark-gfm';
 import { Citations } from './Citations';
-import { Button } from "@/components/ui/button";
+import { ChatActions } from './ChatActions';
 
 interface ChatMessageProps {
   role: Message['role'];
@@ -64,18 +64,6 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   isAudioResponse = false,
   onDelete,
 }) => {
-  const [copied, setCopied] = React.useState(false);
-
-  const copyToClipboard = async () => {
-    try {
-      await navigator.clipboard.writeText(content);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy:', err);
-    }
-  };
-
   // Process content to convert citation references to links
   const processContent = (content: string) => {
     if (!citations?.length) return content;
@@ -124,7 +112,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             if (inline) {
               return (
                 <code 
-                  className="bg-muted px-1.5 py-0.5 rounded-md text-sm font-mono" 
+                  className="bg-muted px-1.5 py-0.5 rounded-xl text-sm font-mono" 
                   {...props}
                 >
                   {children}
@@ -133,14 +121,14 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             }
 
             return (
-              <div className="relative group my-4 bg-[#282c34] rounded-md">
+              <div className="relative group my-4 bg-[#282c34] rounded-xl">
                 <div 
                   className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 
                             transition-opacity"
                 >
                   <button
                     onClick={() => navigator.clipboard.writeText(String(children))}
-                    className="p-1.5 hover:bg-accent/10 rounded-md text-muted-foreground 
+                    className="p-1.5 hover:bg-accent/10 rounded-xl text-muted-foreground 
                               hover:text-accent-foreground"
                   >
                     <Copy className="h-4 w-4" />
@@ -281,7 +269,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
           Comparing responses for: "{comparison.message}"
         </div>
         <div className="flex gap-4">
-          <div className="flex-1 border border-border rounded-md p-4">
+          <div className="flex-1 border border-border rounded-xl p-4">
             <div className="flex items-center gap-2 mb-2">
               <ModelIcon modelId={comparison.model1.id} className="h-4 w-4" />
               <span className="text-sm font-medium">
@@ -299,7 +287,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
               </ReactMarkdown>
             </div>
           </div>
-          <div className="flex-1 border border-border rounded-md p-4">
+          <div className="flex-1 border border-border rounded-xl p-4">
             <div className="flex items-center gap-2 mb-2">
               <ModelIcon modelId={comparison.model2.id} className="h-4 w-4" />
               <span className="text-sm font-medium">
@@ -325,77 +313,19 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   return (
     <div className="w-full flex">
       <div className={cn(
-        "group relative inline-flex gap-3 p-4 rounded-md select-text max-w-full",
+        "group relative inline-flex gap-3 pl-4 pr-2 py-2 selection:bg-blue-600/80 selection:text-white rounded-xl select-text max-w-full",
         role === 'user' && 'bg-black text-white flex-row-reverse ml-auto',
         role === 'system' && 'bg-white/10 text-muted-foreground text-sm',
-        role === 'assistant' && 'bg-white border border-border text-accent-foreground'
+        role === 'assistant' && 'bg-white p-4 pb-6 border border-accent text-accent-foreground'
       )}>
         {role === 'assistant' && (
-          <div className="absolute p-1 top-2 right-2 opacity-0 group-hover:opacity-100 bg-accent border border-border rounded-md transition-opacity flex gap-2">
-            {showTTS && !content.startsWith('data:audio/') && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 hover:bg-accent-foreground/10"
-                      onClick={() => onTextToSpeech?.(content)}
-                    >
-                      <Volume2 className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="sr-only">Text to speech</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="left">
-                    Convert to speech
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-            {!content.startsWith('data:audio/') && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 hover:bg-accent-foreground/10"
-                      onClick={copyToClipboard}
-                    >
-                      {copied ? (
-                        <Check className="h-3.5 w-3.5 text-green-500" />
-                      ) : (
-                        <Copy className="h-3.5 w-3.5 text-muted-foreground" />
-                      )}
-                      <span className="sr-only">Copy message</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="left">
-                    {copied ? 'Copied!' : 'Copy message'}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-            {onDelete && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 hover:bg-accent-foreground/10"
-                      onClick={onDelete}
-                    >
-                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                      <span className="sr-only">Delete message</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="left">
-                    Delete message
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
+          <div className="absolute p-1 top-2 right-2 opacity-0 group-hover:opacity-100 bg-background border border-border rounded-xl transition-opacity flex gap-2">
+            <ChatActions
+              onConvertToSpeech={onTextToSpeech}
+              onDelete={onDelete}
+              content={content}
+              showTTS={showTTS}
+            />
           </div>
         )}
 
@@ -456,14 +386,14 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                   <img
                     src={url}
                     alt={`Generated image ${index + 1}`}
-                    className="rounded-md w-full h-full object-cover"
+                    className="rounded-xl w-full h-full object-cover"
                   />
                   <a
                     href={url}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="absolute inset-0 flex items-center justify-center bg-black/50 
-                           opacity-0 group-hover:opacity-100 transition-opacity rounded-md"
+                           opacity-0 group-hover:opacity-100 transition-opacity rounded-xl"
                   >
                     <ImageIcon className="h-6 w-6 text-white" />
                   </a>
@@ -483,7 +413,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                     onClick={() => onSendMessage?.(question)}
                     className="text-sm text-blue-500 hover:text-blue-600 dark:text-blue-400 
                            dark:hover:text-blue-300 bg-accent/30 hover:bg-accent/50 
-                           px-3 py-1.5 rounded-md transition-colors"
+                           px-3 py-1.5 rounded-xl transition-colors"
                   >
                     {question}
                   </button>

@@ -42,7 +42,7 @@ export const LinkedThreads: React.FC<LinkedThreadsProps> = ({
               <div
                 key={thread.id}
                 className={cn(
-                  "group flex items-center justify-between gap-2 px-2 py-1.5 rounded-md",
+                  "group flex items-center justify-between gap-2 px-2 py-1.5 rounded-xl",
                   "hover:bg-accent hover:text-accent-foreground transition-colors",
                   "cursor-pointer text-sm"
                 )}

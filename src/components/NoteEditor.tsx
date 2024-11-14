@@ -91,7 +91,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         if (!floatingButton) {
           floatingButton = document.createElement('button');
           floatingButton.id = 'floating-ai-button';
-          floatingButton.className = 'fixed z-50 bg-primary text-primary-foreground rounded-md px-2 py-1 text-xs flex items-center gap-1 shadow-lg hover:bg-primary/90 transition-colors';
+          floatingButton.className = 'fixed z-50 bg-primary text-primary-foreground rounded-xl px-2 py-1 text-xs flex items-center gap-1 shadow-lg hover:bg-primary/90 transition-colors';
           floatingButton.innerHTML = `
             <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-4l-4 4-4-4Z"/>
@@ -549,6 +549,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
           onClose={() => setShowChatOverlay(false)}
           onResponse={handleChatResponse}
           selectedModel={selectedModel}
+          hideCloseButton
         />
       )}
       
@@ -660,7 +661,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
                   className={cn(
                     "w-full h-full resize-none bg-transparent p-4",
                     "focus:outline-none focus:ring-0 border-0",
-                    "selection:bg-accent/30",
+                    "selection:bg-blue-600/80 selection:text-white",
                     "font-mono text-sm leading-relaxed",
                     "min-h-[calc(100vh-12rem)]"
                   )}
@@ -718,7 +719,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
 
                         if (inline) {
                           return (
-                            <code className="bg-muted px-1.5 py-0.5 rounded-md text-sm" {...props}>
+                            <code className="bg-muted px-1.5 py-0.5 rounded-xl text-sm" {...props}>
                               {code}
                             </code>
                           );
@@ -729,12 +730,12 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
                             <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
                               <button
                                 onClick={() => navigator.clipboard.writeText(code)}
-                                className="p-1.5 hover:bg-accent/10 rounded-md text-muted-foreground hover:text-accent-foreground"
+                                className="p-1.5 hover:bg-accent/10 rounded-xl text-muted-foreground hover:text-accent-foreground"
                               >
                                 <Copy className="h-4 w-4" />
                               </button>
                             </div>
-                            <pre className="!bg-muted p-4 rounded-md">
+                            <pre className="!bg-muted p-4 rounded-xl">
                               <code className={className} {...props}>
                                 {code}
                               </code>
@@ -859,7 +860,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
           <div className="space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Selected Text:</label>
-              <div className="text-sm bg-muted p-3 rounded-md whitespace-pre-wrap">
+              <div className="text-sm bg-muted p-3 rounded-xl whitespace-pre-wrap">
                 {highlightedText}
               </div>
             </div>
@@ -894,7 +895,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
                 variant="outline"
                 size="icon"
                 className={cn(
-                  "h-8 w-8 rounded-md",
+                  "h-8 w-8 rounded-xl",
                   showLinkedNotes && "bg-accent text-accent-foreground"
                 )}
                 onClick={() => setShowLinkedNotes(!showLinkedNotes)}

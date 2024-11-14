@@ -278,7 +278,7 @@ export const Appearance: React.FC = () => {
                   {Object.values(theme.colors).map((color, i) => (
                     <div
                       key={i}
-                      className="w-3 h-3 rounded-md"
+                      className="w-3 h-3 rounded-xl"
                       style={{ backgroundColor: color }}
                     />
                   ))}
