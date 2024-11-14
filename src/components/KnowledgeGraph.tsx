@@ -1,7 +1,6 @@
 import React, { useCallback, useMemo } from 'react';
 import { Thread, GraphNode, GraphEdge } from '@/types';
 import ForceGraph2D from 'react-force-graph-2d';
-import { useTheme } from 'next-themes';
 
 interface KnowledgeGraphProps {
   threads: Thread[];
@@ -12,9 +11,6 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
   threads,
   onNodeClick,
 }) => {
-  const { theme } = useTheme();
-  const isDark = theme === 'dark';
-
   // Create nodes and links from threads
   const { nodes, links } = useMemo(() => {
     const nodes: GraphNode[] = [];
@@ -52,26 +48,26 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     });
 
     return { nodes, links };
-  }, [threads, isDark]);
+  }, [threads]);
 
   // Custom tooltip renderer
   const getNodeTooltip = useCallback((node: any) => {
     const type = node.data.type === 'note' ? 'Note' : 'Thread';
     return `
       <div style="
-        color: ${isDark ? '#000' : '#fff'};
+        color: #000;
         padding: 4px;
         max-width: 200px;
-        font-family: 'Geist', monospace;
+        font-family: 'Geist Mono', monospace;
         font-size: 12px;
       ">
-        <div style="font-weight: bold; margin-bottom: 4px;">${node.label}</div>
-        <div style="color: ${isDark ? '#999' : '#eee'}; margin-bottom: 4px;">
+        <div style="font-weight: bold; margin-bottom: 4px; font-family: 'Geist Mono', monospace;">${node.label}</div>
+        <div style="color: #999; margin-bottom: 4px; font-family: 'Geist Mono', monospace;">
           ${type} • ${node.data.linkedCount} connection${node.data.linkedCount !== 1 ? 's' : ''}
         </div>
       </div>
     `;
-  }, [isDark]);
+  }, []);
 
   // Handle node click
   const handleNodeClick = useCallback((node: any) => {
@@ -85,29 +81,28 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
   }, [onNodeClick]);
 
   return (
-    <div className="w-full h-full">
+    <div className="w-full h-full font-mono">
       <ForceGraph2D
         graphData={{ nodes, links }}
         nodeLabel={getNodeTooltip}
-        nodeColor={node => node.data.color || (isDark ? '#666' : '#999')}
+        nodeColor={node => node.data.color || '#666'}
         nodeRelSize={8}
-        linkColor={() => isDark ? '#444' : '#ddd'}
+        linkColor={() => '#444'}
         backgroundColor="transparent"
         onNodeClick={handleNodeClick}
-        linkWidth={2}
-        linkDirectionalParticles={2}
-        linkDirectionalParticleSpeed={0.005}
+        linkWidth={1}
+        linkDirectionalParticles={0}
         d3VelocityDecay={0.3}
         cooldownTicks={100}
         nodeCanvasObject={(node: any, ctx, globalScale) => {
           const label = node.label;
           const fontSize = 12/globalScale;
-          ctx.font = `${fontSize}px Geist`;
+          ctx.font = `${fontSize}px "Geist"`;
           const textWidth = ctx.measureText(label).width;
           const bckgDimensions = [textWidth, fontSize].map(n => n + fontSize * 0.8);
 
           // Draw background
-          ctx.fillStyle = isDark ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.8)';
+          ctx.fillStyle = 'rgba(0,0,0,0.8)';
           ctx.fillRect(
             node.x - bckgDimensions[0] / 2,
             node.y - bckgDimensions[1] / 2,
@@ -118,10 +113,11 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
           // Draw text
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillStyle = isDark ? '#fff' : '#000';
+          ctx.fillStyle = '#fff';
           ctx.fillText(label, node.x, node.y);
         }}
         nodePointerAreaPaint={(node: any, color, ctx) => {
+          ctx.font = `12px "Geist"`;
           ctx.fillStyle = color;
           const bckgDimensions = [
             ctx.measureText(node.label).width + 12,
@@ -137,4 +133,4 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
       />
     </div>
   );
-}; 
+};

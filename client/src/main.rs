@@ -117,16 +117,8 @@ async fn send_message(
 ) -> Result<ApiResponse, String> {
     let client = reqwest::Client::new();
 
-    let message_with_file = if let (Some(content), Some(name)) =
-        (request.file_content.clone(), request.file_name.clone())
-    {
-        format!(
-            "{}\n\nAttached file '{}' content:\n{}",
-            request.message, name, content
-        )
-    } else {
-        request.message.clone()
-    };
+    // Don't append file content to message
+    let message = request.message.clone();
 
     match request.provider.as_str() {
         "anthropic" => {
@@ -156,7 +148,7 @@ async fn send_message(
                 "model": request.model,
                 "messages": [{
                     "role": "user",
-                    "content": message_with_file
+                    "content": message
                 }],
                 "max_tokens": 1024,
                 "system": "You are a helpful AI assistant."
@@ -258,7 +250,7 @@ async fn send_message(
                     },
                     {
                         "role": "user",
-                        "content": message_with_file
+                        "content": message
                     }
                 ],
                 "max_tokens": 1024,
@@ -368,7 +360,7 @@ async fn send_message(
                 "model": request.model,
                 "messages": [{
                     "role": "user",
-                    "content": message_with_file
+                    "content": message
                 }],
                 "temperature": 0.7
             });
@@ -458,7 +450,7 @@ async fn send_message(
             let request_body = serde_json::json!({
                 "messages": [{
                     "role": "user",
-                    "content": message_with_file
+                    "content": message
                 }],
                 "model": request.model,
                 "stream": false,
@@ -556,7 +548,7 @@ async fn send_message(
             let request_body = serde_json::json!({
                 "contents": [{
                     "parts": [{
-                        "text": message_with_file
+                        "text": message
                     }]
                 }]
             });

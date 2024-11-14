@@ -100,11 +100,11 @@ export const ReferenceMenu: React.FC<ReferenceMenuProps> = ({
         className="max-w-[500px] gap-0 p-0"
         onKeyDown={handleKeyDown}
       >
-        <Command className="rounded-xl border shadow-md">
+        <Command className="rounded-xl shadow-md">
           <div className="flex items-center border-b px-3" cmdk-input-wrapper="">
             <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
             <input
-              placeholder="Search threads and notes..."
+              placeholder="Search threads and notes"
               value={cleanQuery}
               onChange={(e) => onQueryChange(e.target.value)}
               className="flex h-11 w-full rounded-xl bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"

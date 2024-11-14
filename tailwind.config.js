@@ -33,6 +33,14 @@ export default {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
         },
+        palette: {
+          blue: "var(--palette-blue)",
+          teal: "var(--palette-teal)", 
+          green: "var(--palette-green)",
+          yellow: "var(--palette-yellow)",
+          orange: "var(--palette-orange)",
+          red: "var(--palette-red)",
+        },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
           foreground: "hsl(var(--secondary-foreground))",

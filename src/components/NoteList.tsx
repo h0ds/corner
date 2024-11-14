@@ -480,11 +480,11 @@ const SortableNoteItem: React.FC<SortableNoteItemProps> = ({
 };
 
 // Helper function to organize notes into a tree structure
-const organizeNotesIntoTree = (notes: NoteThread[]) => {
+const organizeNotesIntoTree = (notes: NoteThread[]): NoteThread[] => {
   const rootNotes = notes.filter(note => !note.parentId);
   const noteMap = new Map(notes.map(note => [note.id, note]));
 
-  const addChildren = (note: NoteThread) => {
+  const addChildren = (note: NoteThread): NoteThread => {
     const children = notes.filter(n => n.parentId === note.id);
     return {
       ...note,
@@ -515,38 +515,29 @@ export const NoteList: React.FC<NoteListProps> = ({
     })
   );
 
-  // Add debug logging
-  console.log('NoteList render:', {
-    totalNotes: notes.length,
-    noteDetails: notes.map(n => ({
-      id: n.id,
-      name: n.name,
-      isNote: n.isNote,
-      parentId: n.parentId
-    })),
-    parentId,
-    level,
-    activeNoteId
-  });
-
-  // Filter notes for current level
-  const currentLevelNotes = notes.filter(note => note.parentId === parentId);
+  // Organize notes into tree structure
+  const organizedNotes = organizeNotesIntoTree(notes);
+  
+  // Get notes for current level
+  const currentLevelNotes = parentId === null 
+    ? organizedNotes 
+    : (notes.find(n => n.id === parentId)?.children || []);
 
   const handleDragEnd = (event: any) => {
     const {active, over} = event;
     
-    if (active.id !== over.id) {
+    if (active.id !== over?.id) {
       const oldIndex = currentLevelNotes.findIndex((note) => note.id === active.id);
-      const newIndex = currentLevelNotes.findIndex((note) => note.id === over.id);
+      const newIndex = currentLevelNotes.findIndex((note) => note.id === over?.id);
       
-      const updatedNotes = [...notes];
-      const movedNote = updatedNotes.find(n => n.id === active.id);
-      if (movedNote) {
-        // Update parentId of the moved note
-        movedNote.parentId = over.data.current?.parentId || null;
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const updatedNotes = [...notes];
+        const movedNote = updatedNotes.find(n => n.id === active.id);
+        if (movedNote) {
+          movedNote.parentId = over?.data?.current?.parentId || null;
+          onReorderNotes(updatedNotes);
+        }
       }
-      
-      onReorderNotes(updatedNotes);
     }
   };
 
@@ -562,7 +553,7 @@ export const NoteList: React.FC<NoteListProps> = ({
       >
         <div className="flex-1 overflow-y-auto p-2 space-y-2">
           {currentLevelNotes.map((note) => (
-            <div key={note.id} className={cn("pl-" + (level * 4))}>
+            <div key={note.id} style={{ paddingLeft: `${level * 16}px` }}>
               <SortableNoteItem
                 note={note}
                 activeNoteId={activeNoteId}
@@ -573,26 +564,23 @@ export const NoteList: React.FC<NoteListProps> = ({
                 onIconChange={onIconChange}
                 onTextColorChange={onTextColorChange}
                 level={level}
-                hasChildren={notes.some(n => n.parentId === note.id)}
+                hasChildren={note.children?.length > 0}
               />
               
-              {/* Recursively render child notes */}
-              {notes.some(n => n.parentId === note.id) && (
-                <div className="ml-4 mt-2">
-                  <NoteList
-                    notes={notes}
-                    activeNoteId={activeNoteId}
-                    onNoteSelect={onNoteSelect}
-                    onDeleteNote={onDeleteNote}
-                    onRenameNote={onRenameNote}
-                    onColorChange={onColorChange}
-                    onIconChange={onIconChange}
-                    onTextColorChange={onTextColorChange}
-                    onReorderNotes={onReorderNotes}
-                    parentId={note.id}
-                    level={level + 1}
-                  />
-                </div>
+              {note.children?.length > 0 && (
+                <NoteList
+                  notes={notes}
+                  activeNoteId={activeNoteId}
+                  onNoteSelect={onNoteSelect}
+                  onDeleteNote={onDeleteNote}
+                  onRenameNote={onRenameNote}
+                  onColorChange={onColorChange}
+                  onIconChange={onIconChange}
+                  onTextColorChange={onTextColorChange}
+                  onReorderNotes={onReorderNotes}
+                  parentId={note.id}
+                  level={level + 1}
+                />
               )}
             </div>
           ))}

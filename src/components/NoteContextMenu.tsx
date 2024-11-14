@@ -34,6 +34,7 @@ export const NoteContextMenu: React.FC<NoteContextMenuProps> = ({
     if (selectedText) {
       // Prevent default only if there's selected text
       event.preventDefault();
+      event.stopPropagation();
     }
   }, [getSelectedText]);
 
@@ -62,8 +63,6 @@ export const NoteContextMenu: React.FC<NoteContextMenuProps> = ({
       <ContextMenuTrigger 
         onContextMenu={handleContextMenu} 
         className="w-full h-full"
-        // Prevent default selection clearing
-        onMouseDown={(e) => e.preventDefault()}
       >
         {children}
       </ContextMenuTrigger>

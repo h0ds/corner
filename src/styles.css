@@ -97,6 +97,12 @@
         --ring: 222.2 84% 4.9%;
         --radius: 0.5rem;
         --font-serif: 'Instrument Serif', serif;
+        --palette-blue: #3298F7;
+        --palette-teal: #39EFDC;
+        --palette-green: #B5FF07;
+        --palette-yellow: #FEE115;
+        --palette-orange: #FF760A;
+        --palette-red: #FB115F;
     }
     
     .dark {

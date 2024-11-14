@@ -28,7 +28,7 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
       >
         <MessageSquare className="h-4 w-4" />
         <span>Threads</span>
-        <span className="text-xs text-muted-foreground">
+        <span className="text-xs font-mono text-muted-foreground">
           {threadCount}
         </span>
       </button>
@@ -43,7 +43,7 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
       >
         <StickyNote className="h-4 w-4" />
         <span>Notes</span>
-        <span className="text-xs text-muted-foreground">
+        <span className="text-xs font-mono text-muted-foreground">
           {noteCount}
         </span>
       </button>

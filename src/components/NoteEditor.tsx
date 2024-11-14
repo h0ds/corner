@@ -661,7 +661,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
                   className={cn(
                     "w-full h-full resize-none bg-transparent p-4",
                     "focus:outline-none focus:ring-0 border-0",
-                    "selection:bg-blue-600/80 selection:text-white",
+                    "selection:bg-palette-blue selection:text-white",
                     "font-mono text-sm leading-relaxed",
                     "min-h-[calc(100vh-12rem)]"
                   )}

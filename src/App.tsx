@@ -445,7 +445,7 @@ function App() {
     return threads.find(t => t.id === activeThreadId);
   }, [threads, activeThreadId]);
 
-  // Fix handleFileUpload function
+  // Fix handleFileUpload function to not send file content to API
   const handleFileUpload = async (file: File) => {
     try {
       let content: string;
@@ -457,8 +457,24 @@ function App() {
         content = await getFileHandler(file);
       }
 
+      // Instead of sending to API, just update the thread with the file
       if (activeThreadId) {
-        handleSendMessage(content);
+        setThreads(prev => prev.map(thread => {
+          if (thread.id === activeThreadId) {
+            return {
+              ...thread,
+              files: [...thread.files, {
+                id: nanoid(),
+                name: file.name,
+                content,
+                type: file.type,
+                timestamp: Date.now()
+              }],
+              updatedAt: Date.now()
+            };
+          }
+          return thread;
+        }));
       }
     } catch (error) {
       console.error('File read error:', error);

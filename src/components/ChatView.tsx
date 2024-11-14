@@ -281,7 +281,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
       <audio ref={audioRef} className="hidden" />
 
       <div 
-        className="flex-shrink-0 p-2 absolute left-4 right-4 bottom-0 mb-4 bg-gray-50 rounded-xl"
+        className="flex-shrink-0 p-2 absolute left-4 right-4 bottom-0 mb-4 bg-accent/50 rounded-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="absolute right-4 -top-12 flex items-center gap-2">
@@ -299,8 +299,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
               <TooltipTrigger asChild>
                 <button
                   onClick={onOpenModelSelect}
-                  className="p-2 -mr-4 bg-gray-100 text-muted-foreground hover:text-foreground 
-                          hover:bg-accent rounded-md transition-colors 
+                  className="p-2 -mr-4 bg-accent/50 text-muted-foreground hover:text-foreground 
+                          hover:bg-accent rounded-xl transition-colors 
                            cursor-pointer"
                 >
                   <ModelIcon modelId={selectedModel} className="h-5 w-5" />
