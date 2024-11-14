@@ -97,18 +97,16 @@ const ThreadItem = ({
   return (
     <div
       className={cn(
-        "group flex items-center gap-2 px-3 py-2 rounded-xl cursor-pointer relative bg-accent-light border border-accent",
-        "hover:bg-accent hover:text-accent-foreground transition-colors",
+        "group flex items-center gap-2 px-3 py-2 rounded-xl cursor-pointer relative",
+        "hover:bg-accent/50 hover:text-accent-foreground transition-colors",
+        "border border-transparent hover:border-border",
         isDragging && "opacity-50",
-        isOverlay &&
-          "bg-background border border-border shadow-lg scale-105 rotate-2"
+        isOverlay && "bg-background border border-border shadow-lg scale-105 rotate-2"
       )}
-      style={
-        {
-          backgroundColor: thread.color ? `${thread.color}` : undefined,
-          color: thread.textColor || undefined,
-        } as React.CSSProperties
-      }
+      style={{
+        backgroundColor: thread.color || undefined,
+        color: thread.textColor || undefined,
+      }}
       onClick={() => !isOverlay && onThreadSelect(thread.id)}
       onDoubleClick={(e) => {
         e.stopPropagation();
@@ -119,7 +117,7 @@ const ThreadItem = ({
     >
       {activeThreadId === thread.id && (
         <div
-          className="absolute inset-0 rounded-xl pointer-events-none bg-accent border border-accent-light"
+          className="absolute inset-0 rounded-xl pointer-events-none bg-accent/50 border border-accent"
         />
       )}
 

@@ -397,7 +397,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                     : "Type a message"
               }
               disabled={disabled}
-              className={`h-[35px] resize-none rounded-xl text-sm shadow-none
+              className={`h-[35px] resize-none rounded-lg text-sm shadow-none
                        bg-background placeholder:text-muted-foreground selectable-text
                        ${selectedCommand ? 'border-primary' : ''}
                        ${isDiscussing && isPaused ? 'border-yellow-500' : ''}`}
@@ -408,7 +408,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           type="submit" 
           disabled={disabled || !message.trim()}
           size="icon"
-          className="rounded-xl shrink-0 h-[35px] w-[35px]"
+          className="rounded-lg shrink-0 h-[35px] w-[35px]"
         >
           <Send className="h-4 w-4" />
         </Button>

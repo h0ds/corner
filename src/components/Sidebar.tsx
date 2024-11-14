@@ -129,7 +129,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }, [threads, onNewNote]);
 
   return (
-    <div className="absolute inset-0 bg-card border-r border-border flex flex-col">
+    <div className="absolute inset-0 border-r border-accent flex flex-col">
       <div className="mt-1">
         <SidebarTabs
           activeTab={activeTab}
@@ -138,7 +138,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           noteCount={notes.length}
         />
         
-        <div className="p-2 border-b border-border">
+        <div className="px-2 py-1">
           <button
             onClick={activeTab === 'threads' ? props.onNewThread : handleCreateNote}
             className="w-full flex items-center gap-2 p-3 text-sm rounded-xl 

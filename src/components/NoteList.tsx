@@ -209,7 +209,8 @@ const SortableNoteItem: React.FC<SortableNoteItemProps> = ({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    zIndex: isDragging ? 999 : undefined,
+    backgroundColor: note.color || undefined,
+    color: note.textColor || undefined,
   };
 
   const handleFinishEdit = () => {
@@ -231,113 +232,93 @@ const SortableNoteItem: React.FC<SortableNoteItemProps> = ({
         <motion.div
           ref={setNodeRef}
           style={style}
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-          className={cn("relative", isDragging && "z-50")}
+          className={cn(
+            "group flex items-center gap-2 px-3 py-2 rounded-xl cursor-pointer relative",
+            "hover:bg-accent/50 hover:text-accent-foreground transition-colors",
+            "border border-transparent hover:border-border",
+            isDragging && "opacity-50"
+          )}
+          onClick={() => onNoteSelect(note.id)}
+          onDoubleClick={handleDoubleClick}
         >
-          <div
-            className={cn(
-              "group flex items-center gap-2 px-3 py-2 mb-2 rounded-xl cursor-pointer relative bg-accent-light border border-accent hover:bg-accent hover:text-accent-foreground transition-colors",
-              isDragging && "opacity-50"
+          {activeNoteId === note.id && (
+            <div
+              className="absolute inset-0 rounded-xl pointer-events-none bg-accent/50 border border-accent"
+            />
+          )}
+
+          <div className="relative z-10 flex items-center gap-2 w-full">
+            {hasChildren && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsCollapsed(!isCollapsed);
+                }}
+                className="p-1 hover:bg-accent rounded-md transition-colors"
+              >
+                <ChevronRight 
+                  className={cn(
+                    "h-4 w-4 transition-transform",
+                    !isCollapsed && "rotate-90"
+                  )} 
+                />
+              </button>
             )}
-            style={
-              {
-                backgroundColor: note.color ? `${note.color}4D` : undefined,
-                color: note.textColor || undefined,
-              } as React.CSSProperties
-            }
-            onClick={() => onNoteSelect(note.id)}
-            onDoubleClick={handleDoubleClick}
-          >
-            {activeNoteId === note.id && (
+
+            {note.icon ? (
               <div
-                className="absolute inset-0 rounded-xl pointer-events-none bg-accent border border-accent-light"
-                style={
-                  note.color
-                    ? {
-                        borderColor: note.color,
-                      }
-                    : {
-                        borderColor: "rgb(209 213 219)",
-                      }
-                }
-              />
+                {...listeners}
+                {...attributes}
+                className="touch-none cursor-grab transition-opacity"
+              >
+                <div className="h-4 w-4 shrink-0 text-muted-foreground -mt-2 mr-2">
+                  {note.icon}
+                </div>
+              </div>
+            ) : (
+              <div
+                {...listeners}
+                {...attributes}
+                className="touch-none cursor-grab opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground mr-2" />
+              </div>
             )}
 
-            <div className="relative z-10 flex items-center gap-2 w-full">
-              {hasChildren && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsCollapsed(!isCollapsed);
+            <div className="flex-1 truncate">
+              {isEditing ? (
+                <input
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onBlur={handleFinishEdit}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleFinishEdit();
+                    if (e.key === "Escape") {
+                      setEditValue(note.name);
+                      setIsEditing(false);
+                    }
                   }}
-                  className="p-1 hover:bg-accent rounded-md transition-colors"
-                >
-                  <ChevronRight 
-                    className={cn(
-                      "h-4 w-4 transition-transform",
-                      !isCollapsed && "rotate-90"
-                    )} 
-                  />
-                </button>
-              )}
-
-              {note.icon ? (
-                <div
-                  {...listeners}
-                  {...attributes}
-                  className="touch-none cursor-grab transition-opacity"
-                >
-                  <div className="h-4 w-4 shrink-0 text-muted-foreground -mt-2 mr-2">
-                    {note.icon}
-                  </div>
-                </div>
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-full bg-transparent border-none focus:outline-none text-sm"
+                  autoFocus
+                />
               ) : (
-                <div
-                  {...listeners}
-                  {...attributes}
-                  className="touch-none cursor-grab opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground mr-2" />
-                </div>
+                <span className="text-sm truncate select-none">
+                  {note.name}
+                </span>
               )}
+            </div>
 
-              <div className="flex-1 truncate">
-                {isEditing ? (
-                  <input
-                    value={editValue}
-                    onChange={(e) => setEditValue(e.target.value)}
-                    onBlur={handleFinishEdit}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") handleFinishEdit();
-                      if (e.key === "Escape") {
-                        setEditValue(note.name);
-                        setIsEditing(false);
-                      }
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                    className="w-full bg-transparent border-none focus:outline-none text-sm"
-                    autoFocus
-                  />
-                ) : (
-                  <span className="text-sm truncate select-none">
-                    {note.name}
-                  </span>
-                )}
-              </div>
-
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowDeleteDialog(true);
-                  }}
-                  className="opacity-0 group-hover:opacity-100 p-1 transition-all"
-                >
-                  <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
-                </button>
-              </div>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowDeleteDialog(true);
+                }}
+                className="opacity-0 group-hover:opacity-100 p-1 transition-all"
+              >
+                <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+              </button>
             </div>
           </div>
         </motion.div>
