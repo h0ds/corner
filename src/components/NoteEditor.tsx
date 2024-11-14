@@ -3,7 +3,7 @@ import { NoteThread, Thread } from '@/types';
 import { cn } from '@/lib/utils';
 import {
   Bold, Italic, Code as CodeIcon, Eye, ArrowLeft, Copy,
-  List, ListOrdered, Quote, Link, Image, Heading1, Heading2, Heading3, NotebookIcon, MessageSquare, Link2
+  List, ListOrdered, Quote, Link, Image, Heading1, Heading2, Heading3, MessageSquare, Link2
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -41,6 +41,13 @@ const CACHE_PREFIX = 'note_cache_';
 const CACHE_VERSION = 'v1';
 
 type ViewMode = 'edit' | 'preview';
+
+// Add CodeProps interface
+interface CodeProps extends React.HTMLAttributes<HTMLElement> {
+  inline?: boolean;
+  className?: string;
+  children: React.ReactNode;
+}
 
 export const NoteEditor: React.FC<NoteEditorProps> = ({
   note,
@@ -651,7 +658,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
                   placeholder="Start writing..."
                   padding={16}
                   style={{
-                    fontFamily: 'Space Mono, monospace',
+                    fontFamily: 'Geist, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif',
                     fontSize: '14px',
                     backgroundColor: 'transparent',
                     width: '100%',
@@ -660,7 +667,8 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
                   className={cn(
                     "w-full resize-none bg-transparent",
                     "focus:outline-none focus:ring-0 border-0",
-                    "selection:bg-black/30"
+                    "selection:bg-black/30",
+                    "[&_pre]:font-mono [&_code]:font-mono"
                   )}
                   onChange={(evn) => handleEditorChange(evn.target.value)}
                   onKeyDown={handleKeyDown}
@@ -681,7 +689,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
                   "prose prose-sm dark:prose-invert max-w-none",
                   // Custom heading styles
                   "prose-h1:text-2xl prose-h1:font-bold prose-h1:tracking-tight",
-                  "prose-h2:text-xl prose-h2:font-semibold prose-h2:tracking-tight",
+                  "prose-h2:text-xl prose-h2:font-semibold prose-h2:tracking-tight", 
                   "prose-h3:text-lg prose-h3:font-medium",
                   "prose-h4:text-base prose-h4:font-medium",
                   "prose-h5:text-sm prose-h5:font-medium",
@@ -689,18 +697,28 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
                   "prose-headings:mt-6 prose-headings:mb-4",
                   // Proper spacing after headings
                   "[&>h1+*]:!mt-4",
-                  "[&>h2+*]:!mt-4",
+                  "[&>h2+*]:!mt-4", 
                   "[&>h3+*]:!mt-3",
                   "[&>h4+*]:!mt-3",
                   "[&>h5+*]:!mt-2",
                   // Proper font for all headings
-                  "prose-headings:font-mono"
+                  "prose-headings:font-mono",
+                  // Better paragraph spacing
+                  "prose-p:my-4",
+                  "[&>p+p]:mt-6",
+                  "prose-p:leading-7",
+                  // Add more padding for list items
+                  "prose-ul:space-y-4",
+                  "prose-ol:space-y-4",
+                  "[&>ul]:mt-6",
+                  "[&>ol]:mt-6",
+                  "prose-li:mt-2"
                 )}>
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
                     components={{
                       // Handle code blocks
-                      code({node, inline, className, children, ...props}) {
+                      code: ({ node, inline, className, children, ...props }: CodeProps) => {
                         const match = /language-(\w+)/.exec(className || '');
                         const lang = match ? match[1] : '';
                         const code = String(children).replace(/\n$/, '');

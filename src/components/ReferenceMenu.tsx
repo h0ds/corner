@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Command } from 'cmdk';
 import { Thread } from '@/types';
 import { FileText, MessageSquare, Search } from 'lucide-react';
@@ -28,6 +28,7 @@ export const ReferenceMenu: React.FC<ReferenceMenuProps> = ({
   showThreadsOnly = false
 }) => {
   const cleanQuery = query.startsWith(':') ? query.slice(1) : query;
+  const [selectedIndex, setSelectedIndex] = useState(0);
 
   // Load and memoize threads
   const threads = useMemo(() => {
@@ -41,6 +42,8 @@ export const ReferenceMenu: React.FC<ReferenceMenuProps> = ({
 
         if (showThreadsOnly && thread.isNote) return false;
 
+        if (thread.isNote && linkedIds?.includes(thread.id)) return false;
+
         const nameMatch = thread.name.toLowerCase().includes(cleanQuery.toLowerCase());
         
         if (thread.isNote) {
@@ -52,11 +55,51 @@ export const ReferenceMenu: React.FC<ReferenceMenuProps> = ({
         );
       })
       .slice(0, 10);
-  }, [threads, currentThreadId, cleanQuery, showThreadsOnly]);
+  }, [threads, currentThreadId, cleanQuery, showThreadsOnly, linkedIds]);
+
+  // Reset selected index when query changes
+  useEffect(() => {
+    setSelectedIndex(0);
+  }, [cleanQuery]);
+
+  // Handle keyboard navigation
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (filteredThreads.length === 0) return;
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setSelectedIndex(i => (i + 1) % filteredThreads.length);
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setSelectedIndex(i => (i - 1 + filteredThreads.length) % filteredThreads.length);
+        break;
+      case 'Enter':
+        e.preventDefault();
+        onSelect(filteredThreads[selectedIndex]);
+        break;
+      case 'Escape':
+        e.preventDefault();
+        onClose();
+        break;
+      case 'Tab':
+        e.preventDefault();
+        if (e.shiftKey) {
+          setSelectedIndex(i => (i - 1 + filteredThreads.length) % filteredThreads.length);
+        } else {
+          setSelectedIndex(i => (i + 1) % filteredThreads.length);
+        }
+        break;
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={() => onClose()}>
-      <DialogContent className="max-w-[500px] gap-0 p-0">
+      <DialogContent 
+        className="max-w-[500px] gap-0 p-0"
+        onKeyDown={handleKeyDown}
+      >
         <Command className="rounded-md border shadow-md">
           <div className="flex items-center border-b px-3" cmdk-input-wrapper="">
             <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
@@ -70,7 +113,7 @@ export const ReferenceMenu: React.FC<ReferenceMenuProps> = ({
           </div>
           <Command.List className="max-h-[300px] overflow-y-auto p-2">
             {filteredThreads.length > 0 ? (
-              filteredThreads.map((thread) => (
+              filteredThreads.map((thread, index) => (
                 <Command.Item
                   key={thread.id}
                   onSelect={() => {
@@ -80,7 +123,8 @@ export const ReferenceMenu: React.FC<ReferenceMenuProps> = ({
                   className={cn(
                     "flex items-center gap-2 px-2 py-1.5 text-sm rounded-md cursor-default",
                     "hover:bg-accent hover:text-accent-foreground",
-                    linkedIds.includes(thread.id) && "opacity-50"
+                    linkedIds.includes(thread.id) && "opacity-50",
+                    index === selectedIndex && "bg-accent text-accent-foreground"
                   )}
                 >
                   {thread.isNote ? (

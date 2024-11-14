@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
-import { Thread, NoteThread, GraphNode, GraphEdge } from '@/types';
+import { Thread, GraphNode, GraphEdge } from '@/types';
 import ForceGraph2D from 'react-force-graph-2d';
 import { useTheme } from 'next-themes';
 
@@ -62,7 +62,7 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
         color: ${isDark ? '#000' : '#fff'};
         padding: 4px;
         max-width: 200px;
-        font-family: 'Space Mono', monospace;
+        font-family: 'Geist', monospace;
         font-size: 12px;
       ">
         <div style="font-weight: bold; margin-bottom: 4px;">${node.label}</div>
@@ -102,7 +102,7 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
         nodeCanvasObject={(node: any, ctx, globalScale) => {
           const label = node.label;
           const fontSize = 12/globalScale;
-          ctx.font = `${fontSize}px Space Mono`;
+          ctx.font = `${fontSize}px Geist`;
           const textWidth = ctx.measureText(label).width;
           const bckgDimensions = [textWidth, fontSize].map(n => n + fontSize * 0.8);
 

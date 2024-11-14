@@ -4,7 +4,7 @@
 
 @layer base {
     html {
-        font-family: 'Space Mono', monospace;
+        font-family: 'Geist', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
         -webkit-user-select: none;
         -moz-user-select: none;
         -ms-user-select: none;
@@ -68,7 +68,7 @@
     }
 
     .font-mono {
-        font-family: 'Space Mono', monospace;
+        font-family: 'Geist', monospace;
     }
 
     /* Rest of your CSS... */

@@ -22,6 +22,8 @@ interface ChatInputProps {
   isPaused?: boolean;
   allThreads: Thread[];
   currentThreadId: string;
+  onUpdateThreads?: (threads: Thread[]) => void;
+  onShowLinkedItems?: (noteId: string) => void;
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({ 
@@ -35,7 +37,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   isDiscussing,
   isPaused,
   allThreads,
-  currentThreadId
+  currentThreadId,
+  onUpdateThreads,
+  onShowLinkedItems,
 }) => {
   const [message, setMessage] = useState('');
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
@@ -169,8 +173,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     const newValue = e.target.value;
     setMessage(newValue);
 
+    const currentPosition = e.target.selectionStart ?? 0;
+
     if (mentionStartIndex !== null) {
-      const currentPosition = e.target.selectionStart;
       const textAfterMention = newValue.slice(mentionStartIndex + 1, currentPosition);
       
       if (textAfterMention.includes(' ') || currentPosition <= mentionStartIndex) {
@@ -182,7 +187,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     }
 
     if (commandStartIndex !== null) {
-      const currentPosition = e.target.selectionStart;
       const textAfterCommand = newValue.slice(commandStartIndex + 1, currentPosition);
       
       if (textAfterCommand.includes(' ') || currentPosition <= commandStartIndex) {
@@ -193,9 +197,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       }
     }
 
-    // Handle reference query
     if (referenceStartIndex !== null) {
-      const currentPosition = e.currentTarget.selectionStart;
       const textAfterTrigger = newValue.slice(referenceStartIndex + 1, currentPosition);
       
       if (textAfterTrigger.includes(' ') || currentPosition <= referenceStartIndex) {
@@ -307,13 +309,35 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   const handleReferenceSelect = (thread: Thread) => {
-    if (referenceStartIndex === null || !inputRef.current) return;
+    // If the selected thread is a note and we have threads to update
+    if (thread.isNote && allThreads && onUpdateThreads) {
+      const updatedThreads = allThreads.map(t => {
+        if (t.id === thread.id) {
+          // Ensure we don't duplicate links
+          const existingLinks = t.linkedNotes || [];
+          if (!existingLinks.includes(currentThreadId)) {
+            return {
+              ...t,
+              linkedNotes: [...existingLinks, currentThreadId],
+              updatedAt: Date.now(),
+            };
+          }
+        }
+        return t;
+      });
+      
+      // Update the threads in the parent component
+      onUpdateThreads(updatedThreads);
 
-    const before = message.slice(0, referenceStartIndex);
-    const after = message.slice(inputRef.current.selectionStart);
-    const reference = `[[${thread.name}]]`;
+      // Show the linked items panel for the note
+      onShowLinkedItems?.(thread.id);
 
-    setMessage(before + reference + after);
+      // Show a toast to confirm the link was created
+      toast({
+        description: `Linked to note: ${thread.name}`,
+        duration: 2000,
+      });
+    }
 
     // Reset reference state
     setShowReferenceMenu(false);

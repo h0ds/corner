@@ -959,7 +959,12 @@ function App() {
     if (activeThread?.isNote) {
       // Update note content with the file link
       const newContent = activeThread.content + `[[${fileName}]]`;
-      handleNoteUpdate(newContent);
+      const updatedNote: NoteThread = {
+        ...activeThread,
+        content: newContent,
+        updatedAt: Date.now()
+      };
+      handleNoteUpdate(updatedNote);
     }
     setShowFileLinkMenu(false);
   };

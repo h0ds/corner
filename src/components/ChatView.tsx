@@ -1,5 +1,5 @@
-import React from 'react';
-import { Message } from '@/types';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
+import { Message, Thread, ApiKeys } from '@/types';
 import { ChatMessage } from './ChatMessage';
 import { FilePreview } from './FilePreview';
 import { TypingIndicator } from './TypingIndicator';
@@ -13,7 +13,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { AVAILABLE_MODELS } from './ModelSelector';
-import { useEffect, useRef, useState, useMemo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useToast } from "@/hooks/use-toast";
 import { AudioControls } from './AudioControls';
@@ -78,7 +77,6 @@ export const ChatView: React.FC<ChatViewProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // Scroll to bottom when messages change or loading state changes
   useEffect(() => {
     scrollToBottom();
   }, [messages, loading]);
@@ -92,7 +90,6 @@ export const ChatView: React.FC<ChatViewProps> = ({
         audioRef.current.src = audioData;
         audioRef.current.onended = () => {
           setAudioPlaying(false);
-          // Clear the audio source to ensure complete cleanup
           audioRef.current!.src = '';
         };
         await audioRef.current.play();
@@ -102,7 +99,6 @@ export const ChatView: React.FC<ChatViewProps> = ({
         audioRef.current = audio;
         audio.onended = () => {
           setAudioPlaying(false);
-          // Clear the audio source to ensure complete cleanup
           audio.src = '';
         };
         await audio.play();
@@ -138,7 +134,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
-      audioRef.current.src = ''; // Clear the source
+      audioRef.current.src = '';
       setAudioPlaying(false);
     }
   };
@@ -150,110 +146,6 @@ export const ChatView: React.FC<ChatViewProps> = ({
       setAudioPlaying(true);
     }
   };
-
-  const handleSendMessage = async (message: string, overrideModel?: string) => {
-    if (isDiscussing && isDiscussionPaused) {
-      setIsDiscussionPaused(false);
-      handleStartDiscussion(message, overrideModel || selectedModel, selectedModel);
-      return;
-    }
-
-    setLoading(true);
-    
-    if (message && activeThreadId) {
-      const modelToUse = overrideModel || selectedModel;
-      
-      // Add timestamp to user message
-      const userMessage: Message = { 
-        role: 'user', 
-        content: message,
-        timestamp: Date.now()  // Add timestamp
-      };
-
-      setThreads(prev => prev.map(thread => {
-        if (thread.id === activeThreadId) {
-          return {
-            ...thread,
-            messages: [...thread.messages, userMessage],
-            lastUsedModel: modelToUse,
-            updatedAt: Date.now(),
-          };
-        }
-        return thread;
-      }));
-
-      try {
-        const model = AVAILABLE_MODELS.find(m => m.id === modelToUse);
-        if (!model) throw new Error('Invalid model selected');
-
-        const response = await invoke<ApiResponse>('send_message', {
-          request: {
-            message,
-            model: modelToUse,
-            provider: model.provider,
-            file_content: undefined,
-            file_name: undefined
-          }
-        });
-        
-        if (response.error) {
-          setThreads(prev => prev.map(thread => {
-            if (thread.id === activeThreadId) {
-              return {
-                ...thread,
-                messages: [...thread.messages, { 
-                  role: 'error', 
-                  content: response.error!,
-                  timestamp: Date.now()  // Add timestamp
-                }],
-                updatedAt: Date.now(),
-              };
-            }
-            return thread;
-          }));
-        } else if (response.content) {
-          const isAudioResponse = response.content.startsWith('data:audio/');
-          
-          setThreads(prev => prev.map(thread => {
-            if (thread.id === activeThreadId && !thread.isNote) {
-              return {
-                ...thread,
-                messages: [...thread.messages, { 
-                  role: 'assistant', 
-                  content: response.content!,
-                  modelId: modelToUse,
-                  citations: response.citations,
-                  isAudioResponse,
-                  timestamp: Date.now()  // Add timestamp
-                }],
-                updatedAt: Date.now(),
-              };
-            }
-            return thread;
-          }));
-        }
-      } catch (error) {
-        console.error('Failed to send message:', error);
-        toast({
-          variant: "destructive",
-          description: "Failed to send message",
-          duration: 2000,
-        });
-      }
-    }
-
-    setLoading(false);
-  };
-
-  // Update the sortedMessages useMemo to sort in chronological order (oldest first)
-  const sortedMessages = useMemo(() => {
-    // Sort by timestamp in ascending order (oldest first)
-    return [...messages].sort((a, b) => {
-      const timestampA = a.timestamp || 0;
-      const timestampB = b.timestamp || 0;
-      return timestampA - timestampB;  // Oldest first
-    });
-  }, [messages, activeThreadId]);
 
   const handleDeleteMessage = (timestamp: number, content: string) => {
     setMessageToDelete({ timestamp, content });
@@ -276,14 +168,10 @@ export const ChatView: React.FC<ChatViewProps> = ({
     setMessageToDelete(null);
   };
 
-  // Add effect to handle thread switching
   useEffect(() => {
     setIsLoadingThread(true);
-    
-    // Brief timeout to allow for visual feedback
     const timeout = setTimeout(() => {
       setIsLoadingThread(false);
-      // After loading, scroll to bottom
       if (containerRef.current) {
         containerRef.current.scrollTop = containerRef.current.scrollHeight;
       }
@@ -292,21 +180,40 @@ export const ChatView: React.FC<ChatViewProps> = ({
     return () => clearTimeout(timeout);
   }, [activeThreadId]);
 
-  // Add a new useEffect to handle scrolling when messages change
   useEffect(() => {
-    // Scroll to bottom whenever messages change
     if (containerRef.current && !isLoadingThread) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight;
     }
   }, [messages, isLoadingThread]);
 
-  // Add a new useEffect to handle initial scroll
   useEffect(() => {
-    // Initial scroll to bottom when component mounts
     if (containerRef.current) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight;
     }
-  }, []); // Empty dependency array for mount only
+  }, []);
+
+  // Sort messages by timestamp
+  const sortedMessages = useMemo(() => {
+    return [...messages].sort((a, b) => {
+      const timestampA = a.timestamp || 0;
+      const timestampB = b.timestamp || 0;
+      return timestampA - timestampB;
+    });
+  }, [messages]);
+
+  const handleShowLinkedItems = (noteId: string) => {
+    // Update the note to show its linked items panel
+    setThreads(prev => prev.map(thread => {
+      if (thread.id === noteId && thread.isNote) {
+        return {
+          ...thread,
+          showLinkedItems: true, // Add this flag to your Thread type if not already present
+          updatedAt: Date.now(),
+        };
+      }
+      return thread;
+    }));
+  };
 
   return (
     <>
@@ -427,6 +334,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
           isPaused={isDiscussionPaused}
           allThreads={allThreads}
           currentThreadId={activeThreadId}
+          onUpdateThreads={setThreads}
+          onShowLinkedItems={handleShowLinkedItems}
         />
       </div>
 

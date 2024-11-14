@@ -125,7 +125,10 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             
             if (inline) {
               return (
-                <code className="bg-muted px-1.5 py-0.5 rounded-md text-sm" {...props}>
+                <code 
+                  className="bg-muted px-1.5 py-0.5 rounded-md text-sm font-mono" 
+                  {...props}
+                >
                   {children}
                 </code>
               );
@@ -153,6 +156,8 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                     borderRadius: '2px',
                     padding: '1.25rem',
                     background: 'transparent',
+                    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+                    fontSize: '0.875rem',
                   }}
                   {...props}
                 >
@@ -161,7 +166,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
               </div>
             );
           },
-          p: ({children}) => <p className="mb-2 first:mt-1 last:mb-0 ">{children}</p>,
+          p: ({children}) => <p className="mb-4 text-sm first:mt-1 last:mb-0 ">{children}</p>,
           ul: ({children}) => <ul className="list-disc p-6 mb-6 last:mb-0 space-y-2">{children}</ul>,
           ol: ({children}) => <ol className="list-decimal px-8 py-6 last:mb-0 space-y-2">{children}</ol>,
           li: ({children}) => <li className="mb-2 last:mb-0">{children}</li>,
@@ -433,7 +438,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         </div>
 
         <div className={cn(
-          "space-y-2 overflow-hidden min-w-0",
+          "space-y-2 overflow-hidden min-w-0 font-sans",
           role === 'user' && 'text-right',
           role === 'system' && 'text-left',
           role === 'assistant' && 'text-left'

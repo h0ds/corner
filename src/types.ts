@@ -18,10 +18,11 @@ export interface Message {
 }
 
 export interface FileAttachment {
+  id: string;
   name: string;
   content: string;
-  timestamp: number;
   cacheId?: string;
+  type?: string;
 }
 
 export interface BaseThread {
@@ -136,4 +137,27 @@ export interface GraphEdge {
   id: string;
   source: string;
   target: string;
+}
+
+export interface Thread {
+  id: string;
+  name: string;
+  messages: Message[];
+  files: FileAttachment[];
+  createdAt: number;
+  updatedAt: number;
+  isPinned?: boolean;
+  color?: string;
+  icon?: string;
+  textColor?: string;
+  isNote?: boolean;
+  lastUsedModel?: string;
+  cachedFiles: string[];
+  linkedNotes: string[];
+}
+
+export interface NoteThread extends Omit<Thread, 'messages'> {
+  isNote: true;
+  content: string;
+  linkedNotes: string[];
 }

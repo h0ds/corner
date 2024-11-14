@@ -133,7 +133,7 @@ export const ApiKeys: React.FC<ApiKeysProps> = ({
       
       {/* Configured Providers */}
       <div className="space-y-2">
-        <Label>Enabled Models</Label>
+        <h2 className="text-lg font-medium">Enabled Models</h2>
         {configuredProviders.length > 0 ? (
           <div className="flex gap-2 items-center h-8">
             {configuredProviders.map(provider => (
@@ -162,7 +162,7 @@ export const ApiKeys: React.FC<ApiKeysProps> = ({
       </div>
 
       <div className="space-y-4">
-        <Label>Available Models</Label>
+        <h2 className="text-lg font-medium">Available Models</h2>
         <div className="space-y-2">
           <Label htmlFor="anthropic-key">Anthropic API Key</Label>
           <div className="flex items-center gap-2">
