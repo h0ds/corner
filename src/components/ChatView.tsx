@@ -24,6 +24,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { showToast } from '@/lib/toast';
 
 interface ChatViewProps {
   messages: Message[];
@@ -148,7 +149,17 @@ export const ChatView: React.FC<ChatViewProps> = ({
   };
 
   const handleDeleteMessage = (timestamp: number, content: string) => {
-    setMessageToDelete({ timestamp, content });
+    showToast.promise(
+      new Promise((resolve) => {
+        setMessageToDelete({ timestamp, content });
+        resolve(true);
+      }),
+      {
+        loading: 'Deleting message...',
+        success: 'Message deleted',
+        error: 'Failed to delete message'
+      }
+    );
   };
 
   const handleConfirmDelete = () => {
@@ -219,7 +230,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
     <>
       <div 
         ref={containerRef}
-        className="flex-1 p-6 overflow-y-auto pb-[100px] min-h-0"
+        className="flex-1 p-2 bg-accent-light rounded-xl border border-accent overflow-y-auto min-h-0"
       >
         <div className="flex flex-col space-y-6">
           <AnimatePresence mode="wait">
@@ -281,7 +292,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
       <audio ref={audioRef} className="hidden" />
 
       <div 
-        className="flex-shrink-0 p-2 absolute left-4 right-4 bottom-0 mb-4 bg-accent/50 rounded-xl"
+        className="flex-shrink-0 p-2 absolute left-3 right-3 bottom-0 mb-4 bg-accent-light border border-accent rounded-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="absolute right-4 -top-12 flex items-center gap-2">
@@ -299,8 +310,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
               <TooltipTrigger asChild>
                 <button
                   onClick={onOpenModelSelect}
-                  className="p-2 -mr-4 bg-accent/50 text-muted-foreground hover:text-foreground 
-                          hover:bg-accent rounded-xl transition-colors 
+                  className="p-1 -mr-4 bg-accent-light border border-accent text-muted-foreground hover:text-foreground 
+                          hover:bg-accent rounded-md transition-colors 
                            cursor-pointer"
                 >
                   <ModelIcon modelId={selectedModel} className="h-5 w-5" />

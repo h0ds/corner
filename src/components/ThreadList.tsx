@@ -1,41 +1,41 @@
 import React, { useState } from "react";
 import {
-    Trash2,
-    Pencil,
-    GripVertical,
-    FileText,
-    Pin,
-    Palette,
-    X,
-    SmilePlus, Type
+  Trash2,
+  Pencil,
+  GripVertical,
+  FileText,
+  Pin,
+  Palette,
+  X,
+  SmilePlus, Type
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { Thread } from "@/types";
 import {
-    ContextMenu,
-    ContextMenuContent,
-    ContextMenuItem,
-    ContextMenuTrigger,
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import {
-    DndContext,
-    closestCenter,
-    KeyboardSensor,
-    PointerSensor,
-    useSensor,
-    useSensors,
-    DragEndEvent,
-    DragStartEvent,
-    DragOverlay,
-    DragOverEvent,
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+  DragStartEvent,
+  DragOverlay,
+  DragOverEvent,
 } from "@dnd-kit/core";
 import {
-    arrayMove,
-    SortableContext,
-    sortableKeyboardCoordinates,
-    useSortable,
-    verticalListSortingStrategy,
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { FileViewer } from "./FileViewer";
@@ -97,7 +97,7 @@ const ThreadItem = ({
   return (
     <div
       className={cn(
-        "group flex items-center gap-2 px-3 py-2 rounded-xl cursor-pointer relative bg-gray-50",
+        "group flex items-center gap-2 px-3 py-2 rounded-xl cursor-pointer relative bg-accent-light border border-accent",
         "hover:bg-accent hover:text-accent-foreground transition-colors",
         isDragging && "opacity-50",
         isOverlay &&
@@ -119,18 +119,7 @@ const ThreadItem = ({
     >
       {activeThreadId === thread.id && (
         <div
-          className="absolute inset-0 rounded-xl pointer-events-none"
-          style={
-            thread.color
-              ? {
-                  borderColor: thread.color,
-                  backgroundColor: `${thread.color}dd` // Add 85% opacity to darken
-                }
-              : {
-                  borderColor: "rgb(209 213 219)", // gray-300
-                  backgroundColor: "rgb(229 231 235)" // gray-200 for slight darkening
-                }
-          }
+          className="absolute inset-0 rounded-xl pointer-events-none bg-accent border border-accent-light"
         />
       )}
 

@@ -7,13 +7,13 @@ import { motion } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { getFileHandler } from '@/lib/fileHandlers';
 import {
-    saveThread,
-    loadThreads,
-    deleteThread,
-    saveActiveThreadId,
-    loadActiveThreadId, saveSelectedModel,
-    loadSelectedModel,
-    saveThreadOrder
+  saveThread,
+  loadThreads,
+  deleteThread,
+  saveActiveThreadId,
+  loadActiveThreadId, saveSelectedModel,
+  loadSelectedModel,
+  saveThreadOrder
 } from '@/lib/storage';
 import { ModelIcon } from './components/ModelIcon';
 import { nanoid } from 'nanoid';
@@ -36,6 +36,7 @@ import { NoteEditor } from "./components/NoteEditor";
 import { Button } from "@/components/ui/button";
 import { loadApiKeys } from '@/lib/apiKeys';
 import { ApiKeys } from '@/types';
+import { Toaster } from '@/components/ui/sonner';
 
 interface ApiResponse {
   content?: string;
@@ -448,6 +449,7 @@ function App() {
   // Fix handleFileUpload function to not send file content to API
   const handleFileUpload = async (file: File) => {
     try {
+      const id = toast.loading('Reading file...');
       let content: string;
       const nativeFile = file as any;
       
@@ -457,7 +459,6 @@ function App() {
         content = await getFileHandler(file);
       }
 
-      // Instead of sending to API, just update the thread with the file
       if (activeThreadId) {
         setThreads(prev => prev.map(thread => {
           if (thread.id === activeThreadId) {
@@ -475,14 +476,12 @@ function App() {
           }
           return thread;
         }));
+        toast.dismiss(id);
+        toast.success('File uploaded successfully');
       }
     } catch (error) {
       console.error('File read error:', error);
-      toast({
-        variant: "destructive",
-        description: "Failed to read file content",
-        duration: 2000,
-      });
+      toast.error('Failed to read file');
     }
   };
 
@@ -1294,245 +1293,251 @@ function App() {
   };
 
   return (
-    <div className="flex h-screen bg-background/50 backdrop-blur-sm overflow-hidden">
-      <TitleBar />
-      <div className="relative flex h-screen w-full border-t border-border">
-        {/* Sidebar with animation */}
-        <motion.div
-          initial={false}
-          animate={{
-            width: sidebarVisible ? Math.max(250, sidebarWidth) : '0px',
-            opacity: sidebarVisible ? 1 : 0,
-          }}
-          transition={{ duration: 0.2 }}
-          className="relative shrink-0"
-          style={{
-            minWidth: sidebarVisible ? '250px' : '0px',
-          }}
-        >
-          {sidebarVisible && (
-            <ResizeObserver
-              onResize={(entry) => {
-                const width = entry.contentRect.width;
-                setSidebarWidth(width);
-                
-                if (width < 250 || window.innerWidth < 500) {
-                  setSidebarVisible(false);
-                }
-              }}
-            >
-              <div className="h-full relative" style={{ width: '100%' }}>
-                <Sidebar
-                  threads={threads}
-                  activeThreadId={activeThreadId}
-                  onThreadSelect={handleThreadSelect}
-                  onNewThread={() => handleNewThread(false)}
-                  onNewNote={handleNewNote}
-                  onDeleteThread={handleDeleteThread}
-                  onRenameThread={handleRenameThread}
-                  onReorderThreads={handleReorderThreads}
-                  onTogglePin={handleTogglePin}
-                  onColorChange={handleThreadColorChange}
-                  onIconChange={handleThreadIconChange}
-                  onTextColorChange={handleThreadTextColorChange}
-                  initialTab={activeTab}
-                />
-                <Footer 
-                  files={activeThread?.files || []}
-                  threads={threads}
-                  onFileSelect={handleFileUpload}
-                  onFileDelete={handleFileDelete}
-                  onShowKnowledgeGraph={() => setView('graph')}
-                  onShowSearch={() => setShowSearch(true)}
-                  onShowPreferences={() => setShowPreferences(true)}
-                />
-              </div>
-            </ResizeObserver>
-          )}
-        </motion.div>
-
-        {/* Main content */}
-        <div className="flex-1 flex flex-col min-w-0">
-          <div className="flex flex-col h-full relative bg-background">
-            {activeThread && !activeThread.isNote && view !== 'graph' && (
-              <ThreadHeader
-                thread={activeThread}
-                onRename={(newName) => handleRenameThread(activeThread.id, newName)}
-                onIconChange={(newIcon) => handleThreadIconChange(activeThread.id, newIcon)}
-              />
-            )}
-            <main 
-              ref={chatContainerRef}
-              className={cn(
-                "flex-1 overflow-y-auto min-w-0",
-                activeThread?.isNote ? "mt-0" : "mt-11",
-                "transition-spacing duration-200", 
-                !activeThread?.isNote && view === 'thread' && "flex flex-col h-full"
-              )}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {view === 'graph' ? (
-                <KnowledgeGraph 
-                  threads={threads} 
-                  onNodeClick={handleKnowledgeGraphNodeClick}
-                />
-              ) : activeThread ? (
-                activeThread.isNote ? (
-                  <NoteEditor 
-                    note={activeThread as NoteThread}
-                    onUpdate={handleNoteUpdate}
-                    initialContent={activeThread.content}
-                    allNotes={threads.filter((t): t is NoteThread => t.isNote === true)}
-                    onNavigateBack={handleNavigateBack}
-                    navigationStack={noteNavigationStack}
-                    onLinkNotes={handleLinkNotes}
-                    onNavigateToNote={(noteId) => {
-                      setActiveThreadId(noteId);
-                      setNoteNavigationStack(prev => [...prev, activeThreadId!]);
-                    }}
-                    allThreads={threads}
-                    selectedModel={selectedModel}
-                    showTTS={!!apiKeys.elevenlabs}
-                    onSplitToNote={handleSplitToNote}
-                  />
-                ) : (
-                  <ChatView
-                    messages={messages}
-                    loading={loading}
-                    clearHistoryShortcut={clearHistoryShortcut}
-                    isDiscussing={isDiscussing}
-                    selectedModel={selectedModel}
-                    isDiscussionPaused={isDiscussionPaused}
-                    apiKeys={apiKeys}
-                    activeThreadId={activeThreadId}
-                    setThreads={setThreads}
-                    onStopDiscussion={handleStopDiscussion}
-                    onOpenModelSelect={() => {
-                      setPreferenceTab('models');
-                      setShowPreferences(true);
-                    }}
-                    onSendMessage={handleSendMessage}
-                    onCompareModels={handleCompareModels}
-                    onStartDiscussion={handleStartDiscussion}
-                    onClearThread={clearCurrentThread}
-                    onShowPreferences={() => setShowPreferences(true)}
-                  />
-                )
-              ) : (
-                <div className="text-center text-muted-foreground/40 mt-1 text-sm tracking-tighter">
-                  Select a thread or note to begin
-                </div>
-              )}
-            </main>
-          </div>
-        </div>
-
-        <Preferences
-          isOpen={showPreferences}
-          onClose={() => setShowPreferences(false)}
-          selectedModel={selectedModel}
-          onModelChange={setSelectedModel}
-          initialTab={preferenceTab}
-          plugins={plugins}
-          onPluginChange={setPlugins}
-        />
-
-        {/* Add FilePreview dialog */}
-        {showFilePreview && previewFile && (
-          <Dialog open={showFilePreview} onOpenChange={setShowFilePreview}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{previewFile.name}</DialogTitle>
-              </DialogHeader>
-              <FilePreview
-                fileName={previewFile.name}
-                content={previewFile.content}
-                showToggle={false}
-                defaultExpanded={true}
-              />
-            </DialogContent>
-          </Dialog>
-        )}
-
-        {/* Add FileLinkMenu dialog */}
-        {showFileLinkMenu && activeThread?.isNote && (
-          <Dialog open={showFileLinkMenu} onOpenChange={setShowFileLinkMenu}>
-            <DialogContent className="sm:max-w-[500px]">
-              <DialogHeader>
-                <DialogTitle>Link File</DialogTitle>
-              </DialogHeader>
-              <FileLinkMenu
-                query={fileLinkQuery}
-                files={activeThread.files}
-                onSelect={handleFileLinkSelect}
-                onClose={() => setShowFileLinkMenu(false)}
-              />
-            </DialogContent>
-          </Dialog>
-        )}
-
-        {showSearch && (
-          <SearchPanel
-            threads={threads}
-            onClose={() => setShowSearch(false)}
-            onThreadSelect={(threadId) => {
-              const thread = threads.find(t => t.id === threadId);
-              if (thread) {
-                setActiveThreadId(threadId);
-                setView(thread.isNote ? 'note' : 'thread');
-              }
-              setShowSearch(false);
+    <>
+      <div className="flex h-screen backdrop-blur-sm overflow-hidden">
+        <TitleBar />
+        <div className="relative flex h-screen w-full border-t border-border">
+          {/* Sidebar with animation */}
+          <motion.div
+            initial={false}
+            animate={{
+              width: sidebarVisible ? Math.max(250, sidebarWidth) : '0px',
+              opacity: sidebarVisible ? 1 : 0,
             }}
-          />
-        )}
-
-        {/* Delete confirmation dialog */}
-        <Dialog 
-          open={showDeleteConfirm} 
-          onOpenChange={(open) => {
-            if (!open) {
-              setThreadToDelete(null);
-              setShowDeleteConfirm(false);
-            }
-          }}
-        >
-          <DialogContent onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              handleDeleteConfirm();
-            }
-          }}>
-            <DialogHeader>
-              <DialogTitle>
-                Delete {threads.find(t => t.id === threadToDelete)?.isNote ? 'Note' : 'Thread'}
-              </DialogTitle>
-            </DialogHeader>
-            <p className="text-sm text-muted-foreground">
-              Are you sure you want to delete this {threads.find(t => t.id === threadToDelete)?.isNote ? 'note' : 'thread'}? 
-              This action cannot be undone.
-            </p>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setThreadToDelete(null);
-                  setShowDeleteConfirm(false);
+            transition={{ duration: 0.2 }}
+            className="relative shrink-0"
+            style={{
+              minWidth: sidebarVisible ? '250px' : '0px',
+            }}
+          >
+            {sidebarVisible && (
+              <ResizeObserver
+                onResize={(entry) => {
+                  const width = entry.contentRect.width;
+                  setSidebarWidth(width);
+                  
+                  if (width < 250 || window.innerWidth < 500) {
+                    setSidebarVisible(false);
+                  }
                 }}
               >
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={handleDeleteConfirm}
-                autoFocus
+                <div className="h-full relative" style={{ width: '100%' }}>
+                  <Sidebar
+                    threads={threads}
+                    activeThreadId={activeThreadId}
+                    onThreadSelect={handleThreadSelect}
+                    onNewThread={() => handleNewThread(false)}
+                    onNewNote={handleNewNote}
+                    onDeleteThread={handleDeleteThread}
+                    onRenameThread={handleRenameThread}
+                    onReorderThreads={handleReorderThreads}
+                    onTogglePin={handleTogglePin}
+                    onColorChange={handleThreadColorChange}
+                    onIconChange={handleThreadIconChange}
+                    onTextColorChange={handleThreadTextColorChange}
+                    initialTab={activeTab}
+                  />
+                  <Footer 
+                    files={activeThread?.files || []}
+                    threads={threads}
+                    onFileSelect={handleFileUpload}
+                    onFileDelete={handleFileDelete}
+                    onShowKnowledgeGraph={() => setView('graph')}
+                    onShowSearch={() => setShowSearch(true)}
+                    onShowPreferences={() => setShowPreferences(true)}
+                  />
+                </div>
+              </ResizeObserver>
+            )}
+          </motion.div>
+
+          {/* Main content */}
+          <div className="flex-1 flex flex-col min-w-0">
+            <div className="flex flex-col h-full relative">
+              <main 
+                ref={chatContainerRef}
+                className={cn(
+                  "flex-1 overflow-y-auto min-w-0",
+                  "transition-spacing duration-200", 
+                  !activeThread?.isNote && view === 'thread' && "flex flex-col h-full mb-20 mt-16 mx-3 bg-accent rounded-xl"
+                )}
+                onClick={(e) => e.stopPropagation()}
               >
-                Delete
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+                {activeThread && !activeThread.isNote && view !== 'graph' && (
+                  <ThreadHeader
+                    thread={activeThread}
+                    onRename={(newName) => handleRenameThread(activeThread.id, newName)}
+                    onIconChange={(newIcon) => handleThreadIconChange(activeThread.id, newIcon)}
+                  />
+                )}
+                {view === 'graph' ? (
+                  <KnowledgeGraph 
+                    threads={threads} 
+                    onNodeClick={handleKnowledgeGraphNodeClick}
+                  />
+                ) : activeThread ? (
+                  activeThread.isNote ? (
+                    <NoteEditor 
+                      note={activeThread as NoteThread}
+                      onUpdate={handleNoteUpdate}
+                      initialContent={activeThread.content}
+                      allNotes={threads.filter((t): t is NoteThread => t.isNote === true)}
+                      onNavigateBack={handleNavigateBack}
+                      navigationStack={noteNavigationStack}
+                      onLinkNotes={handleLinkNotes}
+                      onNavigateToNote={(noteId) => {
+                        setActiveThreadId(noteId);
+                        setNoteNavigationStack(prev => [...prev, activeThreadId!]);
+                      }}
+                      allThreads={threads}
+                      selectedModel={selectedModel}
+                      showTTS={!!apiKeys.elevenlabs}
+                      onSplitToNote={handleSplitToNote}
+                    />
+                  ) : (
+                    <ChatView
+                      messages={messages}
+                      loading={loading}
+                      clearHistoryShortcut={clearHistoryShortcut}
+                      isDiscussing={isDiscussing}
+                      selectedModel={selectedModel}
+                      isDiscussionPaused={isDiscussionPaused}
+                      apiKeys={apiKeys}
+                      activeThreadId={activeThreadId}
+                      setThreads={setThreads}
+                      onStopDiscussion={handleStopDiscussion}
+                      onOpenModelSelect={() => {
+                        setPreferenceTab('models');
+                        setShowPreferences(true);
+                      }}
+                      onSendMessage={handleSendMessage}
+                      onCompareModels={handleCompareModels}
+                      onStartDiscussion={handleStartDiscussion}
+                      onClearThread={clearCurrentThread}
+                      onShowPreferences={() => setShowPreferences(true)}
+                    />
+                  )
+                ) : (
+                  <div className="text-center text-muted-foreground/40 mt-1 text-sm tracking-tighter">
+                    Select a thread or note to begin
+                  </div>
+                )}
+              </main>
+            </div>
+          </div>
+
+          <Preferences
+            isOpen={showPreferences}
+            onClose={() => setShowPreferences(false)}
+            selectedModel={selectedModel}
+            onModelChange={setSelectedModel}
+            initialTab={preferenceTab}
+            plugins={plugins}
+            onPluginChange={setPlugins}
+          />
+
+          {/* Add FilePreview dialog */}
+          {showFilePreview && previewFile && (
+            <Dialog open={showFilePreview} onOpenChange={setShowFilePreview}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>{previewFile.name}</DialogTitle>
+                </DialogHeader>
+                <FilePreview
+                  fileName={previewFile.name}
+                  content={previewFile.content}
+                  showToggle={false}
+                  defaultExpanded={true}
+                />
+              </DialogContent>
+            </Dialog>
+          )}
+
+          {/* Add FileLinkMenu dialog */}
+          {showFileLinkMenu && activeThread?.isNote && (
+            <Dialog open={showFileLinkMenu} onOpenChange={setShowFileLinkMenu}>
+              <DialogContent className="sm:max-w-[500px]">
+                <DialogHeader>
+                  <DialogTitle>Link File</DialogTitle>
+                </DialogHeader>
+                <FileLinkMenu
+                  query={fileLinkQuery}
+                  files={activeThread.files}
+                  onSelect={handleFileLinkSelect}
+                  onClose={() => setShowFileLinkMenu(false)}
+                />
+              </DialogContent>
+            </Dialog>
+          )}
+
+          {showSearch && (
+            <SearchPanel
+              threads={threads}
+              onClose={() => setShowSearch(false)}
+              onThreadSelect={(threadId) => {
+                const thread = threads.find(t => t.id === threadId);
+                if (thread) {
+                  setActiveThreadId(threadId);
+                  setView(thread.isNote ? 'note' : 'thread');
+                }
+                setShowSearch(false);
+              }}
+            />
+          )}
+
+          {/* Delete confirmation dialog */}
+          <Dialog 
+            open={showDeleteConfirm} 
+            onOpenChange={(open) => {
+              if (!open) {
+                setThreadToDelete(null);
+                setShowDeleteConfirm(false);
+              }
+            }}
+          >
+            <DialogContent onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleDeleteConfirm();
+              }
+            }}>
+              <DialogHeader>
+                <DialogTitle>
+                  Delete {threads.find(t => t.id === threadToDelete)?.isNote ? 'Note' : 'Thread'}
+                </DialogTitle>
+              </DialogHeader>
+              <p className="text-sm text-muted-foreground">
+                Are you sure you want to delete this {threads.find(t => t.id === threadToDelete)?.isNote ? 'note' : 'thread'}? 
+                This action cannot be undone.
+              </p>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setThreadToDelete(null);
+                    setShowDeleteConfirm(false);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteConfirm}
+                  autoFocus
+                >
+                  Delete
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
-    </div>
+      <Toaster 
+        position="bottom-right"
+        className="!bg-background !opacity-100 !backdrop-blur-sm !rounded-xl !shadow-lg"
+        theme="system"
+      />
+    </>
   );
 }
 

@@ -16,13 +16,13 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
   noteCount,
 }) => {
   return (
-    <div className="flex w-full border-b border-border h-[40px]">
+    <div className="flex w-full py-1 px-2 gap-1">
       <button
         onClick={() => onTabChange('threads')}
         className={cn(
-          "flex flex-1 items-center justify-center gap-2 px-3 py-2 text-sm border-b-2 transition-colors",
+          "flex flex-1 items-center justify-center gap-2 px-3 py-2 text-sm transition-colors bg-accent-light rounded-xl",
           activeTab === 'threads'
-            ? "border-primary text-foreground"
+            ? "bg-accent text-foreground border border-border"
             : "border-transparent text-muted-foreground hover:text-foreground"
         )}
       >
@@ -35,9 +35,9 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
       <button
         onClick={() => onTabChange('notes')}
         className={cn(
-          "flex flex-1 items-center justify-center gap-2 px-3 py-2 text-sm border-b-2 transition-colors",
+          "flex flex-1 items-center justify-center gap-2 px-3 py-2 text-sm transition-colors bg-accent-light rounded-xl",
           activeTab === 'notes'
-            ? "border-primary text-foreground"
+            ? "bg-accent text-foreground border border-border"
             : "border-transparent text-muted-foreground hover:text-foreground"
         )}
       >

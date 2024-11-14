@@ -89,6 +89,7 @@
         --muted: 210 40% 96.1%;
         --muted-foreground: 215.4 16.3% 46.9%;
         --accent: 210 40% 96.1%;
+        --accent-light: 210 40% 98.1%;
         --accent-foreground: 222.2 47.4% 11.2%;
         --destructive: 0 84.2% 60.2%;
         --destructive-foreground: 210 40% 98%;
@@ -160,4 +161,56 @@
 
 .serif-text {
     font-family: var(--font-serif);
+}
+
+/* Update these styles for Sonner toasts */
+[data-sonner-toaster] {
+  --border: var(--border);
+  --background: var(--background);
+  --foreground: var(--foreground);
+}
+
+[data-sonner-toaster][data-theme='light'] {
+  --border: hsl(var(--border));
+  --background: hsl(var(--background));
+  --foreground: hsl(var(--foreground));
+}
+
+[data-sonner-toast] {
+  background: hsl(var(--background)) !important;
+  border: 1px solid hsl(var(--border));
+  color: hsl(var(--foreground));
+  @apply font-mono text-sm rounded-xl shadow-lg;
+}
+
+[data-sonner-toast][data-type='success'] {
+  background: hsl(var(--success)) !important;
+  border-color: hsl(var(--success));
+  color: hsl(var(--success-foreground));
+}
+
+[data-sonner-toast][data-type='error'] {
+  background: hsl(var(--destructive)) !important;
+  border-color: hsl(var(--destructive));
+  color: hsl(var(--destructive-foreground));
+}
+
+[data-sonner-toast][data-type='loading'] {
+  background: hsl(var(--muted)) !important;
+  border-color: hsl(var(--border));
+  color: hsl(var(--muted-foreground));
+}
+
+.sonner-loading-wrapper {
+  @apply bg-background rounded-xl p-2;
+}
+
+.sonner-toast-container {
+  @apply bg-background rounded-xl border border-border p-2;
+}
+
+/* Add this to ensure toasts are fully opaque */
+.sonner-toast {
+  background-color: hsl(var(--background)) !important;
+  backdrop-filter: none !important;
 }

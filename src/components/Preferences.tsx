@@ -23,6 +23,7 @@ import { Actions, Action } from './preferences/Actions';
 import { Storage } from './preferences/Storage';
 import { Database } from 'lucide-react';
 import { VoiceSettings } from './preferences/VoiceSettings';
+import { showToast } from '@/lib/toast';
 
 interface PreferencesProps {
   isOpen: boolean;
@@ -202,34 +203,46 @@ export const Preferences: React.FC<PreferencesProps> = ({
   };
 
   const handleSave = async () => {
-    setSaving(true);
-    setError(null);
-    
-    try {
-      await invoke('set_api_keys', { 
-        anthropic: keys.anthropic || null,
-        perplexity: keys.perplexity || null,
-        openai: keys.openai || null,
-        xai: keys.xai || null,
-        google: keys.google || null,
-        elevenlabs: keys.elevenlabs || null
-      });
+    showToast.promise(
+      (async () => {
+        setSaving(true);
+        setError(null);
+        
+        try {
+          await invoke('set_api_keys', { 
+            anthropic: keys.anthropic || null,
+            perplexity: keys.perplexity || null,
+            openai: keys.openai || null,
+            xai: keys.xai || null,
+            google: keys.google || null,
+            elevenlabs: keys.elevenlabs || null
+          });
 
-      const verifyPromises = Object.entries(keys)
-        .filter(([type, value]) => value && verificationStatus[type as keyof typeof verificationStatus] === 'idle')
-        .map(([type, value]) => verifyKey(type as keyof ApiKeys, value));
+          const verifyPromises = Object.entries(keys)
+            .filter(([type, value]) => value && verificationStatus[type as keyof typeof verificationStatus] === 'idle')
+            .map(([type, value]) => verifyKey(type as keyof ApiKeys, value));
 
-      await Promise.all(verifyPromises);
-      
-      if (!Object.values(verificationStatus).some(status => status === 'error')) {
-        onClose();
+          await Promise.all(verifyPromises);
+          
+          if (!Object.values(verificationStatus).some(status => status === 'error')) {
+            onClose();
+            return true;
+          }
+          throw new Error('Some API keys failed verification');
+        } catch (err) {
+          setError('Failed to save API keys');
+          console.error(err);
+          throw err;
+        } finally {
+          setSaving(false);
+        }
+      })(),
+      {
+        loading: 'Saving API keys...',
+        success: 'API keys saved successfully',
+        error: 'Failed to save API keys'
       }
-    } catch (err) {
-      setError('Failed to save API keys');
-      console.error(err);
-    } finally {
-      setSaving(false);
-    }
+    );
   };
 
   const tabs: { id: PreferenceTab; label: string; icon: React.ReactNode }[] = [

@@ -9,6 +9,7 @@ import { exit } from '@tauri-apps/plugin-process';
 import { useToast } from "@/hooks/use-toast";
 import { ReferenceMenu } from './ReferenceMenu';
 import { Thread } from '@/types';
+import { showToast } from '@/lib/toast';
 
 interface ChatInputProps {
   onSendMessage: (message: string, overrideModel?: string) => void;
@@ -309,40 +310,34 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   const handleReferenceSelect = (thread: Thread) => {
-    // If the selected thread is a note and we have threads to update
     if (thread.isNote && allThreads && onUpdateThreads) {
-      const updatedThreads = allThreads.map(t => {
-        if (t.id === thread.id) {
-          // Ensure we don't duplicate links
-          const existingLinks = t.linkedNotes || [];
-          if (!existingLinks.includes(currentThreadId)) {
-            return {
-              ...t,
-              linkedNotes: [...existingLinks, currentThreadId],
-              updatedAt: Date.now(),
-            };
-          }
+      showToast.promise(
+        new Promise((resolve) => {
+          const updatedThreads = allThreads.map(t => {
+            if (t.id === thread.id) {
+              const existingLinks = t.linkedNotes || [];
+              if (!existingLinks.includes(currentThreadId)) {
+                return {
+                  ...t,
+                  linkedNotes: [...existingLinks, currentThreadId],
+                  updatedAt: Date.now(),
+                };
+              }
+            }
+            return t;
+          });
+          
+          onUpdateThreads(updatedThreads);
+          onShowLinkedItems?.(thread.id);
+          resolve(true);
+        }),
+        {
+          loading: 'Linking note...',
+          success: `Linked to note: ${thread.name}`,
+          error: 'Failed to link note'
         }
-        return t;
-      });
-      
-      // Update the threads in the parent component
-      onUpdateThreads(updatedThreads);
-
-      // Show the linked items panel for the note
-      onShowLinkedItems?.(thread.id);
-
-      // Show a toast to confirm the link was created
-      toast({
-        description: `Linked to note: ${thread.name}`,
-        duration: 2000,
-      });
+      );
     }
-
-    // Reset reference state
-    setShowReferenceMenu(false);
-    setReferenceQuery('');
-    setReferenceStartIndex(null);
   };
 
   return (
@@ -371,7 +366,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         <div className="flex-1 flex flex-col gap-1">
           {selectedCommand && (
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span className="bg-accent/50 px-1.5 py-0.5 rounded-xl">
+              <span className="bg-accent-light px-1.5 py-0.5 rounded-xl">
                 {selectedCommand}
               </span>
               <button

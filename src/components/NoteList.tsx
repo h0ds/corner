@@ -238,8 +238,7 @@ const SortableNoteItem: React.FC<SortableNoteItemProps> = ({
         >
           <div
             className={cn(
-              "group flex items-center gap-2 px-3 py-2 mb-2 rounded-xl cursor-pointer relative bg-gray-50",
-              "hover:bg-accent hover:text-accent-foreground transition-colors",
+              "group flex items-center gap-2 px-3 py-2 mb-2 rounded-xl cursor-pointer relative bg-accent-light border border-accent hover:bg-accent hover:text-accent-foreground transition-colors",
               isDragging && "opacity-50"
             )}
             style={
@@ -253,7 +252,7 @@ const SortableNoteItem: React.FC<SortableNoteItemProps> = ({
           >
             {activeNoteId === note.id && (
               <div
-                className="absolute inset-0 rounded-xl pointer-events-none !bg-gray-200"
+                className="absolute inset-0 rounded-xl pointer-events-none bg-accent border border-accent-light"
                 style={
                   note.color
                     ? {

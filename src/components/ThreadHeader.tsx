@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
-import { Input } from './ui/input';
 import { Thread } from '@/types';
-import { cn } from '@/lib/utils';
 
 interface ThreadHeaderProps {
   thread: Thread;
@@ -32,10 +30,9 @@ export const ThreadHeader: React.FC<ThreadHeaderProps> = ({
 
   return (
     <div 
-      className={cn(
-        "absolute top-0 left-0 right-0 flex items-center justify-between p-3",
-        "border-border border-b z-10 h-[40px]" 
-      )}
+      className={
+        "absolute top-0 left-0 right-0 flex items-center justify-between m-3 rounded-xl font-geist tracking-tighter leading-tighter bg-accent-light border border-accent z-10 h-[40px]" 
+      }
     >
       {/* Empty div for left side */}
       <div className="w-8" />
@@ -43,7 +40,7 @@ export const ThreadHeader: React.FC<ThreadHeaderProps> = ({
       {/* Centered name */}
       <div>
         {isEditing ? (
-          <Input
+          <input
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
             onBlur={handleFinishEdit}
@@ -51,19 +48,13 @@ export const ThreadHeader: React.FC<ThreadHeaderProps> = ({
               if (e.key === 'Enter') handleFinishEdit();
               if (e.key === 'Escape') setIsEditing(false);
             }}
-            className={cn(
-              "h-8 text-sm text-center font-medium",
-              "border-none"
-            )}
+            className={
+              "h-8 text-center bg-transparent border-none outline-none"
+            }
             autoFocus
           />
         ) : (
           <h1 
-            className={cn(
-              "text-sm cursor-pointer hover:text-foreground/80",
-              "font-geist tracking-tighter leading-tighter",
-              "transition-colors"
-            )}
             onDoubleClick={handleDoubleClick}
             title="Double click to edit name"
           >

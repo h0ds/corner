@@ -63,16 +63,27 @@ export const NoteContextMenu: React.FC<NoteContextMenuProps> = ({
       <ContextMenuTrigger 
         onContextMenu={handleContextMenu} 
         className="w-full h-full"
+        style={{
+          display: 'block',
+          position: 'relative',
+          minHeight: '100%'
+        }}
       >
         {children}
       </ContextMenuTrigger>
       
-      <ContextMenuContent>
+      <ContextMenuContent
+        style={{
+          zIndex: 1000,
+          position: 'fixed'
+        }}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
         {(getSelectedText() !== '') && (
           <>
             <ContextMenuItem
               onClick={() => handleMenuItemClick('copy')}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 cursor-pointer"
             >
               <Copy className="h-4 w-4" />
               <span>Copy</span>
@@ -80,7 +91,7 @@ export const NoteContextMenu: React.FC<NoteContextMenuProps> = ({
 
             <ContextMenuItem
               onClick={() => handleMenuItemClick('ask')}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 cursor-pointer"
             >
               <MessageSquare className="h-4 w-4" />
               <span>Ask AI</span>
@@ -89,7 +100,7 @@ export const NoteContextMenu: React.FC<NoteContextMenuProps> = ({
             {showTTS && onConvertToSpeech && (
               <ContextMenuItem
                 onClick={() => handleMenuItemClick('speech')}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 cursor-pointer"
               >
                 <Volume2 className="h-4 w-4" />
                 <span>Convert to Speech</span>
@@ -99,7 +110,7 @@ export const NoteContextMenu: React.FC<NoteContextMenuProps> = ({
             {onSplitToNote && (
               <ContextMenuItem
                 onClick={() => handleMenuItemClick('split')}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 cursor-pointer"
               >
                 <Scissors className="h-4 w-4" />
                 <span>Split to New Note</span>

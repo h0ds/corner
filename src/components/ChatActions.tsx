@@ -7,6 +7,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { showToast } from '@/lib/toast';
 
 interface ChatActionsProps {
   onConvertToSpeech?: (text: string) => Promise<void>;
@@ -28,10 +29,10 @@ export const ChatActions: React.FC<ChatActionsProps> = ({
   const copyToClipboard = async () => {
     try {
       await navigator.clipboard.writeText(content);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      showToast.success('Copied to clipboard');
     } catch (err) {
       console.error('Failed to copy:', err);
+      showToast.error('Failed to copy to clipboard');
     }
   };
 

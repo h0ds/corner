@@ -34,7 +34,7 @@ export const Footer: React.FC<FooterProps> = ({
   return (
     <>
       <div className="absolute bottom-0 left-0 right-0 flex justify-center z-50">
-        <div className="bg-accent/50 m-4 rounded-xl h-[50px] flex items-center">
+        <div className="bg-accent-light m-4 rounded-xl h-[50px] flex items-center">
           <div className="flex items-center justify-center gap-2 p-2 px-3">
             <TooltipProvider>
               <Tooltip>
