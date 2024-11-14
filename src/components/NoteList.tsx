@@ -243,7 +243,7 @@ const SortableNoteItem: React.FC<SortableNoteItemProps> = ({
         >
           {activeNoteId === note.id && (
             <div
-              className="absolute inset-0 rounded-xl pointer-events-none bg-accent/50 border border-accent"
+              className="absolute inset-0 rounded-xl pointer-events-none bg-accent-light border border-accent"
             />
           )}
 

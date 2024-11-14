@@ -232,7 +232,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
         ref={containerRef}
         className="flex-1 p-2 bg-accent-light rounded-xl border border-accent overflow-y-auto min-h-0"
       >
-        <div className="flex flex-col space-y-6">
+        <div className="flex flex-col space-y-4">
           <AnimatePresence mode="wait">
             {isLoadingThread ? (
               <motion.div 

@@ -398,7 +398,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               }
               disabled={disabled}
               className={`h-[35px] resize-none rounded-lg text-sm shadow-none
-                       bg-background placeholder:text-muted-foreground selectable-text
+                       bg-background placeholder:text-muted-foreground/50 selectable-text selection:bg-palette-blue selection:text-white
                        ${selectedCommand ? 'border-primary' : ''}
                        ${isDiscussing && isPaused ? 'border-yellow-500' : ''}`}
             />

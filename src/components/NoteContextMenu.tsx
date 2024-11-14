@@ -6,6 +6,7 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { MessageSquare, Volume2, Copy, Scissors } from 'lucide-react';
+import { showToast } from '@/lib/toast';
 
 interface NoteContextMenuProps {
   children: React.ReactNode;
@@ -31,8 +32,8 @@ export const NoteContextMenu: React.FC<NoteContextMenuProps> = ({
 
   const handleContextMenu = useCallback((event: React.MouseEvent) => {
     const selectedText = getSelectedText();
-    if (selectedText) {
-      // Prevent default only if there's selected text
+    if (!selectedText) {
+      // Only prevent default if there's no selected text
       event.preventDefault();
       event.stopPropagation();
     }
@@ -45,6 +46,7 @@ export const NoteContextMenu: React.FC<NoteContextMenuProps> = ({
     switch (action) {
       case 'copy':
         navigator.clipboard.writeText(selectedText);
+        showToast.success('Copied to clipboard');
         break;
       case 'ask':
         onInsertResponse(`Help me understand this text: "${selectedText}"`);
@@ -78,45 +80,42 @@ export const NoteContextMenu: React.FC<NoteContextMenuProps> = ({
           position: 'fixed'
         }}
         onMouseDown={(e) => e.stopPropagation()}
+        hidden={!getSelectedText()}
       >
-        {(getSelectedText() !== '') && (
-          <>
-            <ContextMenuItem
-              onClick={() => handleMenuItemClick('copy')}
-              className="flex items-center gap-2 cursor-pointer"
-            >
-              <Copy className="h-4 w-4" />
-              <span>Copy</span>
-            </ContextMenuItem>
+        <ContextMenuItem
+          onClick={() => handleMenuItemClick('copy')}
+          className="flex items-center gap-2 cursor-pointer"
+        >
+          <Copy className="h-4 w-4" />
+          <span>Copy</span>
+        </ContextMenuItem>
 
-            <ContextMenuItem
-              onClick={() => handleMenuItemClick('ask')}
-              className="flex items-center gap-2 cursor-pointer"
-            >
-              <MessageSquare className="h-4 w-4" />
-              <span>Ask AI</span>
-            </ContextMenuItem>
+        <ContextMenuItem
+          onClick={() => handleMenuItemClick('ask')}
+          className="flex items-center gap-2 cursor-pointer"
+        >
+          <MessageSquare className="h-4 w-4" />
+          <span>Ask AI</span>
+        </ContextMenuItem>
 
-            {showTTS && onConvertToSpeech && (
-              <ContextMenuItem
-                onClick={() => handleMenuItemClick('speech')}
-                className="flex items-center gap-2 cursor-pointer"
-              >
-                <Volume2 className="h-4 w-4" />
-                <span>Convert to Speech</span>
-              </ContextMenuItem>
-            )}
+        {showTTS && onConvertToSpeech && (
+          <ContextMenuItem
+            onClick={() => handleMenuItemClick('speech')}
+            className="flex items-center gap-2 cursor-pointer"
+          >
+            <Volume2 className="h-4 w-4" />
+            <span>Convert to Speech</span>
+          </ContextMenuItem>
+        )}
 
-            {onSplitToNote && (
-              <ContextMenuItem
-                onClick={() => handleMenuItemClick('split')}
-                className="flex items-center gap-2 cursor-pointer"
-              >
-                <Scissors className="h-4 w-4" />
-                <span>Split to New Note</span>
-              </ContextMenuItem>
-            )}
-          </>
+        {onSplitToNote && (
+          <ContextMenuItem
+            onClick={() => handleMenuItemClick('split')}
+            className="flex items-center gap-2 cursor-pointer"
+          >
+            <Scissors className="h-4 w-4" />
+            <span>Split to New Note</span>
+          </ContextMenuItem>
         )}
       </ContextMenuContent>
     </ContextMenu>
