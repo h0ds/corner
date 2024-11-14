@@ -2,47 +2,47 @@ import React, { useState } from "react";
 import { NoteThread } from "@/types";
 import { cn } from "@/lib/utils";
 import {
-    GripVertical,
-    Pencil,
-    Trash2,
-    X,
-    SmilePlus,
-    Palette,
-    Type,
-    ChevronRight,
-    Plus
+  GripVertical,
+  Pencil,
+  Trash2,
+  X,
+  SmilePlus,
+  Palette,
+  Type,
+  ChevronRight,
+  Plus
 } from "lucide-react";
 import {
-    ContextMenu,
-    ContextMenuContent,
-    ContextMenuItem,
-    ContextMenuTrigger,
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { THREAD_COLORS, THREAD_ICONS } from "@/types";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { motion } from "framer-motion";
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import {
-    DndContext,
-    closestCenter,
-    KeyboardSensor,
-    PointerSensor,
-    useSensor,
-    useSensors,
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
 } from '@dnd-kit/core';
 import {
-    SortableContext,
-    sortableKeyboardCoordinates,
-    verticalListSortingStrategy,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 
 interface NoteListProps {
@@ -334,7 +334,7 @@ const SortableNoteItem: React.FC<SortableNoteItemProps> = ({
                     e.stopPropagation();
                     setShowDeleteDialog(true);
                   }}
-                  className="opacity-0 group-hover:opacity-100 p-1 hover:bg-accent rounded-xl transition-all"
+                  className="opacity-0 group-hover:opacity-100 p-1 transition-all"
                 >
                   <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
                 </button>

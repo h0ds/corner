@@ -12,7 +12,7 @@ import {
 import { AVAILABLE_MODELS } from './ModelSelector';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { materialOceanic } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import remarkGfm from 'remark-gfm';
 import { Citations } from './Citations';
 import { ChatActions } from './ChatActions';
@@ -121,7 +121,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             }
 
             return (
-              <div className="relative group my-4 bg-[#282c34] rounded-xl">
+              <div className="relative group my-4 bg-[#282c34] font-mono rounded-xl">
                 <div 
                   className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 
                             transition-opacity"
@@ -136,13 +136,10 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                 </div>
                 <SyntaxHighlighter
                   language={language}
-                  style={oneDark}
+                  style={materialOceanic}
+                  codeTagProps={{style: {fontFamily: '"Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace'} }}
                   customStyle={{
-                    margin: 0,
-                    borderRadius: '2px',
-                    padding: '1rem',
                     background: 'transparent',
-                    fontFamily: '"Server Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
                     fontSize: '0.875rem',
                   }}
                   {...props}

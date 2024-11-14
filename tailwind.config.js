@@ -20,7 +20,7 @@ export default {
     extend: {
       fontFamily: {
         sans: ["Geist", ...fontFamily.sans],
-        mono: ["Server Mono", ...fontFamily.mono],
+        mono: ["Geist Mono", ...fontFamily.mono],
         serif: ["Instrument Serif", ...fontFamily.serif],
       },
       colors: {

@@ -169,17 +169,6 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     setIsEditing(false);
   };
 
-  // Handle wiki link trigger
-  const handleWikiLinkTrigger = () => {
-    const textarea = document.querySelector('textarea');
-    if (!textarea) return;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selectedText = content.substring(start, end);
-    const newContent = `${content.substring(0, start)}[[${selectedText}]]${content.substring(end)}`;
-    handleChange(newContent);
-  };
-
   // Add handler for chat responses
   const handleChatResponse = (response: string) => {
     // Insert response at cursor position or at end if no selection
@@ -424,17 +413,10 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
       setReferenceStartIndex(null);
       return;
     }
-
-    // If we have a cursor position, insert the reference and link the thread
-    const before = content.slice(0, referenceStartIndex);
-    const after = content.slice(editorRef.current.selectionStart);
-    const reference = `[[${thread.name}]]`;
-    const newContent = before + reference + after;
     
     // Update content and link the thread
     onUpdate({
       ...note,
-      content: newContent,
       linkedNotes: [...(note.linkedNotes || []), thread.id],
       updatedAt: Date.now()
     });
@@ -446,20 +428,6 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
 
     // Show the linked panels
     setShowLinkedNotes(true);
-  };
-
-  // Add handler for context menu AI prompt
-  const handleContextMenuAsk = (selectedText: string) => {
-    setShowChatOverlay(true);
-    // Wait for overlay to mount before setting value
-    setTimeout(() => {
-      const input = document.querySelector('input');
-      if (input) {
-        input.value = `Help me understand this text: "${selectedText}"`;
-        // Trigger input event to update state
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-      }
-    }, 100);
   };
 
   const handleConvertToSpeech = async (text: string) => {
