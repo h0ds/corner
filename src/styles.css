@@ -12,6 +12,11 @@
         letter-spacing: -0.02em;
         font-size: 14px;
         font-weight: 400;
+        background: transparent !important;
+    }
+
+    body {
+        background: transparent !important;
     }
 
     .selectable-text {

@@ -6,9 +6,14 @@
     "main"
   ],
   "permissions": [
+    "core:window:default",
+    "core:window:allow-start-dragging",
+    "core:window:allow-maximize",
+    "core:window:allow-minimize",
+    "core:window:allow-close",
     "core:default",
     "shell:allow-open",
-    "shell:default",
+    "shell:default", 
     "upload:default",
     {
       "identifier": "fs:allow-read",
@@ -41,6 +46,7 @@
       ]
     },
     "fs:default",
-    "process:default"
+    "process:default",
+    "os:default"
   ]
 }

@@ -34,8 +34,8 @@ export const Footer: React.FC<FooterProps> = ({
   return (
     <>
       <div className="absolute bottom-0 left-0 right-0 flex justify-center z-50">
-        <div className="bg-accent-light m-4 rounded-xl flex items-center border border-accent">
-          <div className="flex items-center justify-center gap-2 p-2">
+        <div className="bg-accent-light m-4 rounded-xl flex items-center border border-border">
+          <div className="flex items-center justify-center gap-1 p-1">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>

@@ -203,12 +203,14 @@ export const ChatView: React.FC<ChatViewProps> = ({
     }
   }, []);
 
-  // Sort messages by timestamp
+  // Sort messages to maintain chronological order, including comparisons
   const sortedMessages = useMemo(() => {
     return [...messages].sort((a, b) => {
-      const timestampA = a.timestamp || 0;
-      const timestampB = b.timestamp || 0;
-      return timestampA - timestampB;
+      // Sort error messages to appear after regular messages with same timestamp
+      if (a.timestamp === b.timestamp) {
+        return a.role === 'error' ? 1 : b.role === 'error' ? -1 : 0;
+      }
+      return a.timestamp - b.timestamp;
     });
   }, [messages]);
 
@@ -230,9 +232,9 @@ export const ChatView: React.FC<ChatViewProps> = ({
     <>
       <div 
         ref={containerRef}
-        className="flex-1 p-2 bg-accent-light rounded-xl border border-accent overflow-y-auto min-h-0"
+        className="flex-1 p-2 bg-accent-light rounded-xl border border-border overflow-y-auto min-h-0"
       >
-        <div className="flex flex-col space-y-4">
+        <div className="flex flex-col space-y-2">
           <AnimatePresence mode="wait">
             {isLoadingThread ? (
               <motion.div 
@@ -255,20 +257,26 @@ export const ChatView: React.FC<ChatViewProps> = ({
             ) : (
               sortedMessages.map((message, index) => (
                 <motion.div
-                  key={message.timestamp || index}
+                  key={`${message.timestamp}-${index}`}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
+                  exit={{ opacity: 0, height: 0 }}
                   transition={{ duration: 0.2 }}
-                  className="w-full"
                 >
                   <ChatMessage
-                    {...message}
-                    onErrorClick={onShowPreferences}
+                    role={message.role}
+                    content={message.content}
+                    modelId={message.modelId}
+                    plugins={message.plugins}
+                    comparison={message.comparison}
+                    citations={message.citations}
+                    images={message.images}
+                    relatedQuestions={message.relatedQuestions}
                     onSendMessage={onSendMessage}
-                    showTTS={!!apiKeys.elevenlabs}
                     onTextToSpeech={handleTextToSpeech}
-                    onDelete={() => message.timestamp ? handleDeleteMessage(message.timestamp, message.content) : undefined}
+                    showTTS={!!apiKeys.elevenlabs}
+                    isAudioResponse={message.isAudioResponse}
+                    onDelete={() => handleDeleteMessage(message.timestamp, message.content)}
                   />
                   {message.file && (
                     <FilePreview
@@ -292,7 +300,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
       <audio ref={audioRef} className="hidden" />
 
       <div 
-        className="flex-shrink-0 p-2 absolute left-3 right-3 bottom-0 mb-4 bg-accent-light border border-accent rounded-xl"
+        className="flex-shrink-0 p-1 absolute left-3 right-3 bottom-4 bg-accent-light border border-border rounded-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="absolute right-4 -top-12 flex items-center gap-2">

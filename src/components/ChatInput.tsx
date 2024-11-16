@@ -362,7 +362,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           }}
         />
       )}
-      <form onSubmit={handleSubmit} className="flex gap-2 w-full">
+      <form onSubmit={handleSubmit} className="flex gap-1 w-full">
         <div className="flex-1 flex flex-col gap-1">
           {selectedCommand && (
             <div className="flex items-center gap-2 text-xs text-muted-foreground">

@@ -77,44 +77,45 @@ export const NoteContextMenu: React.FC<NoteContextMenuProps> = ({
       <ContextMenuContent
         style={{
           zIndex: 1000,
-          position: 'fixed'
+          position: 'fixed',
+          minWidth: '300px'
         }}
         onMouseDown={(e) => e.stopPropagation()}
         hidden={!getSelectedText()}
       >
         <ContextMenuItem
           onClick={() => handleMenuItemClick('copy')}
-          className="flex items-center gap-2 cursor-pointer"
+          className="flex items-center gap-2 cursor-pointer truncate"
         >
-          <Copy className="h-4 w-4" />
-          <span>Copy</span>
+          <Copy className="h-4 w-4 flex-shrink-0" />
+          <span className="truncate">Copy</span>
         </ContextMenuItem>
 
         <ContextMenuItem
           onClick={() => handleMenuItemClick('ask')}
-          className="flex items-center gap-2 cursor-pointer"
+          className="flex items-center gap-2 cursor-pointer truncate"
         >
-          <MessageSquare className="h-4 w-4" />
-          <span>Ask AI</span>
+          <MessageSquare className="h-4 w-4 flex-shrink-0" />
+          <span className="truncate">Ask AI about this</span>
         </ContextMenuItem>
 
         {showTTS && onConvertToSpeech && (
           <ContextMenuItem
             onClick={() => handleMenuItemClick('speech')}
-            className="flex items-center gap-2 cursor-pointer"
+            className="flex items-center gap-2 cursor-pointer truncate"
           >
-            <Volume2 className="h-4 w-4" />
-            <span>Convert to Speech</span>
+            <Volume2 className="h-4 w-4 flex-shrink-0" />
+            <span className="truncate">Convert to Speech</span>
           </ContextMenuItem>
         )}
 
         {onSplitToNote && (
           <ContextMenuItem
             onClick={() => handleMenuItemClick('split')}
-            className="flex items-center gap-2 cursor-pointer"
+            className="flex items-center gap-2 cursor-pointer truncate"
           >
-            <Scissors className="h-4 w-4" />
-            <span>Split to New Note</span>
+            <Scissors className="h-4 w-4 flex-shrink-0" />
+            <span className="truncate">Split to New Note</span>
           </ContextMenuItem>
         )}
       </ContextMenuContent>

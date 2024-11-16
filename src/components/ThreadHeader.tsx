@@ -31,7 +31,7 @@ export const ThreadHeader: React.FC<ThreadHeaderProps> = ({
   return (
     <div 
       className={
-        "absolute top-0 left-0 right-0 flex items-center justify-between m-3 mt-2 rounded-xl font-geist tracking-tighter leading-tighter bg-accent-light border border-accent z-10 h-[40px]" 
+        "absolute top-0 left-0 right-0 flex items-center justify-between m-3 mt-2 rounded-xl font-geist tracking-tighter leading-tighter bg-accent-light border border-border z-10 h-[40px]" 
       }
     >
       {/* Empty div for left side */}

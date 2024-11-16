@@ -261,12 +261,12 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
 
   if (role === 'comparison' && comparison) {
     return (
-      <div className="flex flex-col gap-2 w-full">
-        <div className="text-sm text-muted-foreground">
+      <div className="flex flex-col pt-2 gap-2 w-full">
+        <div className="text-sm text-muted-foreground/50">
           Comparing responses for: "{comparison.message}"
         </div>
-        <div className="flex gap-4">
-          <div className="flex-1 border border-border rounded-xl p-4">
+        <div className="flex gap-2">
+          <div className="flex-1 border border-border rounded-xl p-4 bg-white">
             <div className="flex items-center gap-2 mb-2">
               <ModelIcon modelId={comparison.model1.id} className="h-4 w-4" />
               <span className="text-sm font-medium">
@@ -284,7 +284,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
               </ReactMarkdown>
             </div>
           </div>
-          <div className="flex-1 border border-border rounded-xl p-4">
+          <div className="flex-1 border border-border rounded-xl p-4 bg-white">
             <div className="flex items-center gap-2 mb-2">
               <ModelIcon modelId={comparison.model2.id} className="h-4 w-4" />
               <span className="text-sm font-medium">
@@ -313,7 +313,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         "group relative inline-flex gap-2 pl-4 pr-2 py-2 selection:bg-palette-blue selection:text-white rounded-xl select-text max-w-full",
         role === 'user' && 'bg-palette-blue text-white flex-row-reverse ml-auto',
         role === 'system' && 'bg-white/10 text-muted-foreground text-sm',
-        role === 'assistant' && 'bg-white p-4 pb-6 border border-accent text-accent-foreground'
+        role === 'assistant' && 'bg-white p-4 border border-border text-accent-foreground'
       )}>
         {role === 'assistant' && (
           <div className="absolute p-1 top-2 right-2 opacity-0 group-hover:opacity-100 bg-background border border-border rounded-xl transition-opacity flex gap-2">

@@ -136,7 +136,10 @@ async fn send_message(
             if api_key.is_empty() {
                 return Ok(ApiResponse {
                     content: None,
-                    error: Some("Anthropic API key not configured. Please add your API key in settings.".to_string()),
+                    error: Some(
+                        "Anthropic API key not configured. Please add your API key in settings."
+                            .to_string(),
+                    ),
                     citations: None,
                     images: None,
                     related_questions: None,
@@ -233,7 +236,10 @@ async fn send_message(
             if api_key.is_empty() {
                 return Ok(ApiResponse {
                     content: None,
-                    error: Some("Perplexity API key not configured. Please add your API key in settings.".to_string()),
+                    error: Some(
+                        "Perplexity API key not configured. Please add your API key in settings."
+                            .to_string(),
+                    ),
                     citations: None,
                     images: None,
                     related_questions: None,
@@ -289,12 +295,12 @@ async fn send_message(
                 println!("Failed to read response body: {:?}", e);
                 e.to_string()
             })?;
-    
+
             println!("Response body: {}", response_text);
-    
+
             if status.is_success() {
-                let perplexity_response: PerplexityResponse = serde_json::from_str(&response_text)
-                    .map_err(|e| e.to_string())?;
+                let perplexity_response: PerplexityResponse =
+                    serde_json::from_str(&response_text).map_err(|e| e.to_string())?;
 
                 let message = &perplexity_response.choices[0].message;
                 let mut content = message.content.clone();
@@ -303,7 +309,12 @@ async fn send_message(
                 if !message.citations.is_empty() {
                     content.push_str("\n\nSources:\n");
                     for (i, citation) in message.citations.iter().enumerate() {
-                        content.push_str(&format!("{}. {} ({})\n", i + 1, citation.text, citation.url));
+                        content.push_str(&format!(
+                            "{}. {} ({})\n",
+                            i + 1,
+                            citation.text,
+                            citation.url
+                        ));
                     }
                 }
 
@@ -348,7 +359,10 @@ async fn send_message(
             if api_key.is_empty() {
                 return Ok(ApiResponse {
                     content: None,
-                    error: Some("OpenAI API key not configured. Please add your API key in settings.".to_string()),
+                    error: Some(
+                        "OpenAI API key not configured. Please add your API key in settings."
+                            .to_string(),
+                    ),
                     citations: None,
                     images: None,
                     related_questions: None,
@@ -392,8 +406,8 @@ async fn send_message(
             println!("Response body: {}", response_text);
 
             if status.is_success() {
-                let json: serde_json::Value = serde_json::from_str(&response_text)
-                    .map_err(|e| e.to_string())?;
+                let json: serde_json::Value =
+                    serde_json::from_str(&response_text).map_err(|e| e.to_string())?;
                 Ok(ApiResponse {
                     content: Some(
                         json["choices"][0]["message"]["content"]
@@ -440,7 +454,10 @@ async fn send_message(
             if api_key.is_empty() {
                 return Ok(ApiResponse {
                     content: None,
-                    error: Some("xAI API key not configured. Please add your API key in settings.".to_string()),
+                    error: Some(
+                        "xAI API key not configured. Please add your API key in settings."
+                            .to_string(),
+                    ),
                     citations: None,
                     images: None,
                     related_questions: None,
@@ -479,8 +496,8 @@ async fn send_message(
             println!("Response body: {}", response_text);
 
             if status.is_success() {
-                let json: serde_json::Value = serde_json::from_str(&response_text)
-                    .map_err(|e| e.to_string())?;
+                let json: serde_json::Value =
+                    serde_json::from_str(&response_text).map_err(|e| e.to_string())?;
                 Ok(ApiResponse {
                     content: Some(
                         json["choices"][0]["message"]["content"]
@@ -524,7 +541,7 @@ async fn send_message(
                     Some(key) if !key.is_empty() => {
                         println!("Using state Google API key");
                         key
-                    },
+                    }
                     _ => {
                         println!("Falling back to env Google API key");
                         env::var("GOOGLE_API_KEY").unwrap_or_default()
@@ -536,7 +553,10 @@ async fn send_message(
                 println!("No Google API key found");
                 return Ok(ApiResponse {
                     content: None,
-                    error: Some("Google API key not configured. Please add your API key in settings.".to_string()),
+                    error: Some(
+                        "Google API key not configured. Please add your API key in settings."
+                            .to_string(),
+                    ),
                     citations: None,
                     images: None,
                     related_questions: None,
@@ -561,7 +581,10 @@ async fn send_message(
 
             println!("\n=== Google API Request ===");
             println!("URL: {}", url.replace(&api_key, "[REDACTED]"));
-            println!("Request body: {}", serde_json::to_string_pretty(&request_body).unwrap());
+            println!(
+                "Request body: {}",
+                serde_json::to_string_pretty(&request_body).unwrap()
+            );
 
             let response = client
                 .post(&url)
@@ -588,8 +611,8 @@ async fn send_message(
             println!("Response body: {}", response_text);
 
             if status.is_success() {
-                let json: serde_json::Value = serde_json::from_str(&response_text)
-                    .map_err(|e| {
+                let json: serde_json::Value =
+                    serde_json::from_str(&response_text).map_err(|e| {
                         println!("Google API JSON parse error: {:?}", e);
                         e.to_string()
                     })?;
@@ -597,7 +620,8 @@ async fn send_message(
                 // Check for error in the response
                 if let Some(error) = json.get("error") {
                     println!("Google API error in response: {:?}", error);
-                    let error_message = error["message"].as_str()
+                    let error_message = error["message"]
+                        .as_str()
                         .unwrap_or("Unknown error occurred");
                     return Ok(ApiResponse {
                         content: None,
@@ -630,7 +654,10 @@ async fn send_message(
                     println!("Google API authentication error: {}", status);
                     Ok(ApiResponse {
                         content: None,
-                        error: Some("Google API key is invalid. Please check your API key in settings.".to_string()),
+                        error: Some(
+                            "Google API key is invalid. Please check your API key in settings."
+                                .to_string(),
+                        ),
                         citations: None,
                         images: None,
                         related_questions: None,
@@ -638,7 +665,9 @@ async fn send_message(
                 } else {
                     println!("Google API error response: {} - {}", status, response_text);
                     // Try to parse error message from response
-                    if let Ok(error_json) = serde_json::from_str::<serde_json::Value>(&response_text) {
+                    if let Ok(error_json) =
+                        serde_json::from_str::<serde_json::Value>(&response_text)
+                    {
                         if let Some(error_msg) = error_json["error"]["message"].as_str() {
                             return Ok(ApiResponse {
                                 content: None,
@@ -649,7 +678,7 @@ async fn send_message(
                             });
                         }
                     }
-                    
+
                     Ok(ApiResponse {
                         content: None,
                         error: Some(format!("API error (Status: {}): {}", status, response_text)),
@@ -675,7 +704,10 @@ async fn send_message(
             if api_key.is_empty() {
                 return Ok(ApiResponse {
                     content: None,
-                    error: Some("ElevenLabs API key not configured. Please add your API key in settings.".to_string()),
+                    error: Some(
+                        "ElevenLabs API key not configured. Please add your API key in settings."
+                            .to_string(),
+                    ),
                     citations: None,
                     images: None,
                     related_questions: None,
@@ -690,7 +722,10 @@ async fn send_message(
 
             let client = reqwest::Client::new();
             let response = client
-                .post(&format!("https://api.elevenlabs.io/v1/text-to-speech/{}", voice_id))
+                .post(&format!(
+                    "https://api.elevenlabs.io/v1/text-to-speech/{}",
+                    voice_id
+                ))
                 .header("xi-api-key", api_key)
                 .header("Content-Type", "application/json")
                 .json(&serde_json::json!({
@@ -719,7 +754,7 @@ async fn send_message(
 
             let bytes = response.bytes().await.map_err(|e| e.to_string())?;
             let base64_audio = base64::encode(&bytes);
-            
+
             Ok(ApiResponse {
                 content: Some(format!("data:audio/mpeg;base64,{}", base64_audio)),
                 error: None,
@@ -1014,18 +1049,21 @@ async fn verify_api_key(request: VerifyRequest) -> Result<ApiResponse, String> {
                 if let Some(error) = error_json.get("error") {
                     let error_message = error["message"].as_str().unwrap_or("Unknown error");
                     let error_code = error["code"].as_i64().unwrap_or(0);
-                    
+
                     // Check for specific error conditions
                     if error_code == 400 && error_message.contains("API key not valid") {
                         return Ok(ApiResponse {
                             content: None,
-                            error: Some("Invalid Google API key. Please check your API key in settings.".to_string()),
+                            error: Some(
+                                "Invalid Google API key. Please check your API key in settings."
+                                    .to_string(),
+                            ),
                             citations: None,
                             images: None,
                             related_questions: None,
                         });
                     }
-                    
+
                     return Ok(ApiResponse {
                         content: None,
                         error: Some(format!("Google API error: {}", error_message)),
@@ -1053,7 +1091,7 @@ async fn verify_api_key(request: VerifyRequest) -> Result<ApiResponse, String> {
                     related_questions: None,
                 })
             }
-        },
+        }
         "elevenlabs" => {
             let client = reqwest::Client::new();
             let response = client
@@ -1104,7 +1142,10 @@ async fn verify_api_key(request: VerifyRequest) -> Result<ApiResponse, String> {
                 if status.as_u16() == 401 {
                     Ok(ApiResponse {
                         content: None,
-                        error: Some("Invalid ElevenLabs API key. Please check your API key in settings.".to_string()),
+                        error: Some(
+                            "Invalid ElevenLabs API key. Please check your API key in settings."
+                                .to_string(),
+                        ),
                         citations: None,
                         images: None,
                         related_questions: None,
@@ -1112,7 +1153,10 @@ async fn verify_api_key(request: VerifyRequest) -> Result<ApiResponse, String> {
                 } else {
                     Ok(ApiResponse {
                         content: None,
-                        error: Some(format!("ElevenLabs API error (Status: {}): {}", status, body)),
+                        error: Some(format!(
+                            "ElevenLabs API error (Status: {}): {}",
+                            status, body
+                        )),
                         citations: None,
                         images: None,
                         related_questions: None,
@@ -1274,7 +1318,7 @@ fn save_keys(app: &AppHandle, keys: &serde_json::Value) -> Result<(), String> {
 #[tauri::command]
 fn get_stored_api_keys(app_handle: AppHandle) -> Result<serde_json::Value, String> {
     let stored_keys = load_stored_keys(&app_handle)?;
-    
+
     // Ensure all expected keys exist in the JSON
     let mut keys = serde_json::json!({
         "anthropic": null,
@@ -1301,7 +1345,7 @@ async fn store_api_key(app_handle: AppHandle, request: serde_json::Value) -> Res
     let key = request["key"].as_str().ok_or("Missing key".to_string())?;
 
     let mut keys = load_stored_keys(&app_handle)?;
-    
+
     // Special handling for voice ID
     if provider == "elevenlabs_voice_id" {
         keys["elevenlabs_voice_id"] = serde_json::Value::String(key.to_string());
@@ -1471,7 +1515,7 @@ async fn text_to_speech(text: String, app_handle: AppHandle) -> Result<String, S
     let api_key = stored_keys["elevenlabs"]
         .as_str()
         .ok_or("ElevenLabs API key not found")?;
-    
+
     // Get voice ID from local storage via a new command
     let voice_id = match stored_keys.get("elevenlabs_voice_id") {
         Some(id) if !id.is_null() => id.as_str().unwrap_or_default(),
@@ -1482,7 +1526,10 @@ async fn text_to_speech(text: String, app_handle: AppHandle) -> Result<String, S
 
     let client = reqwest::Client::new();
     let response = client
-        .post(&format!("https://api.elevenlabs.io/v1/text-to-speech/{}", voice_id))
+        .post(&format!(
+            "https://api.elevenlabs.io/v1/text-to-speech/{}",
+            voice_id
+        ))
         .header("xi-api-key", api_key)
         .header("Content-Type", "application/json")
         .json(&serde_json::json!({
@@ -1508,11 +1555,11 @@ async fn text_to_speech(text: String, app_handle: AppHandle) -> Result<String, S
     }
 
     let bytes = response.bytes().await.map_err(|e| e.to_string())?;
-    
+
     // Convert to base64
     let base64 = base64::encode(&bytes);
     println!("Successfully generated audio");
-    
+
     Ok(format!("data:audio/mpeg;base64,{}", base64))
 }
 
@@ -1520,6 +1567,7 @@ fn main() {
     dotenv().ok();
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())

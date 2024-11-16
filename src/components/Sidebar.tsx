@@ -129,7 +129,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }, [threads, onNewNote]);
 
   return (
-    <div className="absolute inset-0 border-r border-accent flex flex-col">
+    <div className="absolute inset-0 border-r border-border      s flex flex-col">
       <div className="mt-1">
         <SidebarTabs
           activeTab={activeTab}

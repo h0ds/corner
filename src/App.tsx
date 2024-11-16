@@ -1294,9 +1294,9 @@ function App() {
 
   return (
     <>
-      <div className="flex h-screen backdrop-blur-sm overflow-hidden">
+      <div className="flex h-screen backdrop-blur-sm border border-border bg-background overflow-hidden rounded-xl">
         <TitleBar />
-        <div className="relative flex h-screen w-full border-t border-border">
+        <div className="relative rounded-xl flex h-[calc(100vh-2.5rem)] w-full mt-10">
           {/* Sidebar with animation */}
           <motion.div
             initial={false}

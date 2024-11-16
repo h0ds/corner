@@ -13,20 +13,25 @@
     "windows": [
       {
         "title": "Corner",
-        "decorations": true,
+        "decorations": false,
         "transparent": true,
         "hiddenTitle": true,
-        "theme": "Light",
+        "resizable": true,
         "center": true,
         "minWidth": 600,
         "minHeight": 400,
-        "visible": true
+        "visible": true,
+        "dragDropEnabled": false,
+        "minimizable": true,
+        "maximizable": true,
+        "closable": true
       }
     ],
     "security": {
       "csp": null,
       "dangerousDisableAssetCspModification": true
-    }
+    },
+    "macOSPrivateApi": true
   },
   "bundle": {
     "active": true,
