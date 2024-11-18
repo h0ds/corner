@@ -142,7 +142,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             onClick={activeTab === 'threads' ? props.onNewThread : handleCreateNote}
             className="w-full flex items-center gap-2 p-3 text-sm rounded-xl 
-                     bg-primary text-primary-foreground hover:bg-primary/90 transition-colors
+                     bg-accent text-foreground hover:bg-accent-light transition-colors
                      justify-start pl-3"
           >
             {activeTab === 'threads' ? (

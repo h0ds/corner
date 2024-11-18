@@ -18,9 +18,9 @@ export const TypingIndicator = () => {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 10 }}
       transition={{ duration: 0.2 }}
-      className="flex items-center justify-center px-3 py-3 bg-black dark:bg-card/80 rounded-full shadow-none w-fit"
+      className="flex items-center justify-center px-3 py-3 bg-accent-foreground dark:bg-card/80 rounded-full shadow-none w-fit"
     >
-      <div className="relative h-2 w-2">
+      <div className="relative h-1 w-1">
         <motion.div
           className="absolute inset-0"
           animate={{ rotate: 360 }}

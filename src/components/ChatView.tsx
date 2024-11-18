@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { Message, Thread, ApiKeys } from '@/types';
 import { ChatMessage } from './ChatMessage';
 import { FilePreview } from './FilePreview';
@@ -66,42 +66,23 @@ export const ChatView: React.FC<ChatViewProps> = ({
   allThreads,
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [audioPlaying, setAudioPlaying] = useState(false);
   const [audioLoading, setAudioLoading] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const { toast } = useToast();
   const [messageToDelete, setMessageToDelete] = useState<{ timestamp: number; content: string } | null>(null);
   const [isLoadingThread, setIsLoadingThread] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
-    if (containerRef.current) {
-      containerRef.current.scrollTo({
-        top: containerRef.current.scrollHeight,
-        behavior
-      });
+  useEffect(() => {
+    if (activeThreadId) {
+      setIsLoadingThread(true);
+      const timeout = setTimeout(() => {
+        setIsLoadingThread(false);
+      }, 100);
+      return () => clearTimeout(timeout);
     }
-  }, []);
-
-  useEffect(() => {
-    setIsLoadingThread(true);
-    const timeout = setTimeout(() => {
-      setIsLoadingThread(false);
-      scrollToBottom('instant');
-    }, 100);
-    
-    return () => clearTimeout(timeout);
-  }, [activeThreadId, scrollToBottom]);
-
-  useEffect(() => {
-    if (!isLoadingThread) {
-      scrollToBottom();
-    }
-  }, [messages, isLoadingThread, scrollToBottom]);
-
-  useEffect(() => {
-    scrollToBottom('instant');
-  }, [scrollToBottom]);
+  }, [activeThreadId]);
 
   const handleTextToSpeech = async (text: string) => {
     try {
@@ -200,29 +181,22 @@ export const ChatView: React.FC<ChatViewProps> = ({
     setMessageToDelete(null);
   };
 
-  // Group messages by type and maintain chronological order within groups
   const sortedMessages = useMemo(() => {
-    // First, separate messages by type
-    const regularMessages = messages.filter(m => m.role !== 'comparison');
-    const comparisonMessages = messages.filter(m => m.role === 'comparison');
-
-    // Sort each group by timestamp
-    const sortByTimestamp = (a: Message, b: Message) => a.timestamp - b.timestamp;
+    if (!messages || messages.length === 0) return [];
     
-    const sortedRegular = regularMessages.sort(sortByTimestamp);
-    const sortedComparisons = comparisonMessages.sort(sortByTimestamp);
-
-    // Return regular messages followed by comparisons
-    return [...sortedRegular, ...sortedComparisons];
+    return [...messages].sort((a, b) => {
+      const aTime = a.timestamp || 0;
+      const bTime = b.timestamp || 0;
+      return aTime - bTime;
+    });
   }, [messages]);
 
   const handleShowLinkedItems = (noteId: string) => {
-    // Update the note to show its linked items panel
     setThreads(prev => prev.map(thread => {
       if (thread.id === noteId && thread.isNote) {
         return {
           ...thread,
-          showLinkedItems: true, // Add this flag to your Thread type if not already present
+          showLinkedItems: true,
           updatedAt: Date.now(),
         };
       }
@@ -247,7 +221,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
               >
                 <TypingIndicator />
               </motion.div>
-            ) : messages.length === 0 ? (
+            ) : sortedMessages.length === 0 ? (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -294,6 +268,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 <TypingIndicator />
               </div>
             )}
+
           </AnimatePresence>
         </div>
         <div ref={messagesEndRef} />

@@ -42,7 +42,7 @@ export const TitleBar: React.FC = () => {
       <div 
         className={cn(
           "h-10 flex items-center fixed top-0 left-0 right-0 z-50 backdrop-blur-sm",
-          "border-b border-border bg-background/80"
+          "border-b border-border rounded-t-xl bg-background/80"
         )}
         onMouseDown={handleDrag}
         style={{ cursor: 'move' }}

@@ -1294,7 +1294,7 @@ function App() {
 
   return (
     <>
-      <div className="flex h-screen bg-background backdrop-blur-xl overflow-hidden rounded-xl">
+      <div className="flex h-screen bg-background overflow-hidden rounded-xl">
         <TitleBar />
         <div className="relative bg-background/50 flex h-[calc(100vh-2.5rem)] w-full mt-10">
           {/* Sidebar with animation */}
@@ -1359,7 +1359,7 @@ function App() {
                 className={cn(
                   "flex-1 overflow-y-auto min-w-0",
                   "transition-spacing duration-200", 
-                  !activeThread?.isNote && view === 'thread' && "flex flex-col h-full mb-20 mt-16 mx-3 bg-accent rounded-xl"
+                  !activeThread?.isNote && view === 'thread' && "flex flex-col h-full mb-20 mt-12 mx-3 bg-accent rounded-xl"
                 )}
                 onClick={(e) => e.stopPropagation()}
               >

@@ -100,6 +100,7 @@ const ThreadItem = ({
         "group flex items-center gap-2 px-3 py-2 rounded-xl cursor-pointer relative",
         "hover:bg-accent/50 hover:text-accent-foreground transition-colors",
         "border border-transparent hover:border-border",
+        thread.isPinned && "border-foreground/10",
         isDragging && "opacity-50",
         isOverlay && "bg-background border border-border shadow-lg scale-105 rotate-2"
       )}
@@ -140,10 +141,6 @@ const ThreadItem = ({
               <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground mr-2" />
             </div>
           )
-        )}
-
-        {thread.isPinned && (
-          <Pin className="h-4 w-4 shrink-0 text-primary mr-2" />
         )}
 
         {editingThreadId === thread.id ? (

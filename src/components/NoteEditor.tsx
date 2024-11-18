@@ -549,12 +549,12 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
                 }
               }}
               onBlur={handleFinishRename}
-              className="h-6 text-sm px-2 py-0.5 border-none outline-none bg-transparent"
+              className="h-6 text-lg border-none outline-none bg-transparent"
               autoFocus
             />
           ) : (
             <div 
-              className="text-sm cursor-pointer truncate"
+              className="text-lg font-geist cursor-pointer truncate"
               onDoubleClick={handleStartRename}
             >
               {note.name}
