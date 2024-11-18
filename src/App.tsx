@@ -199,9 +199,9 @@ function App() {
       messageCount: isNote ? undefined : 0
     });
     
-    // Add the new thread to the beginning of the list
+    // Add the new thread to the end of the list
     setThreads(prev => {
-      const updatedThreads = [newThread, ...prev];
+      const updatedThreads = [...prev, newThread];
       console.log('Updated threads:', updatedThreads.map(t => ({
         id: t.id,
         name: t.name,
@@ -1294,9 +1294,9 @@ function App() {
 
   return (
     <>
-      <div className="flex h-screen backdrop-blur-sm border border-border bg-background overflow-hidden rounded-xl">
+      <div className="flex h-screen bg-background backdrop-blur-xl overflow-hidden rounded-xl">
         <TitleBar />
-        <div className="relative rounded-xl flex h-[calc(100vh-2.5rem)] w-full mt-10">
+        <div className="relative bg-background/50 flex h-[calc(100vh-2.5rem)] w-full mt-10">
           {/* Sidebar with animation */}
           <motion.div
             initial={false}

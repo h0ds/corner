@@ -41,7 +41,7 @@ export const Footer: React.FC<FooterProps> = ({
                 <TooltipTrigger asChild>
                   <button
                     onClick={() => setShowFileMenu(true)}
-                    className="p-2 bg-background hover:bg-accent rounded-md transition-colors border border-border"
+                    className="p-2 bg-background hover:bg-accent rounded-lg transition-colors border border-border"
                   >
                     <FileText className="h-4 w-4" />
                   </button>
@@ -57,7 +57,7 @@ export const Footer: React.FC<FooterProps> = ({
                 <TooltipTrigger asChild>
                   <button
                     onClick={onShowKnowledgeGraph}
-                    className="p-2 bg-background hover:bg-accent rounded-md transition-colors border border-border"
+                    className="p-2 bg-background hover:bg-accent rounded-lg transition-colors border border-border"
                   >
                     <Network className="h-4 w-4" />
                   </button>
@@ -73,7 +73,7 @@ export const Footer: React.FC<FooterProps> = ({
                 <TooltipTrigger asChild>
                   <button
                     onClick={onShowSearch}
-                    className="p-2 bg-background hover:bg-accent rounded-md transition-colors border border-border"
+                    className="p-2 bg-background hover:bg-accent rounded-lg transition-colors border border-border"
                   >
                     <Search className="h-4 w-4" />
                   </button>
@@ -90,7 +90,7 @@ export const Footer: React.FC<FooterProps> = ({
                 <TooltipTrigger asChild>
                   <button
                     onClick={() => onShowPreferencesTab?.('actions')}
-                    className="p-2 bg-background hover:bg-accent rounded-md transition-colors border border-border"
+                    className="p-2 bg-background hover:bg-accent rounded-lg transition-colors border border-border"
                   >
                     <Zap className="h-4 w-4" />
                   </button>
@@ -106,7 +106,7 @@ export const Footer: React.FC<FooterProps> = ({
                 <TooltipTrigger asChild>
                   <button
                     onClick={onShowPreferences}
-                    className="p-2 bg-background hover:bg-accent rounded-md transition-colors border border-border"
+                    className="p-2 bg-background hover:bg-accent rounded-lg transition-colors border border-border"
                   >
                     <Settings className="h-4 w-4" />
                   </button>

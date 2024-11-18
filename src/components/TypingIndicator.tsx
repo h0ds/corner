@@ -1,46 +1,55 @@
 import { motion } from "framer-motion";
+import React from "react";
 
 export const TypingIndicator = () => {
+  const [numDots, setNumDots] = React.useState(1);
+
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setNumDots(prev => prev < 6 ? prev * 2 : prev);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+  
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 10 }}
       transition={{ duration: 0.2 }}
-      className="flex items-center gap-2 px-4 py-3 bg-card dark:bg-card/80 rounded-xl shadow-none w-fit"
+      className="flex items-center justify-center px-3 py-3 bg-black dark:bg-card/80 rounded-full shadow-none w-fit"
     >
-      <motion.div
-        className="flex gap-2"
-        initial="initial"
-        animate="animate"
-        variants={{
-          animate: {
-            transition: {
-              staggerChildren: 0.2,
-            },
-          },
-        }}
-      >
-        {[0, 1, 2].map((i) => (
-          <motion.div
-            key={i}
-            className="w-2 h-2 rounded-full bg-gradient-to-r from-gray-400 via-gray-500 to-gray-600
-                     dark:from-gray-500 dark:via-gray-600 dark:to-gray-700
-                     animate-gradient-x bg-[length:200%_200%] [animation-duration:0.5s]"
-            variants={{
-              initial: { y: 0 },
-              animate: {
-                y: [0, -5, 0],
-                transition: {
-                  duration: 0.6,
-                  repeat: Infinity,
-                  repeatType: "reverse",
-                },
-              },
-            }}
-          />
-        ))}
-      </motion.div>
+      <div className="relative h-2 w-2">
+        <motion.div
+          className="absolute inset-0"
+          animate={{ rotate: 360 }}
+          transition={{
+            duration: 1,
+            repeat: Infinity,
+            ease: "linear"
+          }}
+        >
+          {[...Array(numDots)].map((_, i) => {
+            const angle = (i * 360) / numDots;
+            const radius = 8; // Reduced distance from center
+            
+            return (
+              <motion.div
+                key={i}
+                className="absolute w-1 h-1 rounded-full bg-white"
+                style={{
+                  left: '50%',
+                  top: '50%',
+                  marginLeft: -2,
+                  marginTop: -2,
+                  transform: `rotate(${angle}deg) translateY(-${radius}px)`
+                }}
+              />
+            );
+          })}
+        </motion.div>
+      </div>
     </motion.div>
   );
 };

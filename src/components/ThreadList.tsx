@@ -161,7 +161,7 @@ const ThreadItem = ({
             />
           </div>
         ) : (
-          <span className="text-sm truncate flex-1 mt-1">
+          <span className="text-sm truncate flex-1">
             {thread.name || "New Thread"}
           </span>
         )}

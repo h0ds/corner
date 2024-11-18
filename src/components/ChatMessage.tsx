@@ -14,6 +14,9 @@ import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { materialOceanic } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 import { Citations } from './Citations';
 import { ChatActions } from './ChatActions';
 
@@ -82,7 +85,6 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   const processedContent = processContent(content);
 
   const renderContent = () => {
-    // Check if content is an audio data URL
     if (content.startsWith('data:audio/') || isAudioResponse) {
       return (
         <div className="flex flex-col gap-2">
@@ -98,9 +100,51 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
       );
     }
 
-    let result = (
+    // Process LaTeX content
+    const preprocessLatex = (text: string): string => {
+      // Replace escaped LaTeX delimiters with temporary markers
+      text = text.replace(/\\\$/g, '%%DOLLAR%%');
+
+      // Handle inline math with single $
+      text = text.replace(/\$([^$]+)\$/g, (match, formula) => {
+        // Don't process if it's a citation
+        if (/^\[\d+\]$/.test(formula)) return match;
+        // Replace back escaped dollars
+        formula = formula.replace(/%%DOLLAR%%/g, '\\$');
+        return `$${formula}$`;
+      });
+
+      // Handle display math with double $$
+      text = text.replace(/\$\$([^$]+)\$\$/g, (match, formula) => {
+        formula = formula.replace(/%%DOLLAR%%/g, '\\$');
+        return `$$${formula}$$`;
+      });
+
+      // Restore escaped dollars
+      text = text.replace(/%%DOLLAR%%/g, '$');
+
+      return text;
+    };
+
+    const processedContent = preprocessLatex(content);
+
+    return (
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
+        remarkPlugins={[remarkGfm, remarkMath]}
+        rehypePlugins={[
+          [rehypeKatex, {
+            strict: false,
+            throwOnError: false,
+            displayMode: true,
+            trust: true,
+            macros: {
+              "\\eqref": "\\href{#1}{}",
+              "\\label": "\\href{#1}{}",
+              "\\ref": "\\href{#1}{}"
+            },
+            output: 'html'  // Force HTML output
+          }]
+        ]}
         components={{
           code({inline, className, children, ...props}: React.ComponentPropsWithoutRef<'code'> & {
             inline?: boolean;
@@ -112,7 +156,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             if (inline) {
               return (
                 <code 
-                  className="bg-muted px-1.5 py-0.5 rounded-xl text-sm font-mono" 
+                  className="bg-muted px-1.5 py-0.5 rounded-lg text-sm font-mono" 
                   {...props}
                 >
                   {children}
@@ -121,14 +165,14 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             }
 
             return (
-              <div className="relative group my-4 bg-[#282c34] font-mono rounded-xl">
+              <div className="relative group my-4 bg-[#282c34] font-mono rounded-lg">
                 <div 
                   className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 
                             transition-opacity"
                 >
                   <button
                     onClick={() => navigator.clipboard.writeText(String(children))}
-                    className="p-1.5 hover:bg-accent/10 rounded-xl text-muted-foreground 
+                    className="p-1.5 hover:bg-accent/10 rounded-lg text-muted-foreground 
                               hover:text-accent-foreground"
                   >
                     <Copy className="h-4 w-4" />
@@ -207,38 +251,23 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
           h3: ({children}) => <h3 className="text-lg font-bold mb-4 mt-6 first:mt-0">{children}</h3>,
           h4: ({children}) => <h4 className="text-base font-bold mb-4 mt-6 first:mt-0">{children}</h4>,
           hr: () => <hr className="border-border my-8" />,
+          math: ({value}) => (
+            <div className="my-4 px-4 py-2 bg-accent/50 rounded-lg overflow-x-auto">
+              <div className="text-sm font-mono text-center select-text katex-display">
+                {value}
+              </div>
+            </div>
+          ),
+          inlineMath: ({value}) => (
+            <span className="mx-1 font-mono select-text katex">
+              {value}
+            </span>
+          )
         }}
       >
         {processedContent}
       </ReactMarkdown>
     );
-
-    // Apply plugin modifications
-    plugins.forEach(mod => {
-      switch (mod.type) {
-        case 'replace':
-          result = <PluginContent modification={mod} />;
-          break;
-        case 'prepend':
-          result = (
-            <>
-              <PluginContent modification={mod} />
-              {result}
-            </>
-          );
-          break;
-        case 'append':
-          result = (
-            <>
-              {result}
-              <PluginContent modification={mod} />
-            </>
-          );
-          break;
-      }
-    });
-
-    return result;
   };
 
   if (role === 'error') {
@@ -266,7 +295,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
           Comparing responses for: "{comparison.message}"
         </div>
         <div className="flex gap-2">
-          <div className="flex-1 border border-border rounded-xl p-4 bg-white">
+          <div className="flex-1 border border-border rounded-lg p-4 bg-white">
             <div className="flex items-center gap-2 mb-2">
               <ModelIcon modelId={comparison.model1.id} className="h-4 w-4" />
               <span className="text-sm font-medium">
@@ -284,7 +313,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
               </ReactMarkdown>
             </div>
           </div>
-          <div className="flex-1 border border-border rounded-xl p-4 bg-white">
+          <div className="flex-1 border border-border rounded-lg p-4 bg-white">
             <div className="flex items-center gap-2 mb-2">
               <ModelIcon modelId={comparison.model2.id} className="h-4 w-4" />
               <span className="text-sm font-medium">
@@ -310,13 +339,13 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   return (
     <div className="w-full flex">
       <div className={cn(
-        "group relative inline-flex gap-2 pl-4 pr-2 py-2 selection:bg-palette-blue selection:text-white rounded-xl select-text max-w-full",
+        "group relative inline-flex gap-2 pl-4 pr-2 py-2 selection:bg-palette-blue selection:text-white rounded-lg select-text max-w-full",
         role === 'user' && 'bg-palette-blue text-white flex-row-reverse ml-auto',
         role === 'system' && 'bg-white/10 text-muted-foreground text-sm',
         role === 'assistant' && 'bg-white p-4 border border-border text-accent-foreground'
       )}>
         {role === 'assistant' && (
-          <div className="absolute p-1 top-2 right-2 opacity-0 group-hover:opacity-100 bg-background border border-border rounded-xl transition-opacity flex gap-2">
+          <div className="absolute p-1 top-2 right-2 opacity-0 group-hover:opacity-100 bg-background border border-border rounded-lg transition-opacity flex gap-2">
             <ChatActions
               onConvertToSpeech={onTextToSpeech}
               onDelete={onDelete}
@@ -383,14 +412,14 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                   <img
                     src={url}
                     alt={`Generated image ${index + 1}`}
-                    className="rounded-xl w-full h-full object-cover"
+                    className="rounded-lg w-full h-full object-cover"
                   />
                   <a
                     href={url}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="absolute inset-0 flex items-center justify-center bg-black/50 
-                           opacity-0 group-hover:opacity-100 transition-opacity rounded-xl"
+                           opacity-0 group-hover:opacity-100 transition-opacity rounded-lg"
                   >
                     <ImageIcon className="h-6 w-6 text-white" />
                   </a>
@@ -410,7 +439,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                     onClick={() => onSendMessage?.(question)}
                     className="text-sm text-blue-500 hover:text-blue-600 dark:text-blue-400 
                            dark:hover:text-blue-300 bg-accent/30 hover:bg-accent/50 
-                           px-3 py-1.5 rounded-xl transition-colors"
+                           px-3 py-1.5 rounded-lg transition-colors"
                   >
                     {question}
                   </button>

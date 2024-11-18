@@ -1,12 +1,14 @@
 import React from 'react';
 import { Window } from '@tauri-apps/api/window';
-import { X, Minus, Square } from 'lucide-react';
+import { X, Minus, Square, Maximize2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { platform, type Platform } from '@tauri-apps/plugin-os';
+import { open } from '@tauri-apps/plugin-shell';
 
 export const TitleBar: React.FC = () => {
   const [isMaximized, setIsMaximized] = React.useState(false);
   const [isMacOS, setIsMacOS] = React.useState(false);
+  const [isTrafficLightHovered, setIsTrafficLightHovered] = React.useState(false);
   const appWindow = Window.getCurrent();
 
   React.useEffect(() => {
@@ -31,36 +33,69 @@ export const TitleBar: React.FC = () => {
     await appWindow.startDragging();
   };
 
+  const handleLogoClick = () => {
+    open('https://corner.ac');
+  };
+
   if (isMacOS) {
     return (
       <div 
         className={cn(
-          "h-10 flex items-center fixed top-0 left-0 right-0 z-50",
-          "bg-background border-b border-border"
+          "h-10 flex items-center fixed top-0 left-0 right-0 z-50 backdrop-blur-sm",
+          "border-b border-border bg-background/80"
         )}
         onMouseDown={handleDrag}
         style={{ cursor: 'move' }}
       >
         {/* macOS traffic lights */}
-        <div className="flex items-center pl-2 space-x-2 h-full">
+        <div 
+          className="flex items-center pl-2 space-x-2 h-full"
+          onMouseEnter={() => setIsTrafficLightHovered(true)}
+          onMouseLeave={() => setIsTrafficLightHovered(false)}
+        >
           <button
             onClick={() => appWindow.close()}
-            className="h-3 w-3 rounded-full bg-red-500 hover:bg-red-600 inline-flex items-center justify-center"
-          />
+            className="h-3.5 w-3.5 rounded-full bg-accent border border-border hover:bg-red-500 hover:border-red-700 inline-flex items-center justify-center group transition-colors"
+          >
+            <X className={cn(
+              "h-2.5 w-2.5 text-foreground group-hover:text-red-900",
+              isTrafficLightHovered ? "opacity-100" : "opacity-0"
+            )} />
+          </button>
           <button
             onClick={() => appWindow.minimize()}
-            className="h-3 w-3 rounded-full bg-yellow-500 hover:bg-yellow-600 inline-flex items-center justify-center"
-          />
+            className="h-3.5 w-3.5 rounded-full bg-accent border border-border hover:bg-yellow-500 hover:border-yellow-700 inline-flex items-center justify-center group transition-colors"
+          >
+            <Minus className={cn(
+              "h-2.5 w-2.5 text-foreground group-hover:text-yellow-900",
+              isTrafficLightHovered ? "opacity-100" : "opacity-0"
+            )} />
+          </button>
           <button
             onClick={handleMaximize}
-            className="h-3 w-3 rounded-full bg-green-500 hover:bg-green-600 inline-flex items-center justify-center"
-          />
+            className="h-3.5 w-3.5 rounded-full bg-accent border border-border hover:bg-green-500 hover:border-green-700 inline-flex items-center justify-center group transition-colors"
+          >
+            <Maximize2 className={cn(
+              "h-[6px] w-[6px] text-foreground group-hover:text-green-900",
+              isTrafficLightHovered ? "opacity-100" : "opacity-0"
+            )} />
+          </button>
         </div>
+        {/* Center section - App name */}
+        {/* <div className="absolute left-1/2 -translate-x-1/2 flex items-center h-full">
+          <span className="text-sm font-bold font-geist text-foreground">Corner</span>
+        </div> */}
 
         {/* Title */}
-        <div className="flex-1 flex items-center justify-center h-full">
-          <span className="text-sm font-medium select-none text-muted-foreground">Corner</span>
+        <div className="flex-1 flex items-center justify-end pr-2 h-full">
+          <img 
+            src="/icon.png" 
+            alt="Corner" 
+            className="h-6 w-6 cursor-pointer hover:opacity-80 transition-opacity" 
+            onClick={handleLogoClick}
+          />
         </div>
+        
       </div>
     );
   }
@@ -74,22 +109,26 @@ export const TitleBar: React.FC = () => {
       onMouseDown={handleDrag}
       style={{ cursor: 'move' }}
     >
-      {/* Left section - App name/icon */}
+      {/* Left section - Empty */}
       <div 
-        className="flex-1 flex items-center px-3 h-full"
-        onMouseDown={handleDrag}
-      >
-        <span className="text-sm font-medium select-none">Corner</span>
-      </div>
-
-      {/* Center section - Title */}
-      <div 
-        className="flex-1 text-center text-sm text-muted-foreground h-full"
+        className="flex-1 h-full"
         onMouseDown={handleDrag}
       />
 
-      {/* Right section - Window controls */}
+      {/* Center section - Empty */}
+      <div 
+        className="flex-1 h-full"
+        onMouseDown={handleDrag}
+      />
+
+      {/* Right section - App icon and window controls */}
       <div className="flex items-center h-full">
+        <img 
+          src="/icon.png" 
+          alt="Corner" 
+          className="h-5 w-5 mr-3 cursor-pointer hover:opacity-80 transition-opacity" 
+          onClick={handleLogoClick}
+        />
         <button
           onClick={() => appWindow.minimize()}
           className="h-10 w-12 inline-flex items-center justify-center hover:bg-accent"

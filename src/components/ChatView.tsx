@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { Message, Thread, ApiKeys } from '@/types';
 import { ChatMessage } from './ChatMessage';
 import { FilePreview } from './FilePreview';
@@ -74,13 +74,34 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const [isLoadingThread, setIsLoadingThread] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
+    if (containerRef.current) {
+      containerRef.current.scrollTo({
+        top: containerRef.current.scrollHeight,
+        behavior
+      });
+    }
+  }, []);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, loading]);
+    setIsLoadingThread(true);
+    const timeout = setTimeout(() => {
+      setIsLoadingThread(false);
+      scrollToBottom('instant');
+    }, 100);
+    
+    return () => clearTimeout(timeout);
+  }, [activeThreadId, scrollToBottom]);
+
+  useEffect(() => {
+    if (!isLoadingThread) {
+      scrollToBottom();
+    }
+  }, [messages, isLoadingThread, scrollToBottom]);
+
+  useEffect(() => {
+    scrollToBottom('instant');
+  }, [scrollToBottom]);
 
   const handleTextToSpeech = async (text: string) => {
     try {
@@ -179,39 +200,20 @@ export const ChatView: React.FC<ChatViewProps> = ({
     setMessageToDelete(null);
   };
 
-  useEffect(() => {
-    setIsLoadingThread(true);
-    const timeout = setTimeout(() => {
-      setIsLoadingThread(false);
-      if (containerRef.current) {
-        containerRef.current.scrollTop = containerRef.current.scrollHeight;
-      }
-    }, 100);
-    
-    return () => clearTimeout(timeout);
-  }, [activeThreadId]);
-
-  useEffect(() => {
-    if (containerRef.current && !isLoadingThread) {
-      containerRef.current.scrollTop = containerRef.current.scrollHeight;
-    }
-  }, [messages, isLoadingThread]);
-
-  useEffect(() => {
-    if (containerRef.current) {
-      containerRef.current.scrollTop = containerRef.current.scrollHeight;
-    }
-  }, []);
-
-  // Sort messages to maintain chronological order, including comparisons
+  // Group messages by type and maintain chronological order within groups
   const sortedMessages = useMemo(() => {
-    return [...messages].sort((a, b) => {
-      // Sort error messages to appear after regular messages with same timestamp
-      if (a.timestamp === b.timestamp) {
-        return a.role === 'error' ? 1 : b.role === 'error' ? -1 : 0;
-      }
-      return a.timestamp - b.timestamp;
-    });
+    // First, separate messages by type
+    const regularMessages = messages.filter(m => m.role !== 'comparison');
+    const comparisonMessages = messages.filter(m => m.role === 'comparison');
+
+    // Sort each group by timestamp
+    const sortByTimestamp = (a: Message, b: Message) => a.timestamp - b.timestamp;
+    
+    const sortedRegular = regularMessages.sort(sortByTimestamp);
+    const sortedComparisons = comparisonMessages.sort(sortByTimestamp);
+
+    // Return regular messages followed by comparisons
+    return [...sortedRegular, ...sortedComparisons];
   }, [messages]);
 
   const handleShowLinkedItems = (noteId: string) => {
