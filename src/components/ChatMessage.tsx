@@ -167,7 +167,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     
     // If the content matches Euler's formula pattern, wrap it in display math
     if (/e\^{i.*?}\s*=\s*\\cos\(.*?\)\s*\+\s*i\\sin\(.*?\)/.test(processedContent)) {
-      processedContent = `\\[${processedContent}\\]`;
+      processedContent = processedContent.trim();
     } else {
       // Otherwise, proceed with normal LaTeX processing
       const placeholders: {[key: string]: string} = {};
