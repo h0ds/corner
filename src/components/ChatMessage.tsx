@@ -59,18 +59,65 @@ const LatexRenderer: React.FC<{ latex: string, displayMode?: boolean }> = ({ lat
   React.useEffect(() => {
     if (containerRef.current) {
       try {
-        katex.render(latex, containerRef.current, {
+        // Log the input
+        console.log('LaTeX Input:', { latex, displayMode });
+        
+        // Step 1: Remove delimiters but respect display mode
+        let processed = latex;
+        if (latex.startsWith('\\[') && latex.endsWith('\\]')) {
+          processed = latex.slice(2, -2).trim();
+          displayMode = true;
+        } else if (latex.startsWith('$$') && latex.endsWith('$$')) {
+          processed = latex.slice(2, -2).trim();
+          displayMode = true;
+        } else if (latex.startsWith('$') && latex.endsWith('$')) {
+          processed = latex.slice(1, -1).trim();
+          displayMode = false;
+        } else if (!latex.includes('\\[') && !latex.includes('\\]') && !latex.includes('$$')) {
+          // If no delimiters are present, treat it as inline math
+          processed = latex.trim();
+          displayMode = false;
+        }
+        console.log('After delimiter removal:', processed);
+
+        katex.render(processed, containerRef.current, {
           displayMode: displayMode,
-          throwOnError: false
+          throwOnError: false,
+          strict: false,
+          trust: true,
+          output: 'html',
+          macros: {
+            "\\N": "\\mathbb{N}",
+            "\\R": "\\mathbb{R}",
+            "\\Z": "\\mathbb{Z}",
+            "\\Q": "\\mathbb{Q}",
+            "\\C": "\\mathbb{C}",
+            "\\P": "\\mathbb{P}",
+            "\\GM": "\\text{GM}",
+            "\\AM": "\\text{AM}",
+            "\\HM": "\\text{HM}"
+          }
         });
       } catch (error) {
-        console.error('LaTeX rendering error:', error);
-        containerRef.current.textContent = latex;
+        console.error('LaTeX rendering error:', { error, latex });
+        // Fallback to showing the raw LaTeX
+        if (containerRef.current) {
+          containerRef.current.textContent = latex;
+        }
       }
     }
   }, [latex, displayMode]);
 
-  return <div ref={containerRef} />;
+  return (
+    <div 
+      ref={containerRef} 
+      className={cn(
+        "overflow-x-auto max-w-full",
+        displayMode && "my-4 text-center py-2",
+        !displayMode && "inline-block align-middle"
+      )}
+    />
+  );
 };
 
 export const ChatMessage: React.FC<ChatMessageProps> = ({
@@ -89,24 +136,8 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   isAudioResponse = false,
   onDelete,
 }) => {
-  // Process content to convert citation references to links
-  const processContent = (content: string) => {
-    if (!citations?.length) return content;
-
-    // Replace [n] with markdown links
-    return content.replace(/\[(\d+)\]/g, (match, num) => {
-      const index = parseInt(num) - 1;
-      if (index >= 0 && index < citations.length) {
-        // Create markdown link with citation URL
-        return `[${match}](${citations[index].url})`;
-      }
-      return match;
-    });
-  };
-
-  const processedContent = processContent(content);
-
   const renderContent = () => {
+    console.log('Raw content:', content);
     if (content.startsWith('data:audio/') || isAudioResponse) {
       return (
         <div className="flex flex-col gap-2">
@@ -122,35 +153,281 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
       );
     }
 
-    // Split content into text and LaTeX segments
-    const segments = content.split(/(\$\$[\s\S]*?\$\$|\$[\s\S]*?\$)/g);
+    // Process content to wrap LaTeX in delimiters if needed
+    let processedContent = content;
+    
+    // First, normalize the expression by combining it into a single LaTeX expression
+    processedContent = processedContent
+      // Remove nested dollar signs
+      .replace(/\$\$([^$]+)\$\$/g, '$1')
+      // Handle function arguments
+      .replace(/\$([^$]+)\$\(([^)]+)\)/g, '$1($2)')
+      // Combine the entire expression
+      .replace(/\$([^$]+)\$\s*=\s*\$([^$]+)\$\s*\(([^)]+)\)\s*\+\s*i\$([^$]+)\$\s*\(([^)]+)\)/g, '$$1 = $2($3) + i$4($5)$');
+    
+    // If the content matches Euler's formula pattern, wrap it in display math
+    if (/e\^{i.*?}\s*=\s*\\cos\(.*?\)\s*\+\s*i\\sin\(.*?\)/.test(processedContent)) {
+      processedContent = `\\[${processedContent}\\]`;
+    } else {
+      // Otherwise, proceed with normal LaTeX processing
+      const placeholders: {[key: string]: string} = {};
+      let counter = 0;
+      
+      processedContent = processedContent.replace(/\$.*?\$|\\\[.*?\\\]|\\\(.*?\\\)/g, (match) => {
+        const placeholder = `__LATEX_PLACEHOLDER_${counter}__`;
+        placeholders[placeholder] = match;
+        counter++;
+        return placeholder;
+      });
+      
+      const latexRegex = /\\[a-zA-Z]+{[^}]*}|\\[a-zA-Z]+\s*\{[^}]*\}|\\[a-zA-Z]+|[a-zA-Z0-9]+\^{[^}]*}|[a-zA-Z0-9]+_{[^}]*}/g;
+      const matches = processedContent.match(latexRegex);
+      
+      if (matches) {
+        matches.forEach(match => {
+          processedContent = processedContent.replace(match, `$${match}$`);
+        });
+      }
+      
+      Object.entries(placeholders).forEach(([placeholder, original]) => {
+        processedContent = processedContent.replace(placeholder, original);
+      });
+    }
 
     return (
       <div>
-        {segments.map((segment, index) => {
-          if (segment.startsWith('$$') && segment.endsWith('$$')) {
-            // Display mode LaTeX
-            const latex = segment.slice(2, -2);
-            return (
-              <div key={index} className="my-4">
-                <LatexRenderer latex={latex} displayMode={true} />
+        <ReactMarkdown
+          remarkPlugins={[
+            remarkGfm,
+            [remarkMath, { 
+              singleDollarTextMath: true,
+              doubleBackslashDisplayMath: true
+            }]
+          ]}
+          rehypePlugins={[[rehypeKatex, {
+            strict: false,
+            trust: true,
+            output: 'html',
+            throwOnError: false,
+            displayMode: true,
+            macros: {
+              "\\N": "\\mathbb{N}",
+              "\\R": "\\mathbb{R}",
+              "\\Z": "\\mathbb{Z}",
+              "\\Q": "\\mathbb{Q}",
+              "\\C": "\\mathbb{C}",
+              "\\P": "\\mathbb{P}"
+            }
+          }]]}
+          components={{
+            code({ node, inline, className, children, ...props }) {
+              const match = /language-(\w+)/.exec(className || '');
+              const language = match ? match[1] : '';
+              
+              // Special handling for LaTeX code blocks
+              if (language === 'latex') {
+                const content = String(children)
+                  .replace(/\\\\(?=[a-zA-Z])/g, '\\') // Unescape LaTeX commands
+                  .trim();
+                return (
+                  <div className="my-4">
+                    <LatexRenderer 
+                      latex={content} 
+                      displayMode={true} 
+                    />
+                  </div>
+                );
+              }
+              
+              // Check if content looks like LaTeX
+              const content = String(children);
+              const hasLatexCommands = /\\[a-zA-Z]+({[^}]*}|\s*{[^}]*})?/.test(content);
+              const hasLatexDelimiters = /\$|\\\(|\\\[/.test(content);
+              const hasLatexOperators = /[_^{}\[\]]/.test(content);
+              
+              // If it looks like LaTeX and isn't explicitly marked as a programming language,
+              // render it as math
+              if (!language && (hasLatexCommands || (hasLatexDelimiters && hasLatexOperators))) {
+                return (
+                  <LatexRenderer 
+                    latex={content} 
+                    displayMode={!inline} 
+                  />
+                );
+              }
+              
+              if (inline) {
+                return (
+                  <code 
+                    className="bg-muted px-1.5 py-0.5 rounded-lg text-sm font-mono" 
+                    {...props}
+                  >
+                    {children}
+                  </code>
+                );
+              }
+
+              return (
+                <div className="relative group my-4 bg-[#282c34] font-mono rounded-lg">
+                  <div 
+                    className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 
+                              transition-opacity"
+                  >
+                    <button
+                      onClick={() => navigator.clipboard.writeText(String(children))}
+                      className="p-1.5 hover:bg-accent/10 rounded-lg text-muted-foreground 
+                                hover:text-accent-foreground"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <SyntaxHighlighter
+                    language={language}
+                    style={materialOceanic}
+                    codeTagProps={{style: {fontFamily: '"Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace'} }}
+                    customStyle={{
+                      background: 'transparent',
+                      fontSize: '0.875rem',
+                    }}
+                    {...props}
+                  >
+                    {String(children).replace(/\n$/, '')}
+                  </SyntaxHighlighter>
+                </div>
+              );
+            },
+            math: ({ value, ...props }) => {
+              console.log('Math component received:', { value, props });
+              return (
+                <div className="my-2">
+                  <LatexRenderer latex={value} displayMode={true} />
+                </div>
+              );
+            },
+            inlineMath: ({ value, ...props }) => {
+              console.log('InlineMath component received:', { value, props });
+              return <LatexRenderer latex={value} displayMode={false} />;
+            },
+            text: ({ value, ...props }) => {
+              console.log('Text component received:', { value, props });
+              return <span>{value}</span>;
+            },
+            p: ({children}) => <p className="mb-4 text-sm first:mt-1 last:mb-0">{children}</p>,
+            ul: ({children}) => <ul className="list-disc p-6 mb-6 last:mb-0 space-y-2 text-sm">{children}</ul>,
+            ol: ({children}) => <ol className="list-decimal px-8 py-6 last:mb-0 space-y-2 text-sm">{children}</ol>,
+            li: ({children}) => <li className="mb-2 last:mb-0">{children}</li>,
+            a: ({ node, children, ...props }: {
+              node?: any;
+              children?: React.ReactNode;
+              [key: string]: any;
+            }) => {
+              // Check if this is a citation link
+              const isCitation = children?.[0]?.toString?.().match(/^\[\d+\]$/);
+              
+              return (
+                <a
+                  {...props}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(
+                    "cursor-pointer",
+                    isCitation 
+                      ? "text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 no-underline" 
+                      : "text-primary hover:underline"
+                  )}
+                />
+              );
+            },
+            strong: ({children}) => (
+              <span className="tracking-tighter font-medium underline">
+                {children}
+              </span>
+            ),
+            blockquote: ({children}) => (
+              <blockquote className="border-l-2 border-border pl-6 py-2 italic mb-6 last:mb-0 text-muted-foreground">
+                {children}
+              </blockquote>
+            ),
+            table: ({children}) => (
+              <div className="overflow-x-auto mb-6 last:mb-0">
+                <table className="border-collapse w-full">
+                  {children}
+                </table>
               </div>
-            );
-          } else if (segment.startsWith('$') && segment.endsWith('$')) {
-            // Inline LaTeX
-            const latex = segment.slice(1, -1);
-            return <LatexRenderer key={index} latex={latex} displayMode={false} />;
-          } else {
-            // Regular text/markdown
-            return (
+            ),
+            th: ({children}) => (
+              <th className="border border-border px-6 py-3 bg-muted font-medium">
+                {children}
+              </th>
+            ),
+            td: ({children}) => (
+              <td className="border border-border px-6 py-3">
+                {children}
+              </td>
+            ),
+            h1: ({children}) => <h1 className="text-2xl font-bold mb-6 mt-8 first:mt-0">{children}</h1>,
+            h2: ({children}) => <h2 className="text-xl font-bold mb-4 mt-8 first:mt-0">{children}</h2>,
+            h3: ({children}) => <h3 className="text-lg font-bold mb-4 mt-6 first:mt-0">{children}</h3>,
+            h4: ({children}) => <h4 className="text-base font-bold mb-4 mt-6 first:mt-0">{children}</h4>,
+            hr: () => <hr className="border-border my-8" />,
+          }}
+        >
+          {processedContent}
+        </ReactMarkdown>
+      </div>
+    );
+  };
+
+  if (role === 'error') {
+    return (
+      <div
+        className="flex items-start gap-2 text-destructive cursor-pointer group"
+        onClick={onErrorClick}
+      >
+        <XCircle className="h-5 w-5 mt-0.5 shrink-0" />
+        <div className="text-sm">
+          <span className="font-medium">Error: </span>
+          {content}
+          <div className="text-xs text-muted-foreground group-hover:underline">
+            Click to configure API keys
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (role === 'comparison' && comparison) {
+    return (
+      <div className="flex flex-col pt-2 gap-2 w-full">
+        <div className="text-sm text-muted-foreground/50">
+          Comparing responses for: "{comparison.message}"
+        </div>
+        <div className="flex gap-2">
+          <div className="flex-1 border border-border rounded-lg p-4 bg-background">
+            <div className="flex items-center gap-2 mb-2">
+              <ModelIcon modelId={comparison.model1.id} className="h-4 w-4" />
+              <span className="text-sm font-medium">
+                {AVAILABLE_MODELS.find(m => m.id === comparison.model1.id)?.name}
+              </span>
+            </div>
+            <div className="text-sm">
               <ReactMarkdown
-                key={index}
-                remarkPlugins={[remarkGfm]}
+                remarkPlugins={[
+                  remarkGfm,
+                  [remarkMath, { 
+                    singleDollarTextMath: true,
+                    doubleBackslashDisplayMath: true
+                  }]
+                ]}
+                rehypePlugins={[[rehypeKatex, {
+                  strict: false,
+                  trust: true,
+                  output: 'html',
+                  throwOnError: false,
+                  displayMode: true
+                }]]}
                 components={{
-                  code({inline, className, children, ...props}: React.ComponentPropsWithoutRef<'code'> & {
-                    inline?: boolean;
-                    className?: string;
-                  }) {
+                  code({ node, inline, className, children, ...props }) {
                     const match = /language-(\w+)/.exec(className || '');
                     const language = match ? match[1] : '';
                     
@@ -193,6 +470,18 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                         </SyntaxHighlighter>
                       </div>
                     );
+                  },
+                  math: ({ value, ...props }) => {
+                    console.log('Display Math Node:', { value });
+                    return (
+                      <div className="my-2">
+                        <LatexRenderer latex={value} displayMode={true} />
+                      </div>
+                    );
+                  },
+                  inlineMath: ({ value, ...props }) => {
+                    console.log('Inline Math Node:', { value });
+                    return <LatexRenderer latex={value} displayMode={false} />;
                   },
                   p: ({children}) => <p className="mb-4 text-sm first:mt-1 last:mb-0">{children}</p>,
                   ul: ({children}) => <ul className="list-disc p-6 mb-6 last:mb-0 space-y-2 text-sm">{children}</ul>,
@@ -254,56 +543,6 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                   hr: () => <hr className="border-border my-8" />,
                 }}
               >
-                {segment}
-              </ReactMarkdown>
-            );
-          }
-        })}
-      </div>
-    );
-  };
-
-  // ... rest of the component remains the same ...
-  
-  if (role === 'error') {
-    return (
-      <div
-        className="flex items-start gap-2 text-destructive cursor-pointer group"
-        onClick={onErrorClick}
-      >
-        <XCircle className="h-5 w-5 mt-0.5 shrink-0" />
-        <div className="text-sm">
-          <span className="font-medium">Error: </span>
-          {content}
-          <div className="text-xs text-muted-foreground group-hover:underline">
-            Click to configure API keys
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (role === 'comparison' && comparison) {
-    return (
-      <div className="flex flex-col pt-2 gap-2 w-full">
-        <div className="text-sm text-muted-foreground/50">
-          Comparing responses for: "{comparison.message}"
-        </div>
-        <div className="flex gap-2">
-          <div className="flex-1 border border-border rounded-lg p-4 bg-background">
-            <div className="flex items-center gap-2 mb-2">
-              <ModelIcon modelId={comparison.model1.id} className="h-4 w-4" />
-              <span className="text-sm font-medium">
-                {AVAILABLE_MODELS.find(m => m.id === comparison.model1.id)?.name}
-              </span>
-            </div>
-            <div className="text-sm">
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                components={{
-                  // ... existing markdown components ...
-                }}
-              >
                 {comparison.model1.response}
               </ReactMarkdown>
             </div>
@@ -317,9 +556,135 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             </div>
             <div className="text-sm">
               <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
+                remarkPlugins={[
+                  remarkGfm,
+                  [remarkMath, { 
+                    singleDollarTextMath: true,
+                    doubleBackslashDisplayMath: true
+                  }]
+                ]}
+                rehypePlugins={[[rehypeKatex, {
+                  strict: false,
+                  trust: true,
+                  output: 'html',
+                  throwOnError: false,
+                  displayMode: true
+                }]]}
                 components={{
-                  // ... existing markdown components ...
+                  code({ node, inline, className, children, ...props }) {
+                    const match = /language-(\w+)/.exec(className || '');
+                    const language = match ? match[1] : '';
+                    
+                    if (inline) {
+                      return (
+                        <code 
+                          className="bg-muted px-1.5 py-0.5 rounded-lg text-sm font-mono" 
+                          {...props}
+                        >
+                          {children}
+                        </code>
+                      );
+                    }
+
+                    return (
+                      <div className="relative group my-4 bg-[#282c34] font-mono rounded-lg">
+                        <div 
+                          className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 
+                                    transition-opacity"
+                        >
+                          <button
+                            onClick={() => navigator.clipboard.writeText(String(children))}
+                            className="p-1.5 hover:bg-accent/10 rounded-lg text-muted-foreground 
+                                      hover:text-accent-foreground"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </button>
+                        </div>
+                        <SyntaxHighlighter
+                          language={language}
+                          style={materialOceanic}
+                          codeTagProps={{style: {fontFamily: '"Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace'} }}
+                          customStyle={{
+                            background: 'transparent',
+                            fontSize: '0.875rem',
+                          }}
+                          {...props}
+                        >
+                          {String(children).replace(/\n$/, '')}
+                        </SyntaxHighlighter>
+                      </div>
+                    );
+                  },
+                  math: ({ value, ...props }) => {
+                    console.log('Display Math Node:', { value });
+                    return (
+                      <div className="my-2">
+                        <LatexRenderer latex={value} displayMode={true} />
+                      </div>
+                    );
+                  },
+                  inlineMath: ({ value, ...props }) => {
+                    console.log('Inline Math Node:', { value });
+                    return <LatexRenderer latex={value} displayMode={false} />;
+                  },
+                  p: ({children}) => <p className="mb-4 text-sm first:mt-1 last:mb-0">{children}</p>,
+                  ul: ({children}) => <ul className="list-disc p-6 mb-6 last:mb-0 space-y-2 text-sm">{children}</ul>,
+                  ol: ({children}) => <ol className="list-decimal px-8 py-6 last:mb-0 space-y-2 text-sm">{children}</ol>,
+                  li: ({children}) => <li className="mb-2 last:mb-0">{children}</li>,
+                  a: ({ node, children, ...props }: {
+                    node?: any;
+                    children?: React.ReactNode;
+                    [key: string]: any;
+                  }) => {
+                    // Check if this is a citation link
+                    const isCitation = children?.[0]?.toString?.().match(/^\[\d+\]$/);
+                    
+                    return (
+                      <a
+                        {...props}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={cn(
+                          "cursor-pointer",
+                          isCitation 
+                            ? "text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 no-underline" 
+                            : "text-primary hover:underline"
+                        )}
+                      />
+                    );
+                  },
+                  strong: ({children}) => (
+                    <span className="tracking-tighter font-medium underline">
+                      {children}
+                    </span>
+                  ),
+                  blockquote: ({children}) => (
+                    <blockquote className="border-l-2 border-border pl-6 py-2 italic mb-6 last:mb-0 text-muted-foreground">
+                      {children}
+                    </blockquote>
+                  ),
+                  table: ({children}) => (
+                    <div className="overflow-x-auto mb-6 last:mb-0">
+                      <table className="border-collapse w-full">
+                        {children}
+                      </table>
+                    </div>
+                  ),
+                  th: ({children}) => (
+                    <th className="border border-border px-6 py-3 bg-muted font-medium">
+                      {children}
+                    </th>
+                  ),
+                  td: ({children}) => (
+                    <td className="border border-border px-6 py-3">
+                      {children}
+                    </td>
+                  ),
+                  h1: ({children}) => <h1 className="text-2xl font-bold mb-6 mt-8 first:mt-0">{children}</h1>,
+                  h2: ({children}) => <h2 className="text-xl font-bold mb-4 mt-8 first:mt-0">{children}</h2>,
+                  h3: ({children}) => <h3 className="text-lg font-bold mb-4 mt-6 first:mt-0">{children}</h3>,
+                  h4: ({children}) => <h4 className="text-base font-bold mb-4 mt-6 first:mt-0">{children}</h4>,
+                  hr: () => <hr className="border-border my-8" />,
                 }}
               >
                 {comparison.model2.response}
@@ -408,117 +773,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             "break-words",
             role === 'user' && 'text-white'
           )}>
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm, remarkMath]}
-              rehypePlugins={[rehypeKatex]}
-              components={{
-                ...renderers,
-                code({ node, inline, className, children, ...props }) {
-                  const match = /language-(\w+)/.exec(className || '');
-                  const language = match ? match[1] : '';
-                  
-                  if (inline) {
-                    return (
-                      <code 
-                        className="bg-muted px-1.5 py-0.5 rounded-lg text-sm font-mono" 
-                        {...props}
-                      >
-                        {children}
-                      </code>
-                    );
-                  }
-
-                  return (
-                    <div className="relative group my-4 bg-[#282c34] font-mono rounded-lg">
-                      <div 
-                        className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 
-                                  transition-opacity"
-                      >
-                        <button
-                          onClick={() => navigator.clipboard.writeText(String(children))}
-                          className="p-1.5 hover:bg-accent/10 rounded-lg text-muted-foreground 
-                                    hover:text-accent-foreground"
-                        >
-                          <Copy className="h-4 w-4" />
-                        </button>
-                      </div>
-                      <SyntaxHighlighter
-                        language={language}
-                        style={materialOceanic}
-                        codeTagProps={{style: {fontFamily: '"Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace'} }}
-                        customStyle={{
-                          background: 'transparent',
-                          fontSize: '0.875rem',
-                        }}
-                        {...props}
-                      >
-                        {String(children).replace(/\n$/, '')}
-                      </SyntaxHighlighter>
-                    </div>
-                  );
-                },
-                p: ({children}) => <p className="mb-4 text-sm first:mt-1 last:mb-0">{children}</p>,
-                ul: ({children}) => <ul className="list-disc p-6 mb-6 last:mb-0 space-y-2 text-sm">{children}</ul>,
-                ol: ({children}) => <ol className="list-decimal px-8 py-6 last:mb-0 space-y-2 text-sm">{children}</ol>,
-                li: ({children}) => <li className="mb-2 last:mb-0">{children}</li>,
-                a: ({ node, children, ...props }: {
-                  node?: any;
-                  children?: React.ReactNode;
-                  [key: string]: any;
-                }) => {
-                  // Check if this is a citation link
-                  const isCitation = children?.[0]?.toString?.().match(/^\[\d+\]$/);
-                  
-                  return (
-                    <a
-                      {...props}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={cn(
-                        "cursor-pointer",
-                        isCitation 
-                          ? "text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 no-underline" 
-                          : "text-primary hover:underline"
-                      )}
-                    />
-                  );
-                },
-                strong: ({children}) => (
-                  <span className="tracking-tighter font-medium underline">
-                    {children}
-                  </span>
-                ),
-                blockquote: ({children}) => (
-                  <blockquote className="border-l-2 border-border pl-6 py-2 italic mb-6 last:mb-0 text-muted-foreground">
-                    {children}
-                  </blockquote>
-                ),
-                table: ({children}) => (
-                  <div className="overflow-x-auto mb-6 last:mb-0">
-                    <table className="border-collapse w-full">
-                      {children}
-                    </table>
-                  </div>
-                ),
-                th: ({children}) => (
-                  <th className="border border-border px-6 py-3 bg-muted font-medium">
-                    {children}
-                  </th>
-                ),
-                td: ({children}) => (
-                  <td className="border border-border px-6 py-3">
-                    {children}
-                  </td>
-                ),
-                h1: ({children}) => <h1 className="text-2xl font-bold mb-6 mt-8 first:mt-0">{children}</h1>,
-                h2: ({children}) => <h2 className="text-xl font-bold mb-4 mt-8 first:mt-0">{children}</h2>,
-                h3: ({children}) => <h3 className="text-lg font-bold mb-4 mt-6 first:mt-0">{children}</h3>,
-                h4: ({children}) => <h4 className="text-base font-bold mb-4 mt-6 first:mt-0">{children}</h4>,
-                hr: () => <hr className="border-border my-8" />,
-              }}
-            >
-              {content}
-            </ReactMarkdown>
+            {renderContent()}
           </div>
 
           {/* Display images if present */}
