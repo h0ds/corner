@@ -73,26 +73,58 @@ export const Sidebar: React.FC<SidebarProps> = ({
     };
   }, [onThreadSelect]);
 
-  // Memoize thread filtering to prevent unnecessary recalculations
-  const filteredThreads = useMemo(() => {
+  // Memoize thread and note counts
+  const { filteredThreads, threadCount, noteCount } = useMemo(() => {
     // Ensure threads is an array
     const validThreads = Array.isArray(threads) ? threads : [];
     
-    // Filter based on active tab
-    const filtered = validThreads.filter(thread => {
-      const isNote = thread && typeof thread.isNote === 'boolean' && thread.isNote === true;
-      return activeTab === 'notes' ? isNote : !isNote;
+    // Calculate total counts and sort items
+    const notes = validThreads.filter(thread => 
+      thread && typeof thread.isNote === 'boolean' && thread.isNote === true
+    ).sort((a, b) => {
+      // Sort by pinned status first
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+      // Then by updated time for unpinned items
+      if (!a.isPinned && !b.isPinned) {
+        return b.updatedAt - a.updatedAt;
+      }
+      // Keep pinned items in their relative order
+      return 0;
     });
+
+    const chats = validThreads.filter(thread => 
+      thread && typeof thread.isNote === 'boolean' && thread.isNote === false
+    ).sort((a, b) => {
+      // Sort by pinned status first
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+      // Then by updated time for unpinned items
+      if (!a.isPinned && !b.isPinned) {
+        return b.updatedAt - a.updatedAt;
+      }
+      // Keep pinned items in their relative order
+      return 0;
+    });
+    
+    // Filter based on active tab
+    const filtered = activeTab === 'notes' ? notes : chats;
 
     console.log('Thread filtering:', {
       total: validThreads.length,
       filtered: filtered.length,
-      activeTab,
-      activeThreadId
+      notes: notes.length,
+      chats: chats.length,
+      pinnedItems: filtered.filter(t => t.isPinned).length,
+      activeTab
     });
 
-    return filtered;
-  }, [threads, activeTab, activeThreadId]);
+    return {
+      filteredThreads: filtered,
+      threadCount: chats.length,
+      noteCount: notes.length
+    };
+  }, [threads, activeTab]);
 
   // Add debug logging for active thread
   useEffect(() => {
@@ -106,16 +138,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   // Auto-select top thread/note when switching tabs
   useEffect(() => {
+    // Skip if no items to select from
+    if (filteredThreads.length === 0) return;
+
     const activeThread = threads.find(t => t.id === activeThreadId);
-    
-    if (filteredThreads.length > 0) {
-      // Only select if no item is selected or current selection is of wrong type
-      const isCurrentNote = activeThread?.isNote === true;
-      const wantNote = activeTab === 'notes';
-      
-      if (!activeThread || isCurrentNote !== wantNote) {
-        onThreadSelect(filteredThreads[0].id);
-      }
+    const isCurrentNote = activeThread?.isNote === true;
+    const wantNote = activeTab === 'notes';
+
+    // Select first item if:
+    // 1. No active thread, or
+    // 2. Current thread type doesn't match active tab
+    if (!activeThread || isCurrentNote !== wantNote) {
+      console.log('Auto-selecting first item:', {
+        reason: !activeThread ? 'no active thread' : 'type mismatch',
+        selectedId: filteredThreads[0].id,
+        isNote: filteredThreads[0].isNote
+      });
+      onThreadSelect(filteredThreads[0].id);
     }
   }, [activeTab, filteredThreads, activeThreadId, threads, onThreadSelect]);
 
@@ -137,8 +176,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <SidebarTabs
           activeTab={activeTab}
           onTabChange={setActiveTab}
-          threadCount={filteredThreads.length}
-          noteCount={filteredThreads.length}
+          threadCount={threadCount}
+          noteCount={noteCount}
         />
         
         <div className="px-2 py-1">

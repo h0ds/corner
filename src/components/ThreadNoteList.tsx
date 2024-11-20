@@ -125,10 +125,11 @@ const SortableItem = ({
         >
           <div
             className={cn(
-              "group flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-accent/50 select-none",
+              "group flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-accent/50 select-none cursor-pointer",
               activeItemId === item.id && "bg-accent",
               item.color && `hover:${item.color}/10`,
-              isEditing && "ring-1 ring-accent"
+              isEditing && "ring-1 ring-accent",
+              item.isPinned && "border border-border/50"
             )}
             onClick={() => !isEditing && onItemSelect(item.id)}
           >
@@ -270,7 +271,18 @@ export const ThreadNoteList: React.FC<ThreadNoteListProps> = ({
     }
 
     const overItem = items.find(t => t.id === over.id);
+    // Don't show drop target if the target item is pinned
     if (overItem?.isPinned) {
+      setDropTarget(null);
+      return;
+    }
+
+    // Find the last pinned item's index
+    const lastPinnedIndex = items.findIndex(item => !item.isPinned) - 1;
+    const overIndex = items.findIndex(t => t.id === over.id);
+
+    // Don't show drop target if trying to drop before pinned items
+    if (lastPinnedIndex >= 0 && overIndex <= lastPinnedIndex) {
       setDropTarget(null);
       return;
     }
@@ -290,6 +302,7 @@ export const ThreadNoteList: React.FC<ThreadNoteListProps> = ({
       const activeItem = items.find(t => t.id === active.id);
       const overItem = items.find(t => t.id === over.id);
       
+      // Don't allow reordering if either item is pinned
       if (activeItem?.isPinned || overItem?.isPinned) {
         setActiveId(null);
         setIsDragging(false);
@@ -297,8 +310,15 @@ export const ThreadNoteList: React.FC<ThreadNoteListProps> = ({
         return;
       }
 
+      // Find the last pinned item's index
+      const lastPinnedIndex = items.findIndex(item => !item.isPinned) - 1;
       const oldIndex = items.findIndex(t => t.id === active.id);
-      const newIndex = items.findIndex(t => t.id === over.id);
+      let newIndex = items.findIndex(t => t.id === over.id);
+
+      // Ensure new position is after pinned items
+      if (lastPinnedIndex >= 0) {
+        newIndex = Math.max(newIndex, lastPinnedIndex + 1);
+      }
 
       const reorderedItems = [...items];
       const [movedItem] = reorderedItems.splice(oldIndex, 1);
