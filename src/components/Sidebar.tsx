@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { ThreadList } from './ThreadList';
-import { NoteList } from './NoteList';
+import { ThreadNoteList } from './ThreadNoteList';
 import { SidebarTabs } from './SidebarTabs';
 import { Thread, NoteThread, ChatThread } from '@/types';
 import { Plus, StickyNote } from 'lucide-react';
@@ -75,64 +74,50 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }, [onThreadSelect]);
 
   // Memoize thread filtering to prevent unnecessary recalculations
-  const { notes, chatThreads } = useMemo(() => {
+  const filteredThreads = useMemo(() => {
     // Ensure threads is an array
     const validThreads = Array.isArray(threads) ? threads : [];
     
-    const filteredNotes = validThreads.filter((thread): thread is NoteThread => {
-      return thread && typeof thread.isNote === 'boolean' && thread.isNote === true;
-    });
-
-    const filteredChats = validThreads.filter((thread): thread is ChatThread => {
-      return thread && typeof thread.isNote === 'boolean' && thread.isNote === false;
+    // Filter based on active tab
+    const filtered = validThreads.filter(thread => {
+      const isNote = thread && typeof thread.isNote === 'boolean' && thread.isNote === true;
+      return activeTab === 'notes' ? isNote : !isNote;
     });
 
     console.log('Thread filtering:', {
       total: validThreads.length,
-      notes: filteredNotes.length,
-      chats: filteredChats.length,
+      filtered: filtered.length,
       activeTab,
       activeThreadId
     });
 
-    return {
-      notes: filteredNotes,
-      chatThreads: filteredChats
-    };
+    return filtered;
   }, [threads, activeTab, activeThreadId]);
 
   // Add debug logging for active thread
   useEffect(() => {
     const activeThread = threads.find(t => t.id === activeThreadId);
     console.log('Active thread:', {
-      id: activeThread?.id,
-      name: activeThread?.name,
-      isNote: activeThread?.isNote,
-      tab: activeTab
+      id: activeThreadId,
+      type: activeThread?.isNote ? 'note' : 'thread',
+      name: activeThread?.name
     });
-  }, [activeThreadId, activeTab, threads]);
+  }, [activeThreadId, threads]);
 
   // Auto-select top thread/note when switching tabs
   useEffect(() => {
     const activeThread = threads.find(t => t.id === activeThreadId);
     
-    if (activeTab === 'threads' && chatThreads.length > 0) {
-      // Only select if no thread is selected or current selection is a note
-      if (!activeThread || activeThread.isNote) {
-        onThreadSelect(chatThreads[0].id);
-      }
-    } else if (activeTab === 'notes' && notes.length > 0) {
-      // Only select if no note is selected or current selection is a thread
-      if (!activeThread || !activeThread.isNote) {
-        onThreadSelect(notes[0].id);
+    if (filteredThreads.length > 0) {
+      // Only select if no item is selected or current selection is of wrong type
+      const isCurrentNote = activeThread?.isNote === true;
+      const wantNote = activeTab === 'notes';
+      
+      if (!activeThread || isCurrentNote !== wantNote) {
+        onThreadSelect(filteredThreads[0].id);
       }
     }
-  }, [activeTab, chatThreads, notes, activeThreadId, threads, onThreadSelect]);
-
-  // Add effect to update active tab when initialTab changes
-  useEffect(() => {
-    setActiveTab(props.initialTab || 'threads');
-  }, [props.initialTab]);
+  }, [activeTab, filteredThreads, activeThreadId, threads, onThreadSelect]);
 
   const handleCreateNote = useCallback(() => {
     const newNoteName = generateUniqueName('New note', threads);
@@ -152,8 +137,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <SidebarTabs
           activeTab={activeTab}
           onTabChange={setActiveTab}
-          threadCount={chatThreads.length}
-          noteCount={notes.length}
+          threadCount={filteredThreads.length}
+          noteCount={filteredThreads.length}
         />
         
         <div className="px-2 py-1">
@@ -178,26 +163,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
 
-      {activeTab === 'threads' ? (
-        <ThreadList
-          threads={chatThreads}
-          activeThreadId={activeThreadId}
-          onThreadSelect={onThreadSelect}
-          {...props}
-        />
-      ) : (
-        <NoteList
-          notes={notes}
-          activeNoteId={activeThreadId}
-          onNoteSelect={onThreadSelect}
-          onDeleteNote={props.onDeleteThread}
-          onRenameNote={props.onRenameThread}
+      <div className="flex-1 overflow-y-auto">
+        <ThreadNoteList
+          items={filteredThreads}
+          activeItemId={activeThreadId}
+          onItemSelect={onThreadSelect}
+          onNewItem={activeTab === 'threads' ? props.onNewThread : handleCreateNote}
+          onDeleteItem={props.onDeleteThread}
+          onRenameItem={props.onRenameThread}
+          onReorderItems={props.onReorderThreads}
+          onTogglePin={props.onTogglePin}
           onColorChange={props.onColorChange}
           onIconChange={props.onIconChange}
           onTextColorChange={props.onTextColorChange}
-          onReorderNotes={props.onReorderThreads}
+          isNoteList={activeTab === 'notes'}
         />
-      )}
+      </div>
     </div>
   );
 }; 
