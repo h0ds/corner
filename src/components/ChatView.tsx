@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { showToast } from '@/lib/toast';
+import { nanoid } from 'nanoid';
 
 interface ChatViewProps {
   messages: Message[];
@@ -151,17 +152,16 @@ export const ChatView: React.FC<ChatViewProps> = ({
   };
 
   const handleDeleteMessage = (timestamp: number, content: string) => {
-    showToast.promise(
-      new Promise((resolve) => {
-        setMessageToDelete({ timestamp, content });
-        resolve(true);
-      }),
-      {
-        loading: 'Deleting message...',
-        success: 'Message deleted',
-        error: 'Failed to delete message'
+    setThreads(prev => prev.map(thread => {
+      if (thread.id === activeThreadId) {
+        return {
+          ...thread,
+          messages: thread.messages?.filter(m => m.timestamp !== timestamp),
+          updatedAt: Date.now(),
+        };
       }
-    );
+      return thread;
+    }));
   };
 
   const handleConfirmDelete = () => {
@@ -253,6 +253,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     showTTS={!!apiKeys.elevenlabs}
                     isAudioResponse={message.isAudioResponse}
                     onDelete={() => handleDeleteMessage(message.timestamp, message.content)}
+                    setThreads={setThreads}
                   />
                   {message.file && (
                     <FilePreview

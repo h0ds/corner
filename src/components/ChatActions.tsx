@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Copy, Check, Volume2, Trash2 } from 'lucide-react';
+import { Copy, Check, Volume2, Trash2, GitForkIcon } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -12,6 +12,7 @@ import { showToast } from '@/lib/toast';
 interface ChatActionsProps {
   onConvertToSpeech?: (text: string) => Promise<void>;
   onDelete?: () => void;
+  onForkToNote?: () => void;
   content: string;
   showTTS?: boolean;
   className?: string;
@@ -20,6 +21,7 @@ interface ChatActionsProps {
 export const ChatActions: React.FC<ChatActionsProps> = ({
   onConvertToSpeech,
   onDelete,
+  onForkToNote,
   content,
   showTTS,
   className
@@ -29,10 +31,19 @@ export const ChatActions: React.FC<ChatActionsProps> = ({
   const copyToClipboard = async () => {
     try {
       await navigator.clipboard.writeText(content);
-      showToast.success('Copied to clipboard');
+      showToast({
+        title: "Copied",
+        description: "Message copied to clipboard",
+      });
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       console.error('Failed to copy:', err);
-      showToast.error('Failed to copy to clipboard');
+      showToast({
+        title: "Error",
+        description: "Failed to copy to clipboard",
+        variant: "destructive",
+      });
     }
   };
 
@@ -49,17 +60,38 @@ export const ChatActions: React.FC<ChatActionsProps> = ({
                 onClick={() => onConvertToSpeech(content)}
               >
                 <Volume2 className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="sr-only">Text to speech</span>
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="left">
-              Convert to speech
+            <TooltipContent side="top">
+              <p className="text-xs">Read aloud</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
       )}
 
-      {!content.startsWith('data:audio/') && (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 hover:bg-accent-foreground/10"
+              onClick={copyToClipboard}
+            >
+              {copied ? (
+                <Check className="h-3.5 w-3.5 text-muted-foreground" />
+              ) : (
+                <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            <p className="text-xs">Copy message</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+
+      {onForkToNote && (
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -67,18 +99,13 @@ export const ChatActions: React.FC<ChatActionsProps> = ({
                 variant="ghost"
                 size="icon"
                 className="h-6 w-6 hover:bg-accent-foreground/10"
-                onClick={copyToClipboard}
+                onClick={onForkToNote}
               >
-                {copied ? (
-                  <Check className="h-3.5 w-3.5 text-green-500" />
-                ) : (
-                  <Copy className="h-3.5 w-3.5 text-muted-foreground" />
-                )}
-                <span className="sr-only">Copy message</span>
+                <GitForkIcon className="h-3.5 w-3.5 text-muted-foreground" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="left">
-              {copied ? 'Copied!' : 'Copy message'}
+            <TooltipContent side="top">
+              <p className="text-xs">Fork into note</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -94,16 +121,15 @@ export const ChatActions: React.FC<ChatActionsProps> = ({
                 className="h-6 w-6 hover:bg-accent-foreground/10"
                 onClick={onDelete}
               >
-                <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                <span className="sr-only">Delete message</span>
+                <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="left">
-              Delete message
+            <TooltipContent side="top">
+              <p className="text-xs">Delete message</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
       )}
     </div>
   );
-}; 
+};

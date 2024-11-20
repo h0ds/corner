@@ -17,6 +17,7 @@ import {
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger,
+  ContextMenuSeparator,
 } from "@/components/ui/context-menu";
 import { THREAD_COLORS, THREAD_ICONS } from "@/types";
 import { useSortable } from "@dnd-kit/sortable";
@@ -353,6 +354,7 @@ const SortableNoteItem: React.FC<SortableNoteItemProps> = ({
           <Type className="h-4 w-4" />
           <span>Text Color</span>
         </ContextMenuItem>
+        <ContextMenuSeparator />
         <ContextMenuItem
           onClick={() => setShowDeleteDialog(true)}
           className="flex items-center gap-2 cursor-pointer text-destructive focus:text-destructive"

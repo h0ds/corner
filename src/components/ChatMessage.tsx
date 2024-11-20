@@ -1,6 +1,6 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
-import { Message, PluginModification } from '@/types';
+import { Message, PluginModification, Thread } from '@/types';
 import { ModelIcon } from './ModelIcon';
 import { User, XCircle, Copy, ImageIcon } from 'lucide-react';
 import {
@@ -20,6 +20,9 @@ import { Citations } from './Citations';
 import { ChatActions } from './ChatActions';
 import 'katex/dist/katex.min.css';
 import katex from 'katex';
+import { ChatMessageContextMenu } from './ChatMessageContextMenu';
+import { nanoid } from 'nanoid';
+import { showToast } from '@/lib/toast';
 
 interface ChatMessageProps {
   role: Message['role'];
@@ -36,6 +39,7 @@ interface ChatMessageProps {
   showTTS?: boolean;
   isAudioResponse?: boolean;
   onDelete?: () => void;
+  setThreads?: React.Dispatch<React.SetStateAction<Thread[]>>;
 }
 
 // Add this component to render plugin content
@@ -135,6 +139,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   showTTS = false,
   isAudioResponse = false,
   onDelete,
+  setThreads,
 }) => {
   const renderContent = () => {
     console.log('Raw content:', content);
@@ -696,6 +701,29 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     );
   }
 
+  const handleForkToNote = () => {
+    if (setThreads) {
+      const newThread: Thread = {
+        id: nanoid(),
+        name: 'Forked Note',
+        files: [],
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        cachedFiles: [],
+        linkedNotes: [],
+        isNote: true,
+        content,
+        parentId: null,
+        children: [],
+      };
+      setThreads(prev => [...prev, newThread]);
+      showToast({
+        title: "Note Created",
+        description: "Successfully forked message into a new note",
+      });
+    }
+  };
+
   const renderers = {
     // Handle inline math (enclosed in single $)
     inlineMath: ({ value }: { value: string }) => (
@@ -708,7 +736,13 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   };
 
   return (
-    <div className="w-full flex">
+    <ChatMessageContextMenu
+      content={content}
+      onDelete={onDelete}
+      onTextToSpeech={onTextToSpeech}
+      onForkToNote={handleForkToNote}
+      showTTS={showTTS}
+    >
       <div className={cn(
         "group relative inline-flex gap-2 pl-4 pr-2 py-2 selection:bg-palette-blue selection:text-white rounded-lg select-text max-w-full",
         role === 'user' && 'bg-palette-blue text-white flex-row-reverse ml-auto',
@@ -720,6 +754,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             <ChatActions
               onConvertToSpeech={onTextToSpeech}
               onDelete={onDelete}
+              onForkToNote={handleForkToNote}
               content={content}
               showTTS={showTTS}
             />
@@ -825,6 +860,6 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
           {/* ... other JSX ... */}
         </div>
       </div>
-    </div>
+    </ChatMessageContextMenu>
   );
 };
