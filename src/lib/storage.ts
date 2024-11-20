@@ -49,49 +49,33 @@ export function saveThread(thread: Thread): void {
 export function loadThreads(): Thread[] {
   try {
     const threadsJson = localStorage.getItem(THREADS_KEY);
-    const threads: Thread[] = threadsJson ? JSON.parse(threadsJson) : [];
-    
-    const processedThreads = threads.map(thread => {
-      if (thread.isNote) {
-        return {
-          ...thread,
-          linkedNotes: thread.linkedNotes || [],
-          content: thread.content || '',
-          isNote: true as const
-        };
-      }
-      
-      const messages = thread.messages.map(msg => ({
-        ...msg,
-        timestamp: msg.timestamp || thread.createdAt
-      }));
-      
-      return {
-        ...thread,
-        messages,
-        linkedNotes: thread.linkedNotes || [],
-        isNote: false as const
-      };
-    });
-    
-    const orderJson = localStorage.getItem(THREAD_ORDER_KEY);
-    const order: string[] = orderJson ? JSON.parse(orderJson) : [];
-    
-    if (order.length > 0) {
-      const threadMap = new Map(processedThreads.map(t => [t.id, t]));
-      
-      const orderedThreads = order
-        .map(id => threadMap.get(id))
-        .filter((t): t is Thread => t !== undefined);
-      
-      const remainingThreads = processedThreads.filter(t => !order.includes(t.id));
-      
-      return [...orderedThreads, ...remainingThreads];
+    if (!threadsJson) {
+      console.log('No threads found in storage, initializing empty array');
+      return [];
     }
+
+    const threads: Thread[] = JSON.parse(threadsJson);
     
-    return processedThreads.sort((a, b) => b.updatedAt - a.updatedAt);
+    // Validate and repair thread data
+    const validatedThreads = threads.map(thread => ({
+      ...thread,
+      id: thread.id || nanoid(),
+      linkedNotes: Array.isArray(thread.linkedNotes) ? thread.linkedNotes : [],
+      isNote: typeof thread.isNote === 'boolean' ? thread.isNote : false,
+      content: thread.isNote ? (thread.content || '') : undefined,
+      updatedAt: thread.updatedAt || Date.now()
+    }));
+
+    console.log('Loaded threads:', {
+      total: validatedThreads.length,
+      notes: validatedThreads.filter(t => t.isNote).length,
+      chats: validatedThreads.filter(t => !t.isNote).length
+    });
+
+    return validatedThreads;
   } catch (error) {
     console.error('Failed to load threads:', error);
+    // Return empty array instead of throwing to prevent app from breaking
     return [];
   }
 }
@@ -189,4 +173,3 @@ export function loadSelectedModel(): string | null {
     return null;
   }
 }
-  

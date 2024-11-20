@@ -705,15 +705,13 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     const newThread: Thread = {
       id: nanoid(),
       name: 'Forked Note',
-      files: [],
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      cachedFiles: [],
-      linkedNotes: [],
       isNote: true,
       content: text,
-      parentId: null,
-      children: [],
+      files: [],
+      cachedFiles: [],
+      linkedNotes: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now()
     };
     
     // Add the new thread first
@@ -727,10 +725,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
       }
     }));
 
-    showToast({
-      title: "Note Created",
-      description: "Successfully forked message into a new note",
-    });
+    showToast.success("Successfully forked message into a new note");
   };
 
   const renderers = {

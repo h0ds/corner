@@ -12,7 +12,7 @@ import { showToast } from '@/lib/toast';
 interface ChatActionsProps {
   onConvertToSpeech?: (text: string) => Promise<void>;
   onDelete?: () => void;
-  onForkToNote?: () => void;
+  onForkToNote?: (content: string) => void;
   content: string;
   showTTS?: boolean;
   className?: string;
@@ -99,7 +99,7 @@ export const ChatActions: React.FC<ChatActionsProps> = ({
                 variant="ghost"
                 size="icon"
                 className="h-6 w-6 hover:bg-accent-foreground/10"
-                onClick={onForkToNote}
+                onClick={() => onForkToNote(content)}
               >
                 <GitForkIcon className="h-3.5 w-3.5 text-muted-foreground" />
               </Button>

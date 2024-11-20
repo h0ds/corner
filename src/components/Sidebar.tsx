@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ThreadList } from './ThreadList';
 import { NoteList } from './NoteList';
 import { SidebarTabs } from './SidebarTabs';
@@ -74,37 +74,43 @@ export const Sidebar: React.FC<SidebarProps> = ({
     };
   }, [onThreadSelect]);
 
-  // Add more detailed logging for thread filtering
-  console.log('Raw threads:', threads.map(t => ({
-    id: t.id,
-    name: t.name,
-    isNote: t.isNote,
-    type: t.isNote ? 'note' : 'chat'
-  })));
+  // Memoize thread filtering to prevent unnecessary recalculations
+  const { notes, chatThreads } = useMemo(() => {
+    // Ensure threads is an array
+    const validThreads = Array.isArray(threads) ? threads : [];
+    
+    const filteredNotes = validThreads.filter((thread): thread is NoteThread => {
+      return thread && typeof thread.isNote === 'boolean' && thread.isNote === true;
+    });
 
-  // Update type filtering to be more explicit
-  const notes = threads.filter((thread): thread is NoteThread => {
-    const isNote = thread.isNote === true;
-    console.log(`Thread ${thread.id} (${thread.name}) isNote:`, isNote);
-    return isNote;
-  });
-  
-  const chatThreads = threads.filter((thread): thread is ChatThread => {
-    const isChat = thread.isNote !== true;
-    console.log(`Thread ${thread.id} (${thread.name}) isChat:`, isChat);
-    return isChat;
-  });
+    const filteredChats = validThreads.filter((thread): thread is ChatThread => {
+      return thread && typeof thread.isNote === 'boolean' && thread.isNote === false;
+    });
 
-  // Add debug logging
-  console.log('Filtered threads:', {
-    total: threads.length,
-    notes: notes.length,
-    chats: chatThreads.length,
-    noteIds: notes.map(n => n.id),
-    chatIds: chatThreads.map(c => c.id),
-    activeTab,
-    activeThreadId
-  });
+    console.log('Thread filtering:', {
+      total: validThreads.length,
+      notes: filteredNotes.length,
+      chats: filteredChats.length,
+      activeTab,
+      activeThreadId
+    });
+
+    return {
+      notes: filteredNotes,
+      chatThreads: filteredChats
+    };
+  }, [threads, activeTab, activeThreadId]);
+
+  // Add debug logging for active thread
+  useEffect(() => {
+    const activeThread = threads.find(t => t.id === activeThreadId);
+    console.log('Active thread:', {
+      id: activeThread?.id,
+      name: activeThread?.name,
+      isNote: activeThread?.isNote,
+      tab: activeTab
+    });
+  }, [activeThreadId, activeTab, threads]);
 
   // Auto-select top thread/note when switching tabs
   useEffect(() => {
