@@ -58,9 +58,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
       setActiveTab(event.detail.tab);
     };
 
+    const handleNoteSelect = (event: CustomEvent<{ noteId: string; switchTab: boolean }>) => {
+      if (event.detail.switchTab) {
+        setActiveTab('notes');
+      }
+      onThreadSelect(event.detail.noteId);
+    };
+
     window.addEventListener('switch-tab', handleTabChange as any);
-    return () => window.removeEventListener('switch-tab', handleTabChange as any);
-  }, []);
+    window.addEventListener('select-note', handleNoteSelect as any);
+
+    return () => {
+      window.removeEventListener('switch-tab', handleTabChange as any);
+      window.removeEventListener('select-note', handleNoteSelect as any);
+    };
+  }, [onThreadSelect]);
 
   // Add more detailed logging for thread filtering
   console.log('Raw threads:', threads.map(t => ({

@@ -701,27 +701,36 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     );
   }
 
-  const handleForkToNote = () => {
-    if (setThreads) {
-      const newThread: Thread = {
-        id: nanoid(),
-        name: 'Forked Note',
-        files: [],
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        cachedFiles: [],
-        linkedNotes: [],
-        isNote: true,
-        content,
-        parentId: null,
-        children: [],
-      };
-      setThreads(prev => [...prev, newThread]);
-      showToast({
-        title: "Note Created",
-        description: "Successfully forked message into a new note",
-      });
-    }
+  const handleForkToNote = (text: string) => {
+    const newThread: Thread = {
+      id: nanoid(),
+      name: 'Forked Note',
+      files: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      cachedFiles: [],
+      linkedNotes: [],
+      isNote: true,
+      content: text,
+      parentId: null,
+      children: [],
+    };
+    
+    // Add the new thread first
+    setThreads(prev => [...prev, newThread]);
+
+    // Switch to notes tab and select the new note in a single operation
+    window.dispatchEvent(new CustomEvent('select-note', {
+      detail: { 
+        noteId: newThread.id,
+        switchTab: true 
+      }
+    }));
+
+    showToast({
+      title: "Note Created",
+      description: "Successfully forked message into a new note",
+    });
   };
 
   const renderers = {
