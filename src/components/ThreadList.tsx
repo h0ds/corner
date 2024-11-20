@@ -303,16 +303,17 @@ const SortableThreadItem = ({
     setNodeRef,
     transform,
     transition,
-    isDragging: isThisItemDragging,
-  } = useSortable({
+    isDragging: isSortableDragging,
+  } = useSortable({ 
     id: thread.id,
-    disabled: editingThreadId === thread.id || thread.isPinned,
+    disabled: thread.isPinned || editingThreadId === thread.id
   });
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition: transition || undefined,
-    zIndex: isThisItemDragging ? 999 : undefined,
+    transition,
+    opacity: isDragging ? 0.3 : 1,
+    position: 'relative' as const,
   };
 
   const [showColorPicker, setShowColorPicker] = useState(false);
@@ -325,11 +326,10 @@ const SortableThreadItem = ({
         <motion.div
           ref={setNodeRef}
           style={style}
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-          transition={{ duration: 0.15 }}
-          className={cn("relative", isThisItemDragging && "z-50")}
+          className={cn(
+            "relative",
+            isDragging && "z-50"
+          )}
         >
           <ThreadItem
             thread={thread}
@@ -345,12 +345,9 @@ const SortableThreadItem = ({
             onColorChange={onColorChange}
             onIconChange={onIconChange}
             onTextColorChange={onTextColorChange}
-            isDragging={isThisItemDragging}
-            dragHandleProps={{ ...attributes, ...listeners }}
+            dragHandleProps={thread.isPinned ? {} : { ...attributes, ...listeners }}
+            isDragging={isDragging}
           />
-          {isThisItemDragging && (
-            <div className="absolute inset-0 bg-primary/10 border-2 border-primary rounded-xl pointer-events-none" />
-          )}
         </motion.div>
       </ContextMenuTrigger>
       <ContextMenuContent>
@@ -538,6 +535,13 @@ export const ThreadList: React.FC<ThreadListProps> = ({
       return;
     }
 
+    const overThread = threads.find(t => t.id === over.id);
+    // Don't show drop target if the target thread is pinned
+    if (overThread?.isPinned) {
+      setDropTarget(null);
+      return;
+    }
+
     // Get the bounding rectangles of the dragged and target items
     const activeRect = (active.rect.current as any).translated;
     const overRect = over.rect;
@@ -553,21 +557,26 @@ export const ThreadList: React.FC<ThreadListProps> = ({
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
-      const activeThread = threads.find((t) => t.id === active.id);
-      const overThread = threads.find((t) => t.id === over.id);
-
+      const activeThread = threads.find(t => t.id === active.id);
+      const overThread = threads.find(t => t.id === over.id);
+      
+      // Don't allow reordering if either thread is pinned
       if (activeThread?.isPinned || overThread?.isPinned) {
+        setActiveId(null);
+        setIsDragging(false);
+        setDropTarget(null);
         return;
       }
 
-      const oldIndex = threads.findIndex((t) => t.id === active.id);
-      const newIndex = threads.findIndex((t) => t.id === over.id);
-      const newThreads = arrayMove(threads, oldIndex, newIndex);
-      onReorderThreads(newThreads);
+      const oldIndex = threads.findIndex(t => t.id === active.id);
+      const newIndex = threads.findIndex(t => t.id === over.id);
+
+      const reorderedThreads = arrayMove(threads, oldIndex, newIndex);
+      onReorderThreads(reorderedThreads);
     }
 
-    setIsDragging(false);
     setActiveId(null);
+    setIsDragging(false);
     setDropTarget(null);
   };
 
@@ -594,22 +603,61 @@ export const ThreadList: React.FC<ThreadListProps> = ({
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
-        modifiers={[]}
       >
-        <SortableContext
-          items={sortedThreads.map((t) => t.id)}
-          strategy={verticalListSortingStrategy}
-        >
-          <AnimatePresence 
-            mode="popLayout" 
-            initial={false} 
-            presenceAffectsLayout={true}
-          >
+        <SortableContext items={sortedThreads.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+          <div className="flex flex-col gap-1 p-2">
             {sortedThreads.map((thread) => (
-              <SortableThreadItem
-                key={thread.id}
-                thread={thread}
-                threads={threads}
+              <React.Fragment key={thread.id}>
+                {dropTarget?.id === thread.id && dropTarget.position === "before" && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "2px" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="bg-blue-500 rounded-full mx-2"
+                    layoutId="dropIndicator"
+                  />
+                )}
+                <SortableThreadItem
+                  thread={thread}
+                  activeThreadId={activeThreadId}
+                  editingThreadId={editingThreadId}
+                  editingName={editingName}
+                  onStartRename={handleStartRename}
+                  onFinishRename={handleFinishRename}
+                  onEditingNameChange={setEditingName}
+                  onThreadSelect={onThreadSelect}
+                  onDeleteThread={onDeleteThread}
+                  onTogglePin={onTogglePin}
+                  onColorChange={onColorChange}
+                  onIconChange={onIconChange}
+                  onTextColorChange={onTextColorChange}
+                  dropTarget={dropTarget}
+                  isDragging={isDragging && activeId === thread.id}
+                  threads={threads}
+                />
+                {dropTarget?.id === thread.id && dropTarget.position === "after" && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "2px" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="bg-blue-500 rounded-full mx-2"
+                    layoutId="dropIndicator"
+                  />
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+        </SortableContext>
+
+        <DragOverlay>
+          {activeId ? (
+            <motion.div
+              initial={{ scale: 1 }}
+              animate={{ scale: 1.05 }}
+              className="pointer-events-none"
+            >
+              <ThreadItem
+                thread={threads.find(t => t.id === activeId)!}
                 activeThreadId={activeThreadId}
                 editingThreadId={editingThreadId}
                 editingName={editingName}
@@ -618,40 +666,9 @@ export const ThreadList: React.FC<ThreadListProps> = ({
                 onEditingNameChange={setEditingName}
                 onThreadSelect={onThreadSelect}
                 onDeleteThread={onDeleteThread}
-                onTogglePin={onTogglePin}
-                onColorChange={onColorChange}
-                onIconChange={onIconChange}
-                onTextColorChange={onTextColorChange}
-                dropTarget={dropTarget}
-                isDragging={isDragging}
+                isOverlay={true}
               />
-            ))}
-          </AnimatePresence>
-        </SortableContext>
-
-        <DragOverlay
-          dropAnimation={{
-            duration: 200,
-            easing: "cubic-bezier(0.18, 0.67, 0.6, 1.22)",
-          }}
-        >
-          {activeThread ? (
-            <ThreadItem
-              thread={activeThread}
-              activeThreadId={activeThreadId}
-              editingThreadId={editingThreadId}
-              editingName={editingName}
-              onStartRename={handleStartRename}
-              onFinishRename={handleFinishRename}
-              onEditingNameChange={setEditingName}
-              onThreadSelect={onThreadSelect}
-              onDeleteThread={onDeleteThread}
-              onTogglePin={onTogglePin}
-              onColorChange={onColorChange}
-              onIconChange={onIconChange}
-              onTextColorChange={onTextColorChange}
-              isOverlay
-            />
+            </motion.div>
           ) : null}
         </DragOverlay>
       </DndContext>
