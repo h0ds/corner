@@ -1368,6 +1368,11 @@ function App() {
                     thread={activeThread}
                     onRename={(newName) => handleRenameThread(activeThread.id, newName)}
                     onIconChange={(newIcon) => handleThreadIconChange(activeThread.id, newIcon)}
+                    onOpenModelSelect={() => {
+                      setPreferenceTab('models');
+                      setShowPreferences(true);
+                    }}
+                    selectedModel={selectedModel}
                   />
                 )}
                 {view === 'graph' ? (

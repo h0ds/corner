@@ -4,15 +4,7 @@ import { ChatMessage } from './ChatMessage';
 import { FilePreview } from './FilePreview';
 import { TypingIndicator } from './TypingIndicator';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ModelIcon } from './ModelIcon';
 import { ChatInput } from './ChatInput';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { AVAILABLE_MODELS } from './ModelSelector';
 import { invoke } from '@tauri-apps/api/core';
 import { useToast } from "@/hooks/use-toast";
 import { AudioControls } from './AudioControls';
@@ -24,8 +16,6 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { showToast } from '@/lib/toast';
-import { nanoid } from 'nanoid';
 
 interface ChatViewProps {
   messages: Message[];
@@ -228,7 +218,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 exit={{ opacity: 0 }}
                 className="text-center text-muted-foreground/40 mt-1 text-sm tracking-tighter h-[50px] flex items-center justify-center"
               >
-                Start a conversation ({clearHistoryShortcut} to clear history)
+                &nbsp;
               </motion.div>
             ) : (
               sortedMessages.map((message, index) => (
@@ -291,33 +281,6 @@ export const ChatView: React.FC<ChatViewProps> = ({
               onRestart={handleRestartAudio}
             />
           )}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={onOpenModelSelect}
-                  className="p-1 -mr-4 bg-accent-light border border-accent text-muted-foreground hover:text-foreground 
-                          hover:bg-accent rounded-md transition-colors 
-                           cursor-pointer"
-                >
-                  <ModelIcon modelId={selectedModel} className="h-5 w-5" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="text-xs">
-                {(() => {
-                  const model = AVAILABLE_MODELS.find(m => m.id === selectedModel);
-                  return model ? (
-                    <div className="flex flex-col gap-0.5">
-                      <span className="font-medium">{model.name}</span>
-                      <span className="text-muted-foreground capitalize">
-                        {model.provider}
-                      </span>
-                    </div>
-                  ) : selectedModel;
-                })()}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
         </div>
         <ChatInput
           onSendMessage={onSendMessage}
