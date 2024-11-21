@@ -1,6 +1,8 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod keyboard_shortcuts;
+
 use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
 use dotenv::dotenv;
@@ -185,10 +187,7 @@ async fn send_message(
 
             if status.is_success() {
                 let json: serde_json::Value =
-                    serde_json::from_str(&response_text).map_err(|e| {
-                        println!("Error parsing JSON response: {:?}", e);
-                        e.to_string()
-                    })?;
+                    serde_json::from_str(&response_text).map_err(|e| e.to_string())?;
 
                 Ok(ApiResponse {
                     content: Some(
@@ -1567,11 +1566,16 @@ fn main() {
     dotenv().ok();
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_upload::init())
+        .setup(|app| {
+            keyboard_shortcuts::init_shortcuts(&app.handle());
+            Ok(())
+        })
         .manage(ApiKeys {
             anthropic: Mutex::new(None),
             perplexity: Mutex::new(None),

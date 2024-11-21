@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { Preferences } from "./components/Preferences";
 import { AVAILABLE_MODELS } from "./components/ModelSelector";
 import { FilePreview } from "./components/FilePreview";
@@ -1291,6 +1292,34 @@ function App() {
     // Switch to the new note
     setActiveThreadId(newNoteId);
   };
+
+  useEffect(() => {
+    let cleanup: (() => void) | undefined;
+
+    async function setupListener() {
+      try {
+        const unlisten = await listen("keyboard-permission-needed", () => {
+          toast({
+            title: "Keyboard Access Required",
+            description: "Please grant keyboard access permissions in System Settings > Privacy & Security > Accessibility",
+            variant: "destructive",
+            duration: 10000,
+          });
+        });
+        cleanup = unlisten;
+      } catch (error) {
+        console.error("Failed to setup keyboard permission listener:", error);
+      }
+    }
+
+    setupListener();
+
+    return () => {
+      if (cleanup) {
+        cleanup();
+      }
+    };
+  }, []);
 
   return (
     <>
