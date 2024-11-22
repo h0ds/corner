@@ -34,6 +34,7 @@ pub fn init_shortcuts(app_handle: &tauri::AppHandle) {
         // Simulate key sequence
         if let Err(e) = send_test_sequence() {
             eprintln!("Failed to simulate key sequence: {:?}", e);
+            
         }
     });
 

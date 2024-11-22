@@ -142,6 +142,9 @@ export const ChatView: React.FC<ChatViewProps> = ({
   };
 
   const handleDeleteMessage = (timestamp: number, content: string) => {
+    // Store current scroll position
+    const scrollPosition = containerRef.current?.scrollTop || 0;
+    
     setThreads(prev => prev.map(thread => {
       if (thread.id === activeThreadId) {
         return {
@@ -152,6 +155,13 @@ export const ChatView: React.FC<ChatViewProps> = ({
       }
       return thread;
     }));
+
+    // Restore scroll position after state update
+    requestAnimationFrame(() => {
+      if (containerRef.current) {
+        containerRef.current.scrollTop = scrollPosition;
+      }
+    });
   };
 
   const handleConfirmDelete = () => {
@@ -226,8 +236,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   key={`${message.timestamp}-${index}`}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.2 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{ duration: 0.15 }}
                 >
                   <ChatMessage
                     role={message.role}
