@@ -1,8 +1,8 @@
-use tauri::{Manager, Emitter, Window, Listener};
-use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, Modifiers, Code};
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
+use tauri::{Emitter, Listener, Manager, Window};
+use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
 
 fn send_test_sequence() -> Result<(), ()> {
     // Small delay to ensure key events are processed correctly
@@ -27,21 +27,22 @@ pub fn init_shortcuts(app_handle: &tauri::AppHandle) {
 
     // Set up the shortcut handler
     let app_clone = app.clone();
-    app_handle.global_shortcut().on_shortcut(shortcut.clone(), move |_app, _window, _shortcut| {
-        if let Err(emit_err) = app_clone.emit("shortcut-triggered", ()) {
-            eprintln!("Failed to emit shortcut event: {:?}", emit_err);
-        }
-        // Simulate key sequence
-        if let Err(e) = send_test_sequence() {
-            eprintln!("Failed to simulate key sequence: {:?}", e);
-            
-        }
-    });
+    app_handle
+        .global_shortcut()
+        .on_shortcut(shortcut.clone(), move |_app, _window, _shortcut| {
+            if let Err(emit_err) = app_clone.emit("shortcut-triggered", ()) {
+                eprintln!("Failed to emit shortcut event: {:?}", emit_err);
+            }
+            // Simulate key sequence
+            if let Err(e) = send_test_sequence() {
+                eprintln!("Failed to simulate key sequence: {:?}", e);
+            }
+        });
 
     // Clean up when the app is shutting down
     let app_handle_clone = app_handle.clone();
     let running_clone = running.clone();
-    
+
     if let Some(window) = app_handle.get_webview_window("main") {
         let _ = window.listen("tauri://close-requested", move |_event| {
             running_clone.store(false, Ordering::SeqCst);

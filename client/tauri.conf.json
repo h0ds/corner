@@ -16,6 +16,7 @@
         "decorations": false,
         "transparent": true,
         "hiddenTitle": true,
+        "titleBarStyle": "Overlay",
         "resizable": true,
         "center": true,
         "minWidth": 600,
@@ -49,6 +50,9 @@
     },
     "shell": {
       "open": true
+    },
+    "os": {
+      "platform": true
     }
   }
 }

@@ -1,8 +1,8 @@
-use crate::models::{ApiResponse, SendMessageRequest};
 use crate::api::ApiKeys;
+use crate::models::{ApiResponse, SendMessageRequest};
 use reqwest;
-use tauri::{AppHandle, State};
 use std::env;
+use tauri::{AppHandle, State};
 
 #[tauri::command]
 pub async fn send_message(

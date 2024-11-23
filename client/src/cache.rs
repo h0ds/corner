@@ -1,6 +1,6 @@
+use serde_json;
 use std::fs;
 use std::path::PathBuf;
-use serde_json;
 
 pub fn init_cache_dir() -> Result<(), String> {
     let cache_dir = get_cache_dir()?;
@@ -23,8 +23,11 @@ pub fn cache_file(
         "metadata": metadata
     });
 
-    fs::write(file_path, serde_json::to_string_pretty(&cache_data).unwrap())
-        .map_err(|e| e.to_string())?;
+    fs::write(
+        file_path,
+        serde_json::to_string_pretty(&cache_data).unwrap(),
+    )
+    .map_err(|e| e.to_string())?;
 
     Ok(())
 }

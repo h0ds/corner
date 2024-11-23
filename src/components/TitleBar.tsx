@@ -2,7 +2,7 @@ import React from 'react';
 import { Window } from '@tauri-apps/api/window';
 import { X, Minus, Square, Maximize2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { platform, type Platform } from '@tauri-apps/plugin-os';
+import { type } from '@tauri-apps/plugin-os';
 import { open } from '@tauri-apps/plugin-shell';
 
 export const TitleBar: React.FC = () => {
@@ -13,8 +13,12 @@ export const TitleBar: React.FC = () => {
 
   React.useEffect(() => {
     const checkPlatform = async () => {
-      const p: Platform = await platform();
-      setIsMacOS(p === 'macos');
+      try {
+        const osType = await type();
+        setIsMacOS(osType === 'macos');
+      } catch (error) {
+        console.error('Failed to detect platform:', error);
+      }
     };
     checkPlatform();
   }, []);

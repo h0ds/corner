@@ -1,6 +1,6 @@
+use crate::config;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use tauri::AppHandle;
-use crate::config;
 
 #[tauri::command]
 pub async fn text_to_speech(text: String, app_handle: AppHandle) -> Result<String, String> {

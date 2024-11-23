@@ -1,5 +1,5 @@
-use std::path::{Path, PathBuf};
 use percent_encoding;
+use std::path::{Path, PathBuf};
 
 pub fn get_real_path(path: String, file_name: Option<String>) -> Result<String, String> {
     let path = if cfg!(target_os = "windows") {
@@ -17,9 +17,7 @@ pub fn get_real_path(path: String, file_name: Option<String>) -> Result<String, 
             .join(path_buf)
     };
 
-    let canonical_path = absolute_path
-        .canonicalize()
-        .map_err(|e| e.to_string())?;
+    let canonical_path = absolute_path.canonicalize().map_err(|e| e.to_string())?;
 
     let path_str = canonical_path
         .to_str()

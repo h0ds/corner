@@ -16,6 +16,7 @@ fn main() {
     dotenv().ok();
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_os::init())
         .manage(ApiKeys {
             anthropic: Mutex::new(None),
             perplexity: Mutex::new(None),
