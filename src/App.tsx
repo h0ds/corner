@@ -199,27 +199,17 @@ function App() {
       type: isNote ? 'note' : 'chat',
       messageCount: isNote ? undefined : 0
     });
-    
-    // Add the new thread to the end of the list
-    setThreads(prev => {
-      const updatedThreads = [...prev, newThread];
-      console.log('Updated threads:', updatedThreads.map(t => ({
-        id: t.id,
-        name: t.name,
-        isNote: t.isNote,
-        type: t.isNote ? 'note' : 'chat'
-      })));
-      return updatedThreads;
-    });
 
-    // Set the active thread ID after the state update
+    setThreads(prev => [newThread, ...prev]);
     setActiveThreadId(newThread.id);
-    setView(isNote ? 'note' : 'thread');
-
-    // Save the new thread
-    saveThread(newThread);
-
-    return newThread.id;
+    
+    if (isNote) {
+      setView('note');
+    } else {
+      setView('thread');
+    }
+    
+    return newThread;
   }, [selectedModel]);
 
   // Create a memoized version of handleNewNote
@@ -1403,7 +1393,7 @@ function App() {
                 className={cn(
                   "flex-1 overflow-y-auto min-w-0",
                   "transition-spacing duration-200", 
-                  !activeThread?.isNote && view === 'thread' && "flex flex-col h-full mb-20 mt-12 mx-3 bg-accent rounded-xl"
+                  !activeThread?.isNote && view === 'thread' && "flex flex-col h-full mb-4 mt-12 mx-3 rounded-xl"
                 )}
                 onClick={(e) => e.stopPropagation()}
               >

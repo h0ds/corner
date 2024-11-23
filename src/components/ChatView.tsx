@@ -16,6 +16,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Bot, Sparkles, MessageSquare, Keyboard } from 'lucide-react';
 
 interface ChatViewProps {
   messages: Message[];
@@ -56,14 +57,15 @@ export const ChatView: React.FC<ChatViewProps> = ({
   onShowPreferences,
   allThreads,
 }) => {
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
   const [audioPlaying, setAudioPlaying] = useState(false);
   const [audioLoading, setAudioLoading] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const { toast } = useToast();
-  const [messageToDelete, setMessageToDelete] = useState<{ timestamp: number; content: string } | null>(null);
+  const [messageToDelete, setMessageToDelete] = useState<Message | null>(null);
   const [isLoadingThread, setIsLoadingThread] = useState(false);
+
+  const { toast } = useToast();
 
   useEffect(() => {
     if (activeThreadId) {
@@ -185,15 +187,13 @@ export const ChatView: React.FC<ChatViewProps> = ({
     onShowPreferences('api-keys');
   };
 
+  // Get sorted messages
   const sortedMessages = useMemo(() => {
-    if (!messages || messages.length === 0) return [];
-    
-    return [...messages].sort((a, b) => {
-      const aTime = a.timestamp || 0;
-      const bTime = b.timestamp || 0;
-      return aTime - bTime;
-    });
+    return [...messages].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
   }, [messages]);
+
+  // Show empty state if no messages and not loading
+  const showEmptyState = !loading && !isLoadingThread && sortedMessages.length === 0;
 
   const handleShowLinkedItems = (noteId: string) => {
     setThreads(prev => prev.map(thread => {
@@ -209,83 +209,141 @@ export const ChatView: React.FC<ChatViewProps> = ({
   };
 
   return (
-    <>
-      <div 
-        ref={containerRef}
-        className="flex-1 p-2 bg-accent-light rounded-xl border border-border overflow-y-auto min-h-0"
-      >
-        <div className="flex flex-col space-y-2">
-          <AnimatePresence mode="wait">
-            {isLoadingThread ? (
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex justify-start h-[50px] items-center"
-              >
-                <TypingIndicator />
-              </motion.div>
-            ) : sortedMessages.length === 0 ? (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="text-center text-muted-foreground/40 mt-1 text-sm tracking-tighter h-[50px] flex items-center justify-center"
-              >
-                &nbsp;
-              </motion.div>
-            ) : (
-              sortedMessages.map((message, index) => (
-                <motion.div
-                  key={`${message.timestamp}-${index}`}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                  transition={{ duration: 0.15 }}
-                >
-                  <ChatMessage
-                    role={message.role}
-                    content={message.content}
-                    modelId={message.modelId}
-                    plugins={message.plugins}
-                    comparison={message.comparison}
-                    citations={message.citations}
-                    images={message.images}
-                    relatedQuestions={message.relatedQuestions}
-                    onSendMessage={onSendMessage}
-                    onTextToSpeech={handleTextToSpeech}
-                    showTTS={!!apiKeys.elevenlabs}
-                    isAudioResponse={message.isAudioResponse}
-                    onDelete={() => handleDeleteMessage(message.timestamp, message.content)}
-                    setThreads={setThreads}
-                    onErrorClick={handleErrorClick}
-                  />
-                  {message.file && (
-                    <FilePreview
-                      fileName={message.file.name}
-                      content={message.file.content}
-                    />
-                  )}
-                </motion.div>
-              ))
-            )}
-            {loading && !isLoadingThread && (
-              <div className="flex justify-start">
-                <TypingIndicator />
+    <div className="flex flex-col h-full">
+      {showEmptyState ? (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center space-y-6 max-w-lg mx-auto px-4">
+            <div className="flex justify-center">
+              <div className="p-4 bg-primary/5 rounded-full">
+                <Bot className="w-8 h-8 text-primary" />
               </div>
-            )}
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-lg font-semibold tracking-tight">Welcome to Corner</h2>
+              <p className="text-sm text-muted-foreground">
+                Start a conversation with any of our supported AI models. Ask questions, compare responses, or start an interactive discussion.
+              </p>
+            </div>
+            
+            <div className="grid gap-4 pt-4 text-left">
+              <div className="bg-card rounded-lg p-4 space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-primary/10 rounded-md shrink-0">
+                    <MessageSquare className="w-4 h-4 text-primary" />
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="text-sm font-medium leading-none">Chat with AI</h3>
+                    <p className="text-xs text-muted-foreground">
+                      Send messages and get instant responses from your selected AI model
+                    </p>
+                  </div>
+                </div>
+              </div>
 
-          </AnimatePresence>
+              <div className="bg-card rounded-lg p-4 space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-primary/10 rounded-md shrink-0">
+                    <Sparkles className="w-4 h-4 text-primary" />
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="text-sm font-medium leading-none">Compare Models</h3>
+                    <p className="text-xs text-muted-foreground">
+                      Use @model to compare responses from different AI models
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-card rounded-lg p-4 space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-primary/10 rounded-md shrink-0">
+                    <Keyboard className="w-4 h-4 text-primary" />
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="text-sm font-medium leading-none">Keyboard Shortcuts</h3>
+                    <p className="text-xs text-muted-foreground">
+                      Press {clearHistoryShortcut} to clear chat, ESC to stop generation
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div ref={messagesEndRef} />
-      </div>
+      ) : (
+        <div 
+          ref={containerRef}
+          className="flex-1 p-2 bg-accent-light rounded-xl border border-border overflow-y-auto min-h-0"
+        >
+          <div className="flex flex-col space-y-2">
+            <AnimatePresence mode="wait">
+              {isLoadingThread ? (
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="flex justify-start h-[50px] items-center"
+                >
+                  <TypingIndicator />
+                </motion.div>
+              ) : sortedMessages.length === 0 ? (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="text-center text-muted-foreground/40 mt-1 text-sm tracking-tighter h-[50px] flex items-center justify-center"
+                >
+                  &nbsp;
+                </motion.div>
+              ) : (
+                sortedMessages.map((message, index) => (
+                  <motion.div
+                    key={`${message.timestamp}-${index}`}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ duration: 0.15 }}
+                  >
+                    <ChatMessage
+                      role={message.role}
+                      content={message.content}
+                      modelId={message.modelId}
+                      plugins={message.plugins}
+                      comparison={message.comparison}
+                      citations={message.citations}
+                      images={message.images}
+                      relatedQuestions={message.relatedQuestions}
+                      onSendMessage={onSendMessage}
+                      onTextToSpeech={handleTextToSpeech}
+                      showTTS={!!apiKeys.elevenlabs}
+                      isAudioResponse={message.isAudioResponse}
+                      onDelete={() => handleDeleteMessage(message.timestamp, message.content)}
+                      setThreads={setThreads}
+                      onErrorClick={handleErrorClick}
+                    />
+                    {message.file && (
+                      <FilePreview
+                        fileName={message.file.name}
+                        content={message.file.content}
+                      />
+                    )}
+                  </motion.div>
+                ))
+              )}
+              {loading && !isLoadingThread && (
+                <div className="flex justify-start">
+                  <TypingIndicator />
+                </div>
+              )}
+            </AnimatePresence>
+          </div>
+          <div ref={messagesEndRef} />
+        </div>
+      )}
 
       <audio ref={audioRef} className="hidden" />
 
-      <div 
-        className="flex-shrink-0 p-1 absolute left-3 right-3 bottom-4 bg-accent-light border border-border rounded-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="relative mt-4">
         <div className="absolute right-4 -top-12 flex items-center gap-2">
           {(audioPlaying || audioLoading) && audioRef.current?.src && (
             <AudioControls
@@ -297,21 +355,23 @@ export const ChatView: React.FC<ChatViewProps> = ({
             />
           )}
         </div>
-        <ChatInput
-          onSendMessage={onSendMessage}
-          onCompareModels={onCompareModels}
-          onStartDiscussion={onStartDiscussion}
-          onStopDiscussion={onStopDiscussion}
-          onClearThread={onClearThread}
-          disabled={loading}
-          selectedModel={selectedModel}
-          isDiscussing={isDiscussing}
-          isPaused={isDiscussionPaused}
-          allThreads={allThreads}
-          currentThreadId={activeThreadId}
-          onUpdateThreads={setThreads}
-          onShowLinkedItems={handleShowLinkedItems}
-        />
+        <div className="p-1 bg-accent-light border border-border rounded-xl">
+          <ChatInput
+            onSendMessage={onSendMessage}
+            onCompareModels={onCompareModels}
+            onStartDiscussion={onStartDiscussion}
+            onStopDiscussion={onStopDiscussion}
+            onClearThread={onClearThread}
+            disabled={loading}
+            selectedModel={selectedModel}
+            isDiscussing={isDiscussing}
+            isPaused={isDiscussionPaused}
+            allThreads={allThreads}
+            currentThreadId={activeThreadId}
+            onUpdateThreads={setThreads}
+            onShowLinkedItems={handleShowLinkedItems}
+          />
+        </div>
       </div>
 
       <Dialog 
@@ -352,6 +412,6 @@ export const ChatView: React.FC<ChatViewProps> = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 }; 
