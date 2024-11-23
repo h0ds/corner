@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ReferenceMenu } from './ReferenceMenu';
 import { Thread } from '@/types';
 import { showToast } from '@/lib/toast';
+import { VoiceDictation } from './VoiceDictation';
 
 interface ChatInputProps {
   onSendMessage: (message: string, overrideModel?: string) => void;
@@ -401,6 +402,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                        bg-background placeholder:text-muted-foreground/50 selectable-text selection:bg-palette-blue selection:text-white
                        ${selectedCommand ? 'border-primary' : ''}
                        ${isDiscussing && isPaused ? 'border-yellow-500' : ''}`}
+            />
+            <VoiceDictation
+              onTranscript={(text) => setMessage(prev => prev + text)}
+              disabled={disabled}
             />
           </div>
         </div>

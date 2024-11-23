@@ -7,10 +7,10 @@ mod keyboard_shortcuts;
 mod models;
 mod utils;
 
-use api::ApiKeys;
 use dotenv::dotenv;
-use std::sync::Mutex;
 use tauri::Manager;
+use crate::api::ApiKeys;
+use std::sync::Mutex;
 
 fn main() {
     dotenv().ok();
@@ -32,6 +32,7 @@ fn main() {
             config::store_api_key,
         ])
         .setup(|app| {
+            // Initialize cache directory
             cache::init_cache_dir()?;
             Ok(())
         })
