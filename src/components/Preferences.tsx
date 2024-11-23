@@ -96,7 +96,14 @@ export const Preferences: React.FC<PreferencesProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      invoke<{ anthropic: string | null; perplexity: string | null; openai: string | null; xai: string | null; google: string | null; elevenlabs: string | null }>('get_api_keys')
+      invoke<{
+        anthropic: string | null;
+        perplexity: string | null;
+        openai: string | null;
+        xai: string | null;
+        google: string | null;
+        elevenlabs: string | null;
+      }>('get_stored_api_keys')
         .then((storedKeys) => {
           console.log('Loaded stored keys:', {
             anthropic: storedKeys.anthropic ? '***' : 'none',
@@ -106,7 +113,6 @@ export const Preferences: React.FC<PreferencesProps> = ({
             google: storedKeys.google ? '***' : 'none',
             elevenlabs: storedKeys.elevenlabs ? '***' : 'none'
           });
-          
           setKeys({
             anthropic: storedKeys.anthropic || '',
             perplexity: storedKeys.perplexity || '',
@@ -115,19 +121,13 @@ export const Preferences: React.FC<PreferencesProps> = ({
             google: storedKeys.google || '',
             elevenlabs: storedKeys.elevenlabs || ''
           });
-
-          setVerificationStatus(prev => ({
-            anthropic: storedKeys.anthropic ? 'success' : prev.anthropic,
-            perplexity: storedKeys.perplexity ? 'success' : prev.perplexity,
-            openai: storedKeys.openai ? 'success' : prev.openai,
-            xai: storedKeys.xai ? 'success' : prev.xai,
-            google: storedKeys.google ? 'success' : prev.google,
-            elevenlabs: storedKeys.elevenlabs ? 'success' : prev.elevenlabs
-          }));
         })
-        .catch(err => {
-          console.error('Failed to load API keys:', err);
-          setError('Failed to load stored API keys');
+        .catch((error) => {
+          console.error('Failed to load API keys:', error);
+          // Don't set error if we successfully loaded the keys
+          if (!keys.anthropic && !keys.perplexity && !keys.openai && !keys.xai && !keys.google && !keys.elevenlabs) {
+            setError('Failed to load API keys');
+          }
         });
     }
   }, [isOpen]);
@@ -209,29 +209,39 @@ export const Preferences: React.FC<PreferencesProps> = ({
         setError(null);
         
         try {
+          console.log('Saving API keys:', keys);
           await invoke('set_api_keys', { 
-            anthropic: keys.anthropic || null,
-            perplexity: keys.perplexity || null,
-            openai: keys.openai || null,
-            xai: keys.xai || null,
-            google: keys.google || null,
-            elevenlabs: keys.elevenlabs || null
+            request: {
+              anthropic: keys.anthropic || "",
+              perplexity: keys.perplexity || "",
+              openai: keys.openai || "",
+              xai: keys.xai || "",
+              google: keys.google || "",
+              elevenlabs: keys.elevenlabs || ""
+            }
+          }).catch(err => {
+            console.error('Failed to save API keys:', err);
+            throw new Error(`Failed to save API keys: ${err}`);
           });
 
           const verifyPromises = Object.entries(keys)
             .filter(([type, value]) => value && verificationStatus[type as keyof typeof verificationStatus] === 'idle')
             .map(([type, value]) => verifyKey(type as keyof ApiKeys, value));
 
+          console.log('Verifying keys:', verifyPromises.length);
           await Promise.all(verifyPromises);
           
-          if (!Object.values(verificationStatus).some(status => status === 'error')) {
+          const hasErrors = Object.values(verificationStatus).some(status => status === 'error');
+          console.log('Verification status:', verificationStatus, 'Has errors:', hasErrors);
+          
+          if (!hasErrors) {
             onClose();
             return true;
           }
           throw new Error('Some API keys failed verification');
         } catch (err) {
-          setError('Failed to save API keys');
-          console.error(err);
+          console.error('Error in handleSave:', err);
+          setError(err instanceof Error ? err.message : String(err));
           throw err;
         } finally {
           setSaving(false);
@@ -240,7 +250,7 @@ export const Preferences: React.FC<PreferencesProps> = ({
       {
         loading: 'Saving API keys...',
         success: 'API keys saved successfully',
-        error: 'Failed to save API keys'
+        error: (err) => `Failed to save API keys: ${err instanceof Error ? err.message : String(err)}`
       }
     );
   };
@@ -288,6 +298,7 @@ export const Preferences: React.FC<PreferencesProps> = ({
             selectedModel={selectedModel}
             onModelChange={onModelChange}
             availableProviders={availableProviders}
+            apiKeys={keys}
           />
         );
       case 'shortcuts':

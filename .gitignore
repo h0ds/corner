@@ -29,7 +29,7 @@ tsconfig.node.json
 tsconfig.*.json
 
 # tauri v2
-src-tauri/target/
+client/target/
 **/*.rs.bk
 Cargo.lock
 .cargo/

@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, CheckCircle2, XCircle, Eye, EyeOff, Info } from 'lucide-react';
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ModelIcon } from '../ModelIcon';
 import { AVAILABLE_MODELS } from '../ModelSelector';
@@ -361,14 +360,6 @@ export const ApiKeys: React.FC<ApiKeysProps> = ({
           </div>
         </div>
       </div>
-
-      {error && (
-        <Alert variant="destructive" className="select-text">
-          <AlertDescription className="text-sm whitespace-pre-wrap font-mono">
-            {error}
-          </AlertDescription>
-        </Alert>
-      )}
 
       <p className="text-xs text-muted-foreground">
         Your API keys are stored locally and never sent to any server other than the respective API providers.

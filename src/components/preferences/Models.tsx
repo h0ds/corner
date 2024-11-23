@@ -1,47 +1,63 @@
-import React, { useEffect, useState } from 'react';
-import { Label } from "@/components/ui/label";
-import { ModelSelector, AVAILABLE_MODELS } from '../ModelSelector';
-import { loadApiKeys } from '@/lib/apiKeys';
+import React from 'react';
+import { AVAILABLE_MODELS } from '../ModelSelector';
+import { ModelIcon } from '../ModelIcon';
+import { formatProviderName } from '@/lib/utils';
 import { ApiKeys } from '@/types';
 
 interface ModelsProps {
   selectedModel: string;
-  onModelChange: (modelId: string) => void;
+  onModelChange: (model: string) => void;
+  availableProviders: string[];
+  apiKeys: ApiKeys;
 }
 
 export const Models: React.FC<ModelsProps> = ({
   selectedModel,
-  onModelChange
+  onModelChange,
+  availableProviders,
+  apiKeys
 }) => {
-  const [apiKeys, setApiKeys] = useState<ApiKeys>({});
-
-  useEffect(() => {
-    const loadKeys = async () => {
-      try {
-        const keys = await loadApiKeys();
-        setApiKeys(keys);
-      } catch (error) {
-        console.error('Failed to load API keys:', error);
-      }
-    };
-
-    loadKeys();
-  }, []);
+  const availableModels = AVAILABLE_MODELS.filter(model => {
+    const hasKey = apiKeys[model.provider] && apiKeys[model.provider].length > 0;
+    return hasKey;
+  });
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="space-y-2">
-        <Label>Default Model</Label>
-        <ModelSelector
-          selectedModel={selectedModel}
-          onModelChange={onModelChange}
-          apiKeys={apiKeys}
-        />
+        <p className="text-sm text-muted-foreground">
+          Select which model to use for chat. Only models from providers with valid API keys are shown.
+        </p>
       </div>
 
-      <p className="text-xs text-muted-foreground">
-        This model will be used by default for new conversations.
-      </p>
+      <div className="grid gap-4">
+        {availableModels.map(model => (
+          <div key={model.id} className="flex items-center space-x-4">
+            <input
+              type="radio"
+              id={model.id}
+              name="model"
+              value={model.id}
+              checked={selectedModel === model.id}
+              onChange={(e) => onModelChange(e.target.value)}
+              className="h-4 w-4 border-border"
+            />
+            <label htmlFor={model.id} className="flex items-center space-x-2">
+              <ModelIcon modelId={model.id} className="h-4 w-4" />
+              <span>{model.name}</span>
+              <span className="text-xs text-muted-foreground">
+                ({formatProviderName(model.provider)})
+              </span>
+            </label>
+          </div>
+        ))}
+
+        {availableModels.length === 0 && (
+          <div className="text-sm text-muted-foreground">
+            No models available. Please add API keys in the APIs tab.
+          </div>
+        )}
+      </div>
     </div>
   );
-}; 
+};

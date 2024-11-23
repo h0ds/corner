@@ -181,6 +181,10 @@ export const ChatView: React.FC<ChatViewProps> = ({
     setMessageToDelete(null);
   };
 
+  const handleErrorClick = () => {
+    onShowPreferences('api-keys');
+  };
+
   const sortedMessages = useMemo(() => {
     if (!messages || messages.length === 0) return [];
     
@@ -254,6 +258,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     isAudioResponse={message.isAudioResponse}
                     onDelete={() => handleDeleteMessage(message.timestamp, message.content)}
                     setThreads={setThreads}
+                    onErrorClick={handleErrorClick}
                   />
                   {message.file && (
                     <FilePreview

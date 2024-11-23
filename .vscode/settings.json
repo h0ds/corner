@@ -17,7 +17,11 @@
     "source.removeUnusedImports": "explicit",
     "source.fixAll.eslint": "explicit"
   },
-  "cSpell.words": ["waitlist", "tiktok"],
+  "cSpell.words": [
+    "elevenlabs",
+    "tiktok",
+    "waitlist"
+  ],
   "typescript.preferences.autoImportSpecifierExcludeRegexes": [
     "db/introspect/.*",
     "facebook-nodejs-business-sdk",

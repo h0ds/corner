@@ -6,7 +6,6 @@ import {
     SelectItem,
     SelectTrigger
 } from "@/components/ui/select";
-import { ApiKeys } from '@/types';
 import { formatProviderName } from '@/lib/utils';
 
 export interface Model {
@@ -19,8 +18,7 @@ export const DEFAULT_MODEL = 'claude-3-sonnet-20240229';
 
 export const AVAILABLE_MODELS: Model[] = [
   // OpenAI Models - GPT-4 Turbo
-  { id: 'gpt-4-0125-preview', name: 'GPT-4 Turbo Preview', provider: 'openai' },
-  { id: 'gpt-4-1106-preview', name: 'GPT-4 Turbo (Previous)', provider: 'openai' },
+  { id: 'gpt-4-0125-preview', name: 'GPT-4 Turbo', provider: 'openai' },
   { id: 'gpt-4-vision-preview', name: 'GPT-4 Vision', provider: 'openai' },
   
   // OpenAI Models - GPT-4
@@ -29,8 +27,7 @@ export const AVAILABLE_MODELS: Model[] = [
   
   // OpenAI Models - GPT-3.5
   { id: 'gpt-3.5-turbo-0125', name: 'GPT-3.5 Turbo', provider: 'openai' },
-  { id: 'gpt-3.5-turbo-instruct', name: 'GPT-3.5 Turbo Instruct', provider: 'openai' },
-  { id: 'gpt-3.5-turbo-16k', name: 'GPT-3.5 Turbo 16k', provider: 'openai' },
+  { id: 'gpt-3.5-turbo-16k-0613', name: 'GPT-3.5 Turbo 16k', provider: 'openai' },
   
   // Anthropic Models
   { id: 'claude-3-opus-20240229', name: 'Claude 3 Opus', provider: 'anthropic' },
@@ -61,7 +58,14 @@ export const AVAILABLE_MODELS: Model[] = [
 interface ModelSelectorProps {
   selectedModel: string;
   onModelChange: (modelId: string) => void;
-  apiKeys: ApiKeys;
+  apiKeys: {
+    anthropic: string | null;
+    perplexity: string | null;
+    openai: string | null;
+    xai: string | null;
+    google: string | null;
+    elevenlabs: string | null;
+  };
 }
 
 export const ModelSelector: React.FC<ModelSelectorProps> = ({
@@ -72,26 +76,14 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   const [triggerWidth, setTriggerWidth] = useState(180);
   const measureRef = useRef<HTMLSpanElement>(null);
 
-  // Update the hasValidApiKey function to properly check API keys
   const hasValidApiKey = (provider: string): boolean => {
     if (!apiKeys) return false;
-    
-    // Debug log to check what keys we have
-    console.log('Checking API key for provider:', provider, {
-      hasKey: !!apiKeys[provider as keyof typeof apiKeys],
-      keyLength: apiKeys[provider as keyof typeof apiKeys]?.length
-    });
-    
     const key = apiKeys[provider as keyof typeof apiKeys];
-    return typeof key === 'string' && key.trim().length > 0;
+    return key !== null && key.trim().length > 0;
   };
 
-  // Update the modelsByProvider reducer for better debugging
   const modelsByProvider = AVAILABLE_MODELS.reduce((acc, model) => {
-    const isValid = hasValidApiKey(model.provider);
-    console.log(`Provider ${model.provider} for model ${model.name}: ${isValid ? 'valid' : 'invalid'}`);
-    
-    if (isValid) {
+    if (hasValidApiKey(model.provider)) {
       if (!acc[model.provider]) {
         acc[model.provider] = [];
       }
@@ -100,104 +92,56 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
     return acc;
   }, {} as Record<string, Model[]>);
 
-  // Add debug logging after reduction
-  console.log('Available models by provider:', Object.keys(modelsByProvider));
-  console.log('Total available models:', Object.values(modelsByProvider).flat().length);
-
-  // Get current model data
-  const currentModel = AVAILABLE_MODELS.find(m => m.id === selectedModel);
-
-  // If current model's provider is not configured, select first available model
-  useEffect(() => {
-    if (currentModel && !hasValidApiKey(currentModel.provider)) {
-      const firstAvailableModel = AVAILABLE_MODELS.find(m => hasValidApiKey(m.provider));
-      if (firstAvailableModel) {
-        onModelChange(firstAvailableModel.id);
-      }
-    }
-  }, [currentModel, apiKeys, onModelChange]);
-
-  // Update width based on model names
   useEffect(() => {
     if (measureRef.current) {
-      const widths = AVAILABLE_MODELS.map(model => {
-        measureRef.current!.textContent = model.name;
-        return measureRef.current!.offsetWidth;
-      });
-      const maxWidth = Math.max(...widths, measureRef.current.offsetWidth);
-      setTriggerWidth(Math.max(180, maxWidth + 56));
+      setTriggerWidth(measureRef.current.offsetWidth);
     }
-  }, [currentModel?.name]);
+  }, [selectedModel]);
 
-  // Check if any provider has a valid API key
-  const hasAnyValidKey = Object.values(modelsByProvider).some(models => models.length > 0);
+  const selectedModelData = AVAILABLE_MODELS.find(m => m.id === selectedModel);
+  const availableModels = Object.values(modelsByProvider).flat();
+
+  // If selected model is not available (no API key), select the first available model
+  useEffect(() => {
+    if (availableModels.length > 0 && !availableModels.find(m => m.id === selectedModel)) {
+      onModelChange(availableModels[0].id);
+    }
+  }, [selectedModel, availableModels, onModelChange]);
+
+  if (!selectedModelData) {
+    return null;
+  }
 
   return (
-    <>
-      <span 
-        ref={measureRef} 
-        className="absolute invisible whitespace-nowrap text-sm"
-        aria-hidden="true"
-      >
-        {currentModel?.name || 'Select Model'}
-      </span>
-
-      <Select 
-        defaultValue={selectedModel}
-        value={selectedModel}
-        onValueChange={onModelChange}
-      >
-        <SelectTrigger 
-          className="rounded-xl text-sm"
-          style={{ width: `${triggerWidth}px` }}
-        >
-          <div className="flex items-center gap-2 truncate">
-            <ModelIcon modelId={selectedModel} className="w-4 h-4 flex-shrink-0" />
-            <span className="truncate">{currentModel?.name || 'Select Model'}</span>
-          </div>
-        </SelectTrigger>
-        
-        <SelectContent 
-          align="end"
-          style={{ width: `${triggerWidth}px` }}
-        >
-          {Object.entries(modelsByProvider).length > 0 ? (
-            Object.entries(modelsByProvider).map(([provider, models]) => {
-              console.log(`Rendering provider ${provider} with ${models.length} models`);
-              return (
-                <React.Fragment key={provider}>
-                  <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground capitalize">
-                    {formatProviderName(provider)}
-                  </div>
-                  {models.map(model => (
-                    <SelectItem 
-                      key={model.id} 
-                      value={model.id}
-                      className="cursor-pointer"
-                    >
-                      <div className="flex items-center gap-2 w-full truncate">
-                        <ModelIcon modelId={model.id} className="w-4 h-4 flex-shrink-0" />
-                        <span className="truncate">{model.name}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </React.Fragment>
-              );
-            })
-          ) : (
-            <div className="px-2 py-4 text-sm text-muted-foreground text-center">
-              No models available. Please add API keys in settings.
-              {/* Add debug info */}
-              <div className="mt-2 text-xs opacity-50">
-                Available keys: {Object.entries(apiKeys || {})
-                  .filter(([_, v]) => typeof v === 'string' && v.trim().length > 0)
-                  .map(([k]) => k)
-                  .join(', ')}
-              </div>
+    <Select value={selectedModel} onValueChange={onModelChange}>
+      <SelectTrigger className="w-[180px]" style={{ width: `${triggerWidth + 32}px` }}>
+        <span ref={measureRef} className="flex items-center gap-2">
+          <ModelIcon modelId={selectedModel} className="h-4 w-4" />
+          <span className="truncate">{selectedModelData.name}</span>
+        </span>
+      </SelectTrigger>
+      <SelectContent>
+        {Object.entries(modelsByProvider).map(([provider, models]) => (
+          <div key={provider} className="mb-2 last:mb-0">
+            <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">
+              {formatProviderName(provider)}
             </div>
-          )}
-        </SelectContent>
-      </Select>
-    </>
+            {models.map((model) => (
+              <SelectItem key={model.id} value={model.id}>
+                <div className="flex items-center gap-2">
+                  <ModelIcon modelId={model.id} className="h-4 w-4" />
+                  <span>{model.name}</span>
+                </div>
+              </SelectItem>
+            ))}
+          </div>
+        ))}
+        {availableModels.length === 0 && (
+          <div className="px-2 py-4 text-sm text-center text-muted-foreground">
+            No models available. Please add API keys in Preferences.
+          </div>
+        )}
+      </SelectContent>
+    </Select>
   );
 };

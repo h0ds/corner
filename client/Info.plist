@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Corner needs access to your microphone for voice dictation.</string>
+    <key>NSCameraUsageDescription</key>
+    <string>Corner does not use the camera.</string>
+    <key>NSLocationUsageDescription</key>
+    <string>Corner does not use location services.</string>
+    <key>CFBundleDocumentTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>Corner Document</string>
+            <key>CFBundleTypeRole</key>
+            <string>Editor</string>
+            <key>LSHandlerRank</key>
+            <string>Default</string>
+        </dict>
+    </array>
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.productivity</string>
+</dict>
+</plist>

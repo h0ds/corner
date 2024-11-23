@@ -98,6 +98,7 @@ function App() {
     const savedModel = loadSelectedModel();
     return savedModel || AVAILABLE_MODELS[0].id;
   });
+  const [apiKeys, setApiKeys] = useState<ApiKeys>({});
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const [sidebarVisible, setSidebarVisible] = useState(true);
@@ -120,7 +121,6 @@ function App() {
   const [noteNavigationStack, setNoteNavigationStack] = useState<string[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [threadToDelete, setThreadToDelete] = useState<string | null>(null);
-  const [apiKeys, setApiKeys] = useState<ApiKeys>({});
 
   // Initialize cache on mount
   useEffect(() => {
@@ -1130,6 +1130,12 @@ function App() {
     loadKeys();
   }, []);
 
+  useEffect(() => {
+    if (!showPreferences) {
+      loadApiKeys().then(setApiKeys);
+    }
+  }, [showPreferences]);
+
   const verifyApiKey = async (type: keyof ApiKeys, key: string) => {
     try {
       console.log(`Verifying ${type} API key:`, {
@@ -1321,6 +1327,15 @@ function App() {
     };
   }, []);
 
+  const handleShowPreferences = useCallback((tab: PreferenceTab = 'api-keys') => {
+    setShowPreferences(true);
+    setPreferenceTab(tab);
+  }, []);
+
+  const handleHidePreferences = useCallback(() => {
+    setShowPreferences(false);
+  }, []);
+
   return (
     <>
       <div className="flex h-screen bg-background overflow-hidden rounded-xl">
@@ -1448,7 +1463,8 @@ function App() {
                       onCompareModels={handleCompareModels}
                       onStartDiscussion={handleStartDiscussion}
                       onClearThread={clearCurrentThread}
-                      onShowPreferences={() => setShowPreferences(true)}
+                      onShowPreferences={handleShowPreferences}
+                      allThreads={threads}
                     />
                   )
                 ) : (
@@ -1468,6 +1484,7 @@ function App() {
             initialTab={preferenceTab}
             plugins={plugins}
             onPluginChange={setPlugins}
+            apiKeys={apiKeys}
           />
 
           {/* Add FilePreview dialog */}
