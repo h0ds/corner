@@ -173,3 +173,25 @@ pub fn set_api_keys(app_handle: AppHandle, request: SetApiKeysRequest) -> Result
         }
     }
 }
+
+pub struct ConfigState {
+    initialized: bool,
+}
+
+impl ConfigState {
+    pub fn new() -> Self {
+        ConfigState {
+            initialized: false,
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn get_config(app_handle: AppHandle) -> Result<serde_json::Value, String> {
+    load_stored_keys(&app_handle)
+}
+
+#[tauri::command]
+pub async fn set_config(app_handle: AppHandle, config: serde_json::Value) -> Result<(), String> {
+    save_keys(&app_handle, &config)
+}

@@ -1,4 +1,10 @@
-use tauri_plugin_global_shortcut;
+mod api;
+mod cache;
+mod config;
+mod keyboard_shortcuts;
+mod models;
+mod speech;
+mod utils;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
@@ -9,9 +15,33 @@ fn greet(name: &str) -> String {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .manage(api::ApiState::new())
+        .manage(cache::CacheState::new())
+        .manage(config::ConfigState::new())
+        .manage(speech::WhisperAppState::new().expect("Failed to initialize Whisper"))
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_upload::init())
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
-        .invoke_handler(tauri::generate_handler![greet])
+        .invoke_handler(tauri::generate_handler![
+            api::get_completion,
+            api::get_chat_completion,
+            api::get_embeddings,
+            api::get_models,
+            cache::get_cache,
+            cache::set_cache,
+            config::get_config,
+            config::set_config,
+            keyboard_shortcuts::register_shortcut,
+            keyboard_shortcuts::unregister_shortcut,
+            speech::start_recording,
+            speech::stop_recording,
+            speech::download_whisper_model,
+            speech::check_whisper_model,
+            greet
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

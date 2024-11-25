@@ -6,32 +6,35 @@ mod config;
 mod keyboard_shortcuts;
 mod models;
 mod utils;
+mod speech;
 
 use dotenv::dotenv;
 use tauri::Manager;
-use crate::api::ApiKeys;
-use std::sync::Mutex;
+use crate::api::{ApiState, ApiKeys};
+use std::sync::{Arc, Mutex};
 
 fn main() {
     dotenv().ok();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_os::init())
-        .manage(ApiKeys {
-            anthropic: Mutex::new(None),
-            perplexity: Mutex::new(None),
-            openai: Mutex::new(None),
-            xai: Mutex::new(None),
-            google: Mutex::new(None),
-            elevenlabs: Mutex::new(None),
-        })
+        .manage(ApiState::new())
+        .manage(speech::WhisperAppState::new().unwrap())
         .invoke_handler(tauri::generate_handler![
+            api::get_completion,
+            api::get_chat_completion,
+            api::get_embeddings,
+            api::get_models,
             api::chat::send_message,
             api::chat::verify_api_key,
             api::speech::text_to_speech,
             config::get_stored_api_keys,
             config::store_api_key,
             config::set_api_keys,
+            speech::check_whisper_model,
+            speech::download_whisper_model,
+            speech::start_recording,
+            speech::stop_recording,
         ])
         .setup(|app| {
             // Initialize cache directory
@@ -42,26 +45,26 @@ fn main() {
 
             // Load stored API keys
             if let Ok(stored_keys) = config::load_stored_keys(&app_handle) {
-                let api_keys = app.state::<ApiKeys>();
+                let api_state = app.state::<ApiState>();
                 
                 // Initialize each provider's key if it exists in storage
                 if let Some(key) = stored_keys["anthropic"].as_str() {
-                    api_keys.set_key("anthropic", key.to_string());
+                    api_state.keys.set_key("anthropic", key.to_string());
                 }
                 if let Some(key) = stored_keys["perplexity"].as_str() {
-                    api_keys.set_key("perplexity", key.to_string());
+                    api_state.keys.set_key("perplexity", key.to_string());
                 }
                 if let Some(key) = stored_keys["openai"].as_str() {
-                    api_keys.set_key("openai", key.to_string());
+                    api_state.keys.set_key("openai", key.to_string());
                 }
                 if let Some(key) = stored_keys["xai"].as_str() {
-                    api_keys.set_key("xai", key.to_string());
+                    api_state.keys.set_key("xai", key.to_string());
                 }
                 if let Some(key) = stored_keys["google"].as_str() {
-                    api_keys.set_key("google", key.to_string());
+                    api_state.keys.set_key("google", key.to_string());
                 }
                 if let Some(key) = stored_keys["elevenlabs"].as_str() {
-                    api_keys.set_key("elevenlabs", key.to_string());
+                    api_state.keys.set_key("elevenlabs", key.to_string());
                 }
             }
 

@@ -16,7 +16,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Bot, Sparkles, MessageSquare, Keyboard } from 'lucide-react';
+import { Sparkles, MessageSquare, Keyboard } from 'lucide-react';
 
 interface ChatViewProps {
   messages: Message[];
@@ -214,8 +214,14 @@ export const ChatView: React.FC<ChatViewProps> = ({
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center space-y-6 max-w-lg mx-auto px-4">
             <div className="flex justify-center">
-              <div className="p-4 bg-primary/5 rounded-full">
-                <Bot className="w-8 h-8 text-primary" />
+              <div>
+                <div className="flex-1 flex items-center justify-end h-full">
+                  <img 
+                    src="/icon.png" 
+                    alt="Corner" 
+                    className="h-[80px] w-[80px] cursor-pointer hover:opacity-80 transition-opacity"
+                  />
+                </div>
               </div>
             </div>
             <div className="space-y-2">

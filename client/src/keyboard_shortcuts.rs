@@ -50,3 +50,63 @@ pub fn init_shortcuts(app_handle: &tauri::AppHandle) {
         });
     }
 }
+
+#[tauri::command]
+pub async fn register_shortcut(window: Window, shortcut_str: String) -> Result<(), String> {
+    let app = window.app_handle();
+    
+    let mods = if shortcut_str.contains("Alt") {
+        Some(Modifiers::ALT)
+    } else if shortcut_str.contains("Ctrl") || shortcut_str.contains("Command") {
+        Some(Modifiers::CONTROL)
+    } else if shortcut_str.contains("Shift") {
+        Some(Modifiers::SHIFT)
+    } else {
+        None
+    };
+
+    let key = match shortcut_str.chars().last() {
+        Some('T') => Code::KeyT,
+        Some('S') => Code::KeyS,
+        Some('C') => Code::KeyC,
+        _ => return Err("Unsupported key".to_string()),
+    };
+
+    let shortcut = Shortcut::new(mods, key);
+    
+    app.global_shortcut()
+        .register(shortcut)
+        .map_err(|e| e.to_string())?;
+    
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn unregister_shortcut(window: Window, shortcut_str: String) -> Result<(), String> {
+    let app = window.app_handle();
+    
+    let mods = if shortcut_str.contains("Alt") {
+        Some(Modifiers::ALT)
+    } else if shortcut_str.contains("Ctrl") || shortcut_str.contains("Command") {
+        Some(Modifiers::CONTROL)
+    } else if shortcut_str.contains("Shift") {
+        Some(Modifiers::SHIFT)
+    } else {
+        None
+    };
+
+    let key = match shortcut_str.chars().last() {
+        Some('T') => Code::KeyT,
+        Some('S') => Code::KeyS,
+        Some('C') => Code::KeyC,
+        _ => return Err("Unsupported key".to_string()),
+    };
+
+    let shortcut = Shortcut::new(mods, key);
+    
+    app.global_shortcut()
+        .unregister(shortcut)
+        .map_err(|e| e.to_string())?;
+    
+    Ok(())
+}

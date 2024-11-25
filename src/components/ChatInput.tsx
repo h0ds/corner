@@ -403,12 +403,12 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                        ${selectedCommand ? 'border-primary' : ''}
                        ${isDiscussing && isPaused ? 'border-yellow-500' : ''}`}
             />
-            <VoiceDictation
+          </div>
+        </div>
+        <VoiceDictation
               onTranscript={(text) => setMessage(prev => prev + text)}
               disabled={disabled}
             />
-          </div>
-        </div>
         <Button 
           type="submit" 
           disabled={disabled || !message.trim()}

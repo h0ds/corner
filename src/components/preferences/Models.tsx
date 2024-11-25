@@ -3,6 +3,8 @@ import { AVAILABLE_MODELS } from '../ModelSelector';
 import { ModelIcon } from '../ModelIcon';
 import { formatProviderName } from '@/lib/utils';
 import { ApiKeys } from '@/types';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 
 interface ModelsProps {
   selectedModel: string;
@@ -11,12 +13,7 @@ interface ModelsProps {
   apiKeys: ApiKeys;
 }
 
-export const Models: React.FC<ModelsProps> = ({
-  selectedModel,
-  onModelChange,
-  availableProviders,
-  apiKeys
-}) => {
+export const Models = ({ selectedModel, onModelChange, availableProviders, apiKeys }: ModelsProps) => {
   const availableModels = AVAILABLE_MODELS.filter(model => {
     const hasKey = apiKeys[model.provider] && apiKeys[model.provider].length > 0;
     return hasKey;
@@ -24,35 +21,40 @@ export const Models: React.FC<ModelsProps> = ({
 
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
+      <div>
+        <h3 className="text-lg font-medium">Models</h3>
         <p className="text-sm text-muted-foreground">
           Select which model to use for chat. Only models from providers with valid API keys are shown.
         </p>
       </div>
 
-      <div className="grid gap-4">
-        {availableModels.map(model => (
-          <div key={model.id} className="flex items-center space-x-4">
-            <input
-              type="radio"
-              id={model.id}
-              name="model"
-              value={model.id}
-              checked={selectedModel === model.id}
-              onChange={(e) => onModelChange(e.target.value)}
-              className="h-4 w-4 border-border"
-            />
-            <label htmlFor={model.id} className="flex items-center space-x-2">
-              <ModelIcon modelId={model.id} className="h-4 w-4" />
-              <span>{model.name}</span>
-              <span className="text-xs text-muted-foreground">
-                ({formatProviderName(model.provider)})
-              </span>
-            </label>
-          </div>
-        ))}
-
-        {availableModels.length === 0 && (
+      <div className="space-y-4">
+        {availableModels.length > 0 ? (
+          <Select 
+            value={selectedModel} 
+            onValueChange={onModelChange}
+          >
+            <SelectTrigger className="w-full">
+              <div className="flex items-center gap-2">
+                <ModelIcon modelId={selectedModel} className="h-4 w-4" />
+                <SelectValue placeholder="Select a model" />
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              {availableModels.map(model => (
+                <SelectItem key={model.id} value={model.id}>
+                  <div className="flex items-center gap-2">
+                    <ModelIcon modelId={model.id} className="h-4 w-4" />
+                    <span>{model.name}</span>
+                    <span className="text-xs text-muted-foreground">
+                      ({formatProviderName(model.provider)})
+                    </span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
           <div className="text-sm text-muted-foreground">
             No models available. Please add API keys in the APIs tab.
           </div>

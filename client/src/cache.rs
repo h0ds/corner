@@ -1,6 +1,7 @@
 use serde_json;
 use std::fs;
 use std::path::PathBuf;
+use tauri::command;
 
 pub fn init_cache_dir() -> Result<(), String> {
     let cache_dir = get_cache_dir()?;
@@ -56,4 +57,34 @@ pub fn delete_cached_file(file_id: String) -> Result<(), String> {
 pub fn get_cache_dir() -> Result<PathBuf, String> {
     let home_dir = dirs::home_dir().ok_or("Could not find home directory")?;
     Ok(home_dir.join(".corner").join("cache"))
+}
+
+pub struct CacheState {
+    initialized: bool,
+}
+
+impl CacheState {
+    pub fn new() -> Self {
+        CacheState {
+            initialized: false,
+        }
+    }
+}
+
+#[command]
+pub async fn get_cache(key: String) -> Result<Option<serde_json::Value>, String> {
+    match load_cached_file(key) {
+        Ok(value) => Ok(Some(value)),
+        Err(_) => Ok(None),
+    }
+}
+
+#[command]
+pub async fn set_cache(key: String, value: serde_json::Value) -> Result<(), String> {
+    cache_file(
+        key,
+        "cache".to_string(),
+        serde_json::to_string(&value).unwrap(),
+        "{}".to_string(),
+    )
 }
