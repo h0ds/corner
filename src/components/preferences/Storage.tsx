@@ -39,8 +39,12 @@ export const Storage: React.FC = () => {
 
   const getWhisperModelSize = async (): Promise<string> => {
     try {
-      const size = await invoke<number>('get_whisper_model_size');
-      return (size / (1024 * 1024)).toFixed(2) + ' MB';
+      const sizeInBytes = await invoke<number>('get_whisper_model_size');
+      console.log('Received model size from backend:', sizeInBytes, 'bytes');
+      // Format size to match the actual model size (140.54 MB)
+      const sizeInMB = sizeInBytes / (1024 * 1024);
+      console.log('Calculated size in MB:', sizeInMB.toFixed(2), 'MB');
+      return sizeInMB.toFixed(2) + ' MB';
     } catch (error) {
       console.error('Failed to get Whisper model size:', error);
       return '0 MB';
@@ -118,16 +122,22 @@ export const Storage: React.FC = () => {
   // Update cache sizes and model status
   React.useEffect(() => {
     const updateSizes = async () => {
+      console.log('Updating storage sizes...');
       const hasModel = await checkWhisperModel();
+      console.log('Has Whisper model:', hasModel);
       const updatedSections = await Promise.all(
-        sections.map(async (section) => ({
-          ...section,
-          size: section.getSize 
+        sections.map(async (section) => {
+          const size = section.getSize 
             ? await section.getSize()
-            : await calculateCacheSize(section.id === 'all' ? '' : section.id),
-          isDownloading: section.id === 'whisper_model' && downloading === section.id,
-          hasDownloadAction: section.id === 'whisper_model' && !hasModel
-        }))
+            : await calculateCacheSize(section.id === 'all' ? '' : section.id);
+          console.log(`Size for ${section.id}:`, size);
+          return {
+            ...section,
+            size,
+            isDownloading: section.id === 'whisper_model' && downloading === section.id,
+            hasDownloadAction: section.id === 'whisper_model' && !hasModel
+          };
+        })
       );
       setSections(updatedSections);
     };

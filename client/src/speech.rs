@@ -456,13 +456,23 @@ pub async fn get_whisper_model_size() -> Result<u64, String> {
         .join("models")
         .join(MODEL_FILENAME);
     
+    println!("Checking model size at path: {:?}", model_path);
+    
     if !model_path.exists() {
+        println!("Model file does not exist");
         return Ok(0);
     }
 
     match std::fs::metadata(&model_path) {
-        Ok(metadata) => Ok(metadata.len()),
-        Err(e) => Err(format!("Failed to get model size: {}", e))
+        Ok(metadata) => {
+            let size = metadata.len();
+            println!("Model size: {} bytes ({:.2} MB)", size, size as f64 / (1024.0 * 1024.0));
+            Ok(size)
+        },
+        Err(e) => {
+            println!("Error getting model size: {}", e);
+            Err(format!("Failed to get model size: {}", e))
+        }
     }
 }
 

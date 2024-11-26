@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { NoteThread, Thread } from '@/types';
 import { cn } from '@/lib/utils';
 import {
@@ -20,6 +20,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { invoke } from '@tauri-apps/api/core';
 import { AudioControls } from './AudioControls';
 import { NoteLinkMenu } from './NoteLinkMenu';
+import { VoiceDictation } from './VoiceDictation';
 
 interface NoteEditorProps {
   note: NoteThread;
@@ -71,7 +72,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   const [showReferenceMenu, setShowReferenceMenu] = useState(false);
   const [referenceQuery, setReferenceQuery] = useState('');
   const [referenceStartIndex, setReferenceStartIndex] = useState<number | null>(null);
-  const editorRef = useRef<HTMLTextAreaElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [showChatOverlay, setShowChatOverlay] = useState(false);
   const [showAIDialog, setShowAIDialog] = useState(false);
   const [highlightedText, setHighlightedText] = useState('');
@@ -183,6 +184,30 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
       handleChange(content + '\n\n' + response);
     }
   };
+
+  // Handle transcription results
+  const handleTranscriptionResult = useCallback((text: string) => {
+    console.log('NoteEditor handleTranscriptionResult:', text);
+    setContent(prev => {
+      console.log('NoteEditor previous content:', prev);
+      const start = textareaRef.current?.selectionStart ?? prev.length;
+      const end = textareaRef.current?.selectionEnd ?? prev.length;
+      const newContent = prev.substring(0, start) + text + prev.substring(end);
+      console.log('NoteEditor new content:', newContent);
+      return newContent;
+    });
+
+    // Focus the textarea after transcription
+    requestAnimationFrame(() => {
+      if (textareaRef.current) {
+        console.log('NoteEditor focusing textarea');
+        textareaRef.current.focus();
+        const newCursorPos = (textareaRef.current.selectionStart ?? 0) + text.length;
+        textareaRef.current.selectionStart = newCursorPos;
+        textareaRef.current.selectionEnd = newCursorPos;
+      }
+    });
+  }, []);
 
   // Toolbar items
   const toolbarItems = [
@@ -382,8 +407,8 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     handleChange(value);
 
     // Handle reference query
-    if (referenceStartIndex !== null && editorRef.current) {
-      const currentPosition = editorRef.current.selectionStart;
+    if (referenceStartIndex !== null && textareaRef.current) {
+      const currentPosition = textareaRef.current.selectionStart;
       const textAfterTrigger = value.slice(referenceStartIndex + 1, currentPosition);
       
       if (textAfterTrigger.includes(' ') || currentPosition <= referenceStartIndex) {
@@ -397,7 +422,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   };
 
   const handleReferenceSelect = (thread: Thread) => {
-    if (referenceStartIndex === null || !editorRef.current) {
+    if (referenceStartIndex === null || !textareaRef.current) {
       // If no cursor position (opened from toolbar), just link the thread
       onUpdate({
         ...note,
@@ -621,7 +646,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
             >
               <div className="h-full overflow-y-auto">
                 <textarea
-                  ref={editorRef}
+                  ref={textareaRef}
                   value={content}
                   onChange={(e) => handleEditorChange(e.target.value)}
                   onKeyDown={handleKeyDown}
@@ -854,8 +879,23 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         </div>
       )}
 
-      {/* Add toggle button for LinkedItems */}
-      <div className="absolute bottom-4 right-4">
+      {/* Bottom right controls */}
+      <div className="absolute bottom-4 right-4 flex items-center gap-2">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div>
+                <VoiceDictation 
+                  onTranscriptionResult={handleTranscriptionResult}
+                  className="shrink-0"
+                />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="left">
+              Voice dictation
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -863,12 +903,12 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
                 variant="outline"
                 size="icon"
                 className={cn(
-                  "h-8 w-8 rounded-xl",
+                  "h-10 w-10 rounded-lg",
                   showLinkedNotes && "bg-accent text-accent-foreground"
                 )}
                 onClick={() => setShowLinkedNotes(!showLinkedNotes)}
               >
-                <Link2 className="h-4 w-4" />
+                <Link2 className="h-5 w-5" />
                 <span className="sr-only">Toggle linked items</span>
               </Button>
             </TooltipTrigger>

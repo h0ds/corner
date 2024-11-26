@@ -4,6 +4,7 @@ import { listen } from '@tauri-apps/api/event';
 import { Button } from '@/components/ui/button';
 import { Mic, MicOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 interface TranscriptionPayload {
   text: string;
@@ -15,11 +16,12 @@ interface VoiceDictationProps {
   className?: string;
 }
 
-export function VoiceDictation({ onTranscriptionResult, className }: VoiceDictationProps) {
+export const VoiceDictation: React.FC<VoiceDictationProps> = ({ onTranscriptionResult, className }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isModelDownloaded, setIsModelDownloaded] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   const [currentTranscript, setCurrentTranscript] = useState('');
+  const { toast } = useToast();
 
   // Check model on component mount
   useEffect(() => {
@@ -39,60 +41,67 @@ export function VoiceDictation({ onTranscriptionResult, className }: VoiceDictat
   useEffect(() => {
     // Listen for transcription events
     const unlisten = listen<TranscriptionPayload>('transcription', (event) => {
-      console.log('Received transcription:', event.payload);
+      console.log('VoiceDictation received transcription event:', event);
       const text = event.payload.text.trim();
       if (text) {
-        if (event.payload.is_final) {
-          // Append to current transcript with a space
-          const newTranscript = currentTranscript 
-            ? `${currentTranscript} ${text}`
-            : text;
-          setCurrentTranscript(newTranscript);
-          onTranscriptionResult(newTranscript);
-        }
+        console.log('VoiceDictation sending transcription:', text, 'is_final:', event.payload.is_final);
+        onTranscriptionResult(text);
       }
     });
 
     return () => {
+      console.log('VoiceDictation cleaning up transcription listener');
       unlisten.then(fn => fn());
     };
-  }, [onTranscriptionResult, currentTranscript]);
+  }, [onTranscriptionResult]);
 
-  const toggleRecording = useCallback(async () => {
-    if (!isRecording) {
-      try {
+  const handleClick = async () => {
+    try {
+      if (!isRecording) {
         if (!isModelDownloaded) {
           console.log('Downloading Whisper model...');
           await invoke('download_whisper_model');
           setIsModelDownloaded(true);
           console.log('Model downloaded successfully');
         }
-        setCurrentTranscript(''); // Reset transcript when starting new recording
-        console.log('Starting recording...');
+        
+        console.log('VoiceDictation starting recording');
+        setCurrentTranscript('');
         await invoke('start_recording');
         setIsRecording(true);
-      } catch (error) {
-        console.error('Failed to start recording:', error);
-      }
-    } else {
-      try {
+        toast({
+          title: "Recording started",
+          description: "Speak now...",
+        });
+      } else {
+        console.log('VoiceDictation stopping recording');
         await invoke('stop_recording');
         setIsRecording(false);
-      } catch (error) {
-        console.error('Failed to stop recording:', error);
+        toast({
+          title: "Recording stopped",
+          description: "Processing...",
+        });
       }
+    } catch (error) {
+      console.error('VoiceDictation error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to toggle recording",
+        variant: "destructive",
+      });
+      setIsRecording(false);
     }
-  }, [isRecording, isModelDownloaded]);
+  };
 
   if (!isInitialized) {
     return (
       <Button
         disabled
-        variant="default"
         size="icon"
-        className={cn("h-10 w-10 shrink-0 rounded-md opacity-50", className)}
+        variant="ghost"
+        className={className}
       >
-        <Mic className="h-5 w-5" />
+        <Mic className="h-4 w-4" />
       </Button>
     );
   }
@@ -100,7 +109,12 @@ export function VoiceDictation({ onTranscriptionResult, className }: VoiceDictat
   return (
     <div className={cn("relative", className)}>
       <Button
-        onClick={toggleRecording}
+        onClick={(e) => {
+          e.preventDefault(); // Prevent form submission
+          handleClick();
+        }}
+        type="button" // Explicitly set button type to prevent form submission
+        disabled={!isInitialized}
         variant={isRecording ? "destructive" : "default"}
         size="icon"
         className={cn(
@@ -108,12 +122,8 @@ export function VoiceDictation({ onTranscriptionResult, className }: VoiceDictat
           isRecording && "relative after:absolute after:inset-0 after:z-[1] after:rounded-lg after:animate-ping-slow after:bg-destructive/50"
         )}
       >
-        {isRecording ? (
-          <MicOff className="h-5 w-5" />
-        ) : (
-          <Mic className="h-5 w-5" />
-        )}
+        {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
       </Button>
     </div>
   );
-}
+};

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Send } from "lucide-react";
 import { Input } from './ui/input';
@@ -54,6 +54,29 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const [showReferenceMenu, setShowReferenceMenu] = useState(false);
   const [referenceQuery, setReferenceQuery] = useState('');
   const [referenceStartIndex, setReferenceStartIndex] = useState<number | null>(null);
+
+  const handleTranscriptionResult = useCallback((text: string) => {
+    console.log('ChatInput handleTranscriptionResult:', text);
+    setMessage(prev => {
+      console.log('ChatInput previous message:', prev);
+      const start = inputRef.current?.selectionStart ?? prev.length;
+      const end = inputRef.current?.selectionEnd ?? prev.length;
+      const newMessage = prev.substring(0, start) + text + prev.substring(end);
+      console.log('ChatInput new message:', newMessage);
+      return newMessage;
+    });
+
+    // Focus the input after transcription
+    requestAnimationFrame(() => {
+      if (inputRef.current) {
+        console.log('ChatInput focusing input');
+        inputRef.current.focus();
+        const newCursorPos = (inputRef.current.selectionStart ?? 0) + text.length;
+        inputRef.current.selectionStart = newCursorPos;
+        inputRef.current.selectionEnd = newCursorPos;
+      }
+    });
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -406,10 +429,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           </div>
         </div>
         <VoiceDictation 
-          onTranscriptionResult={(text) => {
-            const newValue = message.length ? `${message} ${text}` : text;
-            setMessage(newValue);
-          }}
+          onTranscriptionResult={handleTranscriptionResult}
+          className="shrink-0"
         />
         <Button 
           type="submit" 
