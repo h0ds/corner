@@ -194,6 +194,10 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
       const end = textareaRef.current?.selectionEnd ?? prev.length;
       const newContent = prev.substring(0, start) + text + prev.substring(end);
       console.log('NoteEditor new content:', newContent);
+      
+      // Trigger save with the new content
+      handleChange(newContent);
+      
       return newContent;
     });
 
@@ -207,7 +211,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         textareaRef.current.selectionEnd = newCursorPos;
       }
     });
-  }, []);
+  }, [handleChange]);
 
   // Toolbar items
   const toolbarItems = [
