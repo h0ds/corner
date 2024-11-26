@@ -405,10 +405,12 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             />
           </div>
         </div>
-        <VoiceDictation
-              onTranscript={(text) => setMessage(prev => prev + text)}
-              disabled={disabled}
-            />
+        <VoiceDictation 
+          onTranscriptionResult={(text) => {
+            const newValue = message.length ? `${message} ${text}` : text;
+            setMessage(newValue);
+          }}
+        />
         <Button 
           type="submit" 
           disabled={disabled || !message.trim()}

@@ -1,168 +1,119 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { Button, Progress, message, Modal } from 'antd';
-import { AudioOutlined, LoadingOutlined } from '@ant-design/icons';
-import {
-  checkWhisperModel,
-  downloadWhisperModel,
-  startRecording,
-  stopRecording,
-  onTranscriptionProgress,
-  onDownloadProgress,
-} from '../lib/tauri';
+import { useState, useEffect, useCallback } from 'react';
+import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
+import { Button } from '@/components/ui/button';
+import { Mic, MicOff } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-interface VoiceDictationProps {
-  inputRef: React.RefObject<HTMLInputElement | HTMLTextAreaElement>;
-  onTranscriptionUpdate?: (text: string) => void;
+interface TranscriptionPayload {
+  text: string;
+  is_final: boolean;
 }
 
-export function VoiceDictation({ inputRef, onTranscriptionUpdate }: VoiceDictationProps) {
+interface VoiceDictationProps {
+  onTranscriptionResult: (text: string) => void;
+  className?: string;
+}
+
+export function VoiceDictation({ onTranscriptionResult, className }: VoiceDictationProps) {
   const [isRecording, setIsRecording] = useState(false);
-  const [isModelReady, setIsModelReady] = useState<boolean | null>(null);
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [downloadProgress, setDownloadProgress] = useState(0);
-  const [isSetupModalVisible, setIsSetupModalVisible] = useState(false);
+  const [isModelDownloaded, setIsModelDownloaded] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [currentTranscript, setCurrentTranscript] = useState('');
 
-  const checkModel = useCallback(async () => {
-    try {
-      const exists = await checkWhisperModel();
-      setIsModelReady(exists);
-      return exists;
-    } catch (error) {
-      console.error('Error checking model:', error);
-      setIsModelReady(false);
-      return false;
-    }
-  }, []);
-
-  const handleDownload = useCallback(async () => {
-    try {
-      setIsDownloading(true);
-      const unsubscribe = await onDownloadProgress((progress) => {
-        setDownloadProgress(Number(progress.progress.toFixed(2)));
-      });
-
-      await downloadWhisperModel();
-      unsubscribe();
-      await checkModel();
-      setIsDownloading(false);
-      setIsSetupModalVisible(false);
-      message.success('Model downloaded successfully');
-    } catch (error) {
-      console.error('Download failed:', error);
-      message.error('Failed to download model');
-      setIsDownloading(false);
-    }
-  }, [checkModel]);
-
-  const handleStartRecording = useCallback(async () => {
-    // Only check model status when button is first clicked
-    if (isModelReady === null) {
-      const exists = await checkModel();
-      if (!exists) {
-        setIsSetupModalVisible(true);
-        return;
+  // Check model on component mount
+  useEffect(() => {
+    const checkModel = async () => {
+      try {
+        const hasModel = await invoke<boolean>('check_whisper_model');
+        setIsModelDownloaded(hasModel);
+        setIsInitialized(true);
+      } catch (error) {
+        console.error('Failed to check model:', error);
+        setIsInitialized(true);
       }
-    } else if (!isModelReady) {
-      setIsSetupModalVisible(true);
-      return;
-    }
-
-    try {
-      await startRecording();
-      setIsRecording(true);
-    } catch (error) {
-      console.error('Failed to start recording:', error);
-      message.error('Failed to start recording');
-    }
-  }, [isModelReady, checkModel]);
-
-  const handleStopRecording = useCallback(async () => {
-    try {
-      await stopRecording();
-      setIsRecording(false);
-    } catch (error) {
-      console.error('Failed to stop recording:', error);
-      message.error('Failed to stop recording');
-    }
+    };
+    checkModel();
   }, []);
 
   useEffect(() => {
-    let unsubscribe: (() => void) | undefined;
-
-    async function setupTranscriptionListener() {
-      unsubscribe = await onTranscriptionProgress((result) => {
-        if (inputRef.current) {
-          const input = inputRef.current;
-          const currentValue = input.value;
-          const cursorPosition = input.selectionStart || currentValue.length;
-          
-          // Insert transcribed text at cursor position
-          const newValue = currentValue.slice(0, cursorPosition) + 
-                          result.text + 
-                          currentValue.slice(cursorPosition);
-          
-          input.value = newValue;
-          
-          // Update cursor position
-          const newPosition = cursorPosition + result.text.length;
-          input.setSelectionRange(newPosition, newPosition);
-          
-          // Trigger input event to update any bound values
-          const event = new Event('input', { bubbles: true });
-          input.dispatchEvent(event);
-
-          // Call the optional callback
-          onTranscriptionUpdate?.(newValue);
+    // Listen for transcription events
+    const unlisten = listen<TranscriptionPayload>('transcription', (event) => {
+      console.log('Received transcription:', event.payload);
+      const text = event.payload.text.trim();
+      if (text) {
+        if (event.payload.is_final) {
+          // Append to current transcript with a space
+          const newTranscript = currentTranscript 
+            ? `${currentTranscript} ${text}`
+            : text;
+          setCurrentTranscript(newTranscript);
+          onTranscriptionResult(newTranscript);
         }
-      });
-    }
-
-    setupTranscriptionListener();
+      }
+    });
 
     return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
+      unlisten.then(fn => fn());
     };
-  }, [inputRef, onTranscriptionUpdate]);
+  }, [onTranscriptionResult, currentTranscript]);
+
+  const toggleRecording = useCallback(async () => {
+    if (!isRecording) {
+      try {
+        if (!isModelDownloaded) {
+          console.log('Downloading Whisper model...');
+          await invoke('download_whisper_model');
+          setIsModelDownloaded(true);
+          console.log('Model downloaded successfully');
+        }
+        setCurrentTranscript(''); // Reset transcript when starting new recording
+        console.log('Starting recording...');
+        await invoke('start_recording');
+        setIsRecording(true);
+      } catch (error) {
+        console.error('Failed to start recording:', error);
+      }
+    } else {
+      try {
+        await invoke('stop_recording');
+        setIsRecording(false);
+      } catch (error) {
+        console.error('Failed to stop recording:', error);
+      }
+    }
+  }, [isRecording, isModelDownloaded]);
+
+  if (!isInitialized) {
+    return (
+      <Button
+        disabled
+        variant="default"
+        size="icon"
+        className={cn("h-10 w-10 shrink-0 rounded-md opacity-50", className)}
+      >
+        <Mic className="h-5 w-5" />
+      </Button>
+    );
+  }
 
   return (
-    <>
-      <div style={{ display: 'inline-block' }}>
-        <Button
-          type="text"
-          icon={isRecording ? <LoadingOutlined /> : <AudioOutlined />}
-          onClick={isRecording ? handleStopRecording : handleStartRecording}
-          danger={isRecording}
-        />
-      </div>
-
-      <Modal
-        title="Voice Dictation Setup"
-        open={isSetupModalVisible}
-        onCancel={() => setIsSetupModalVisible(false)}
-        footer={[
-          <Button key="cancel" onClick={() => setIsSetupModalVisible(false)}>
-            Cancel
-          </Button>,
-          <Button
-            key="download"
-            type="primary"
-            onClick={handleDownload}
-            loading={isDownloading}
-            disabled={isDownloading}
-          >
-            Download Model
-          </Button>,
-        ]}
-      >
-        <p>The Whisper model needs to be downloaded before using voice dictation.</p>
-        {isDownloading && (
-          <div style={{ marginTop: '20px' }}>
-            <Progress percent={downloadProgress} status="active" />
-          </div>
+    <div className={cn("relative", className)}>
+      <Button
+        onClick={toggleRecording}
+        variant={isRecording ? "destructive" : "default"}
+        size="icon"
+        className={cn(
+          "h-10 w-10 shrink-0 rounded-lg",
+          isRecording && "relative after:absolute after:inset-0 after:z-[1] after:rounded-lg after:animate-ping-slow after:bg-destructive/50"
         )}
-      </Modal>
-    </>
+      >
+        {isRecording ? (
+          <MicOff className="h-5 w-5" />
+        ) : (
+          <Mic className="h-5 w-5" />
+        )}
+      </Button>
+    </div>
   );
 }

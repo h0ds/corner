@@ -28,7 +28,9 @@ export async function stopRecording(): Promise<void> {
 export async function onTranscriptionProgress(
   callback: (result: TranscriptionResult) => void
 ): Promise<UnlistenFn> {
+  console.log('Setting up transcription listener');
   return listen<TranscriptionResult>('transcription', (event) => {
+    console.log('Received transcription event:', event);
     callback(event.payload);
   });
 }

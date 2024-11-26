@@ -5,6 +5,7 @@ mod keyboard_shortcuts;
 mod models;
 mod speech;
 mod utils;
+mod plugins;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
@@ -18,13 +19,14 @@ pub fn run() {
         .manage(api::ApiState::new())
         .manage(cache::CacheState::new())
         .manage(config::ConfigState::new())
-        .manage(speech::WhisperAppState::new().expect("Failed to initialize Whisper"))
+        .manage(speech::WhisperAppState::new().unwrap())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_upload::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(plugins::speech::init())
         .invoke_handler(tauri::generate_handler![
             api::get_completion,
             api::get_chat_completion,
@@ -40,6 +42,8 @@ pub fn run() {
             speech::stop_recording,
             speech::download_whisper_model,
             speech::check_whisper_model,
+            speech::get_whisper_model_size,
+            speech::delete_whisper_model,
             greet
         ])
         .run(tauri::generate_context!())

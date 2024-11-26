@@ -19,6 +19,7 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_os::init())
         .manage(ApiState::new())
+        .manage(ApiKeys::default())  
         .manage(speech::WhisperAppState::new().unwrap())
         .invoke_handler(tauri::generate_handler![
             api::get_completion,
@@ -46,25 +47,32 @@ fn main() {
             // Load stored API keys
             if let Ok(stored_keys) = config::load_stored_keys(&app_handle) {
                 let api_state = app.state::<ApiState>();
+                let api_keys = app.state::<ApiKeys>();  
                 
                 // Initialize each provider's key if it exists in storage
                 if let Some(key) = stored_keys["anthropic"].as_str() {
                     api_state.keys.set_key("anthropic", key.to_string());
+                    api_keys.set_key("anthropic", key.to_string());  
                 }
                 if let Some(key) = stored_keys["perplexity"].as_str() {
                     api_state.keys.set_key("perplexity", key.to_string());
+                    api_keys.set_key("perplexity", key.to_string());
                 }
                 if let Some(key) = stored_keys["openai"].as_str() {
                     api_state.keys.set_key("openai", key.to_string());
+                    api_keys.set_key("openai", key.to_string());
                 }
                 if let Some(key) = stored_keys["xai"].as_str() {
                     api_state.keys.set_key("xai", key.to_string());
+                    api_keys.set_key("xai", key.to_string());
                 }
                 if let Some(key) = stored_keys["google"].as_str() {
                     api_state.keys.set_key("google", key.to_string());
+                    api_keys.set_key("google", key.to_string());
                 }
                 if let Some(key) = stored_keys["elevenlabs"].as_str() {
                     api_state.keys.set_key("elevenlabs", key.to_string());
+                    api_keys.set_key("elevenlabs", key.to_string());
                 }
             }
 

@@ -13,8 +13,8 @@ dependencies = [
  "dirs",
  "dotenv",
  "futures-util",
- "hound",
- "percent-encoding",
+ "once_cell",
+ "regex",
  "reqwest 0.11.27",
  "serde",
  "serde_json",
@@ -28,6 +28,7 @@ dependencies = [
  "tauri-plugin-tauri",
  "tauri-plugin-upload",
  "tokio",
+ "url",
  "uuid",
  "whisper-rs",
 ]
@@ -1489,12 +1490,6 @@ checksum = "e3d1354bf6b7235cb4a0576c2619fd4ed18183f689b12b006a0ee7329eeff9a5"
 dependencies = [
  "windows-sys 0.52.0",
 ]
-
-[[package]]
-name = "hound"
-version = "3.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "62adaabb884c94955b19907d60019f4e145d091c75345379e70d1ee696f7854f"
 
 [[package]]
 name = "html5ever"
