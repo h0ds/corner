@@ -35,6 +35,11 @@ async fn check_whisper_model() -> Result<bool, String> {
     crate::speech::check_whisper_model().await
 }
 
+#[tauri::command]
+async fn get_whisper_model_size() -> Result<u64, String> {
+    crate::speech::get_whisper_model_size().await
+}
+
 pub fn init<R: Runtime>() -> TauriPlugin<R> {
     Builder::new("speech")
         .invoke_handler(tauri::generate_handler![
@@ -42,6 +47,7 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
             stop_recording,
             download_whisper_model,
             check_whisper_model,
+            get_whisper_model_size,
         ])
         .setup(|app, _api: PluginApi<R, ()>| {
             app.manage(WhisperAppState::new().unwrap());

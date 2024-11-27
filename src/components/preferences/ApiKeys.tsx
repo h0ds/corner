@@ -111,13 +111,35 @@ export const ApiKeys: React.FC<ApiKeysProps> = ({
 
   // Get first model ID for each provider
   const getProviderModelId = (provider: string) => {
-    return AVAILABLE_MODELS.find(m => m.provider === provider)?.id;
+    const model = AVAILABLE_MODELS.find(m => m.provider === provider);
+    console.log(`Looking up model for provider ${provider}:`, model);
+    return model?.id;
   };
 
   // Show configured providers at the top
   const configuredProviders = Object.entries(verificationStatus)
-    .filter(([_, status]) => status === 'success')
+    .filter(([provider, status]) => {
+      console.log(`Checking provider ${provider}:`, {
+        status,
+        hasKey: !!keys[provider as keyof typeof keys],
+        keyLength: keys[provider as keyof typeof keys]?.trim().length,
+      });
+      // Check if the provider has both a valid status and a non-empty key
+      return status === 'success' && keys[provider as keyof typeof keys]?.trim().length > 0;
+    })
     .map(([provider]) => provider);
+
+  console.log('Configured providers:', configuredProviders);
+  console.log('Verification status:', verificationStatus);
+  console.log('Keys:', Object.fromEntries(
+    Object.entries(keys).map(([k, v]) => [k, v ? '***' : ''])
+  ));
+
+  // Ensure provider names match exactly
+  const providerModelMap = Object.fromEntries(
+    AVAILABLE_MODELS.map(model => [model.provider, model.id])
+  );
+  console.log('Provider to model mapping:', providerModelMap);
 
   // Toggle visibility for a specific provider
   const toggleVisibility = (provider: keyof typeof visibility) => {
@@ -127,8 +149,24 @@ export const ApiKeys: React.FC<ApiKeysProps> = ({
     }));
   };
 
+  const handleRetry = async (provider: keyof ApiKeysProps['keys']) => {
+    if (onRetryVerification) {
+      // Add a small delay before retrying
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      onRetryVerification(provider);
+    }
+  };
+
   return (
     <div className="space-y-4">
+      {error && (
+        <div className="text-sm text-destructive mb-4">
+          {error.includes('overloaded') ? 
+            'The API is currently experiencing high load. Please try again in a moment.' : 
+            error
+          }
+        </div>
+      )}
       
       {/* Configured Providers */}
       <div className="space-y-2">
@@ -143,7 +181,7 @@ export const ApiKeys: React.FC<ApiKeysProps> = ({
                       className="p-1.5 bg-accent rounded-md"
                     >
                       <ModelIcon 
-                        modelId={getProviderModelId(provider) || ''} 
+                        modelId={providerModelMap[provider as keyof typeof providerModelMap] || ''} 
                         className="h-4 w-4" 
                       />
                     </div>
@@ -179,7 +217,7 @@ export const ApiKeys: React.FC<ApiKeysProps> = ({
                   <StatusIcon 
                     status={verificationStatus.anthropic} 
                     provider="anthropic"
-                    onRetry={() => onRetryVerification?.('anthropic')}
+                    onRetry={() => handleRetry('anthropic')}
                   />
                 </div>
                 <Button

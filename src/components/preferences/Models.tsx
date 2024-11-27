@@ -1,10 +1,8 @@
-import React from 'react';
 import { AVAILABLE_MODELS } from '../ModelSelector';
 import { ModelIcon } from '../ModelIcon';
 import { formatProviderName } from '@/lib/utils';
 import { ApiKeys } from '@/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
 
 interface ModelsProps {
   selectedModel: string;
@@ -36,7 +34,7 @@ export const Models = ({ selectedModel, onModelChange, availableProviders, apiKe
           >
             <SelectTrigger className="w-full">
               <div className="flex items-center gap-2">
-                <ModelIcon modelId={selectedModel} className="h-4 w-4" />
+                {/* <ModelIcon modelId={selectedModel} className="h-4 w-4" /> */}
                 <SelectValue placeholder="Select a model" />
               </div>
             </SelectTrigger>

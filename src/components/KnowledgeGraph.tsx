@@ -1,15 +1,18 @@
 import React, { useCallback, useMemo, useEffect, useState } from 'react';
 import { Thread, GraphNode, GraphEdge } from '@/types';
 import ForceGraph2D from 'react-force-graph-2d';
+import { cn } from '@/lib/utils';
 
 interface KnowledgeGraphProps {
   threads: Thread[];
   onNodeClick?: (nodeId: string) => void;
+  className?: string;
 }
 
 export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
   threads,
   onNodeClick,
+  className
 }) => {
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
@@ -42,14 +45,20 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
 
     // Create nodes for all threads and notes
     threads.forEach(thread => {
+      // Calculate node size based on connections
+      const linkedCount = thread.linkedNotes?.length || 0;
+      const baseSize = 6;
+      const sizeScale = Math.log(linkedCount + 1) + 1;
+      const nodeSize = baseSize * sizeScale;
+
       nodes.push({
         id: thread.id,
         label: thread.name,
         data: {
-          color: thread.color,
-          size: 10,
+          color: thread.color || (thread.isNote ? '#4CAF50' : '#2196F3'),
+          size: nodeSize,
           content: thread.isNote ? thread.content.slice(0, 100) : thread.messages[0]?.content.slice(0, 100),
-          linkedCount: thread.linkedNotes?.length || 0,
+          linkedCount: linkedCount,
           type: thread.isNote ? 'note' : 'thread'
         }
       });
@@ -62,7 +71,10 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
             links.push({
               id: linkId,
               source: thread.id,
-              target: targetId
+              target: targetId,
+              data: {
+                strength: 0.5 // Adjust this value to control link length
+              }
             });
             processedLinks.add(linkId);
           }
@@ -78,27 +90,41 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     const type = node.data.type === 'note' ? 'Note' : 'Thread';
     return `
       <div style="
-        background-color: #fff;
-        color: #000;
-        padding: 4px;
-        max-width: 200px;
-        font-family: monospace;
+        background-color: rgba(0, 0, 0, 0.8);
+        color: #fff;
+        padding: 8px 12px;
+        max-width: 240px;
+        font-family: ui-monospace, monospace;
         font-size: 12px;
-        border: 1px solid #fff;
+        border-radius: 6px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
       ">
-        <div style="font-weight: bold; margin-bottom: 4px; font-family: monospace;">${node.label}</div>
-        <div style="color: #999; margin-bottom: 2px; font-family: monospace;">
+        <div style="font-weight: 600; margin-bottom: 4px;">${node.label}</div>
+        <div style="color: #999; margin-bottom: 4px; font-size: 11px;">
           ${type} • ${node.data.linkedCount} connection${node.data.linkedCount !== 1 ? 's' : ''}
         </div>
+        ${node.data.content ? `
+          <div style="
+            color: #ccc;
+            font-size: 11px;
+            margin-top: 4px;
+            padding-top: 4px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+          ">${node.data.content}</div>
+        ` : ''}
       </div>
     `;
   }, []);
 
-  // Handle node double click
+  // Handle node click
   const handleNodeClick = useCallback((node: any) => {
     if (onNodeClick) {
       onNodeClick(node.id);
-      // Dispatch event to switch to appropriate tab
       window.dispatchEvent(new CustomEvent('switch-tab', {
         detail: { tab: node.data.type === 'note' ? 'notes' : 'threads' }
       }));
@@ -106,59 +132,64 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
   }, [onNodeClick]);
 
   return (
-    <div className="w-full h-full font-mono graph-container" style={{
-      backgroundImage: `radial-gradient(circle at 1px 1px, rgba(100, 100, 100, 0.1) 1px, transparent 0)`,
-      backgroundSize: '12px 12px'
+    <div className={cn("w-full h-full font-mono graph-container relative", className)} style={{
+      backgroundImage: `radial-gradient(circle at 1px 1px, rgba(100, 100, 100, 0.05) 1px, transparent 0)`,
+      backgroundSize: '24px 24px'
     }}>
       <ForceGraph2D
         width={dimensions.width}
         height={dimensions.height}
         graphData={{ nodes, links }}
         nodeLabel={getNodeTooltip}
-        nodeColor={node => node.data.color || '#666'}
-        nodeRelSize={10}
-        linkColor={() => '#444'}
+        nodeColor={node => node.data.color}
+        nodeRelSize={6}
+        linkColor={() => 'rgba(100, 100, 100, 0.2)'}
         backgroundColor="transparent"
-        onNodeDblClick={handleNodeClick}
-        linkWidth={1}
-        linkDirectionalParticles={0}
+        onNodeClick={handleNodeClick}
+        enableNodeDrag={true}
+        onNodeDragEnd={node => {
+          node.fx = node.x;
+          node.fy = node.y;
+        }}
+        linkWidth={1.5}
+        linkDirectionalParticles={2}
+        linkDirectionalParticleSpeed={0.004}
+        linkDirectionalParticleWidth={2}
         d3VelocityDecay={0.3}
         cooldownTicks={100}
+        d3AlphaDecay={0.01}
+        d3AlphaMin={0.001}
+        d3Force="charge"
+        d3ForceStrength={-300}
+        linkDistance={150}
+        warmupTicks={100}
         nodeCanvasObject={(node: any, ctx, globalScale) => {
+          const size = node.data.size;
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, size, 0, 2 * Math.PI);
+          ctx.fillStyle = node.data.color;
+          ctx.fill();
+          
+          // Add a white border
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+          
+          // Draw label if zoomed in enough
           const label = node.label;
-          const fontSize = 12 / globalScale;
-          const textWidth = ctx.measureText(label).width;
-          const bckgDimensions = [textWidth, fontSize].map(n => n + fontSize * 1);
-
-          // Draw background
-          ctx.fillStyle = 'rgba(0,0,0,1)';
-          ctx.fillRect(
-            node.x - bckgDimensions[0] / 2,
-            node.y - bckgDimensions[1] / 2,
-            bckgDimensions[0],
-            bckgDimensions[1]
-          );
-
-          // Draw text
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillStyle = '#fff';
-          ctx.font = `${fontSize / 1.25}px monospace`;
-          ctx.fillText(label, node.x, node.y);
+          if (globalScale >= 1) {
+            ctx.font = '4px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#fff';
+            ctx.fillText(label, node.x, node.y);
+          }
         }}
         nodePointerAreaPaint={(node: any, color, ctx) => {
-          ctx.font = `12px monospace`;
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, node.data.size * 1.5, 0, 2 * Math.PI);
           ctx.fillStyle = color;
-          const bckgDimensions = [
-            ctx.measureText(node.label).width,
-            16
-          ];
-          ctx.fillRect(
-            node.x - bckgDimensions[0] / 2,
-            node.y - bckgDimensions[1] / 2,
-            bckgDimensions[0],
-            bckgDimensions[1]
-          );
+          ctx.fill();
         }}
       />
     </div>

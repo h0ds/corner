@@ -2,54 +2,55 @@ import { motion } from "framer-motion";
 import React from "react";
 
 export const TypingIndicator = () => {
-  const [numDots, setNumDots] = React.useState(1);
+  const [dots, setDots] = React.useState("");
 
   React.useEffect(() => {
     const interval = setInterval(() => {
-      setNumDots(prev => prev < 6 ? prev * 2 : prev);
-    }, 1000);
+      setDots(prev => {
+        if (prev === "") return ".";
+        if (prev === ".") return "..";
+        if (prev === "..") return "...";
+        return "";
+      });
+    }, 500);
 
     return () => clearInterval(interval);
   }, []);
-  
+
+  const barVariants = {
+    animate: (i: number) => ({
+      scaleY: [0.4, 1, 0.4],
+      transition: {
+        duration: 1,
+        repeat: Infinity,
+        delay: i * 0.2,
+        ease: "easeInOut"
+      }
+    })
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 10 }}
       transition={{ duration: 0.2 }}
-      className="flex items-center justify-center px-3 py-3 bg-accent-foreground dark:bg-card/80 rounded-full shadow-none w-fit"
+      className="flex items-center gap-3 px-3 py-2 bg-accent-foreground/30 dark:bg-card/80 rounded-xl shadow-none w-fit"
     >
-      <div className="relative h-1 w-1">
-        <motion.div
-          className="absolute inset-0"
-          animate={{ rotate: 360 }}
-          transition={{
-            duration: 1,
-            repeat: Infinity,
-            ease: "linear"
-          }}
-        >
-          {[...Array(numDots)].map((_, i) => {
-            const angle = (i * 360) / numDots;
-            const radius = 8; // Reduced distance from center
-            
-            return (
-              <motion.div
-                key={i}
-                className="absolute w-1 h-1 rounded-full bg-white"
-                style={{
-                  left: '50%',
-                  top: '50%',
-                  marginLeft: -2,
-                  marginTop: -2,
-                  transform: `rotate(${angle}deg) translateY(-${radius}px)`
-                }}
-              />
-            );
-          })}
-        </motion.div>
+      <div className="flex items-center gap-[2px] h-4">
+        {[0, 1, 2, 3].map((i) => (
+          <motion.div
+            key={i}
+            custom={i}
+            variants={barVariants}
+            animate="animate"
+            className="w-[3px] h-full bg-white rounded-full origin-bottom"
+          />
+        ))}
       </div>
+      <span className="text-sm text-white font-medium min-w-[70px]">
+        Thinking{dots}
+      </span>
     </motion.div>
   );
 };

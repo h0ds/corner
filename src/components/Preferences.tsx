@@ -144,47 +144,51 @@ export const Preferences: React.FC<PreferencesProps> = ({
 
   const verifyKey = async (type: keyof ApiKeys, key: string) => {
     if (!key.trim()) {
-      setVerificationStatus(prev => ({ ...prev, [type]: 'idle' }));
       return;
     }
 
-    setVerificationStatus(prev => ({ ...prev, [type]: 'verifying' }));
-    setError(null);
+    setVerificationStatus(prev => ({
+      ...prev,
+      [type]: 'verifying'
+    }));
 
     try {
-      const response = await invoke<{ error?: string }>('verify_api_key', { 
-        request: { 
-          key,
-          provider: type
-        }
+      // Add a small random delay to prevent concurrent requests
+      await new Promise(resolve => setTimeout(resolve, Math.random() * 500));
+      
+      const result = await invoke<boolean>('verify_api_key', {
+        provider: type,
+        key: key.trim()
       });
 
-      if (response.error) {
-        setVerificationStatus(prev => ({ ...prev, [type]: 'error' }));
-        const formattedError = response.error
-          .split('\n')
-          .map(line => line.trim())
-          .filter(Boolean)
-          .join('\n');
-        setError(formattedError);
-        
-        console.error('API Key Verification Error:', {
-          provider: type,
-          error: response.error,
-          keyPrefix: key.slice(0, 10) + '...'
-        });
-      } else {
-        setVerificationStatus(prev => ({ ...prev, [type]: 'success' }));
+      console.log(`Verification result for ${type}:`, result);
+
+      setVerificationStatus(prev => ({
+        ...prev,
+        [type]: result ? 'success' : 'error'
+      }));
+
+      if (!result) {
+        setError(`Failed to verify ${type} API key`);
       }
-    } catch (err) {
-      setVerificationStatus(prev => ({ ...prev, [type]: 'error' }));
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      setError(`Failed to verify ${type} API key: ${errorMessage}`);
-      console.error('API Key Verification Error:', {
-        provider: type,
-        error: err,
-        keyPrefix: key.slice(0, 10) + '...'
-      });
+    } catch (err: any) {
+      console.error(`Error verifying ${type} key:`, err);
+      
+      // Handle overloaded error specifically
+      if (err.toString().includes('overloaded')) {
+        setError('API is currently experiencing high load. Please try again in a moment.');
+        setVerificationStatus(prev => ({
+          ...prev,
+          [type]: 'error'
+        }));
+        return;
+      }
+
+      setVerificationStatus(prev => ({
+        ...prev,
+        [type]: 'error'
+      }));
+      setError(err.toString());
     }
   };
 
