@@ -748,10 +748,10 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
       showTTS={showTTS}
     >
       <div className={cn(
-        "group relative inline-flex gap-2 pl-4 pr-2 py-2 selection:bg-palette-blue selection:text-white rounded-xl select-text max-w-full",
-        role === 'user' && 'bg-palette-blue text-white flex-row-reverse ml-auto',
+        "group relative inline-flex gap-2 pl-2 pr-2 py-2 selection:bg-palette-blue selection:text-white rounded-xl select-text max-w-full",
+        role === 'user' && 'bg-palette-blue text-white flex-row-reverse ml-auto pl-4',
         role === 'system' && 'bg-background/10 text-muted-foreground text-sm',
-        role === 'assistant' && 'bg-background p-4 border border-border text-accent-foreground'
+        role === 'assistant' && 'bg-background pb-8 border border-border text-accent-foreground'
       )}>
         {role === 'assistant' && (
           <div className="absolute p-1 top-2 right-2 opacity-0 group-hover:opacity-100 bg-background border border-border rounded-lg transition-opacity flex gap-2">

@@ -125,7 +125,7 @@ const SortableItem = ({
         >
           <div
             className={cn(
-              "group flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-accent/50 select-none cursor-pointer",
+              "group flex items-center gap-2 px-2 py-1.5 rounded-xl hover:bg-accent/50 select-none cursor-pointer",
               activeItemId === item.id && "bg-accent",
               item.color && `hover:${item.color}/10`,
               isEditing && "ring-1 ring-accent",
