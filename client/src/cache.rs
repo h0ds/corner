@@ -3,6 +3,7 @@ use std::fs;
 use std::path::PathBuf;
 use tauri::command;
 
+#[tauri::command]
 pub fn init_cache_dir() -> Result<(), String> {
     let cache_dir = get_cache_dir()?;
     fs::create_dir_all(&cache_dir).map_err(|e| e.to_string())?;

@@ -1,197 +1,190 @@
-import React, { useCallback, useMemo, useEffect, useState } from 'react';
-import { Thread, GraphNode, GraphEdge } from '@/types';
-import ForceGraph2D from 'react-force-graph-2d';
-import { cn } from '@/lib/utils';
+import React, { useMemo, useState, useRef } from 'react';
+import { Thread } from '@/types';
+import { Network } from 'lucide-react';
+import { Button } from './ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  GraphCanvas, GraphNode,
+  GraphEdge,
+  useSelection
+} from 'reagraph';
 
 interface KnowledgeGraphProps {
   threads: Thread[];
-  onNodeClick?: (nodeId: string) => void;
-  className?: string;
+  trigger?: React.ReactNode;
 }
 
 export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
   threads,
-  onNodeClick,
-  className
+  trigger
 }) => {
-  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  const [open, setOpen] = useState(false);
+  const graphRef = useRef(null);
 
-  useEffect(() => {
-    const updateDimensions = () => {
-      const container = document.querySelector('.graph-container');
-      if (container) {
-        setDimensions({
-          width: container.clientWidth,
-          height: container.clientHeight
-        });
-      }
-    };
-
-    // Initial dimensions
-    updateDimensions();
-
-    // Add resize listener
-    window.addEventListener('resize', updateDimensions);
-
-    // Cleanup
-    return () => window.removeEventListener('resize', updateDimensions);
-  }, []);
-
-  // Create nodes and links from threads
-  const { nodes, links } = useMemo(() => {
-    const nodes: GraphNode[] = [];
-    const links: GraphEdge[] = [];
-    const processedLinks = new Set<string>();
-
-    // Create nodes for all threads and notes
-    threads.forEach(thread => {
-      // Calculate node size based on connections
-      const linkedCount = thread.linkedNotes?.length || 0;
-      const baseSize = 6;
-      const sizeScale = Math.log(linkedCount + 1) + 1;
-      const nodeSize = baseSize * sizeScale;
-
-      nodes.push({
+  const { nodes, edges } = useMemo(() => {
+    console.log('Threads:', threads);
+    
+    // Create nodes from threads
+    const nodes: GraphNode[] = threads.map(thread => {
+      const node = {
         id: thread.id,
-        label: thread.name,
+        label: thread.name || '',
         data: {
-          color: thread.color || (thread.isNote ? '#4CAF50' : '#2196F3'),
-          size: nodeSize,
-          content: thread.isNote ? thread.content.slice(0, 100) : thread.messages[0]?.content.slice(0, 100),
-          linkedCount: linkedCount,
-          type: thread.isNote ? 'note' : 'thread'
+          isNote: Boolean(thread.isNote),
+          name: thread.name || '',
+          id: thread.id,
+          linkedNotes: thread.linkedNotes || [],
         }
-      });
-
-      // Add links for linked notes/threads
-      if (thread.linkedNotes) {
-        thread.linkedNotes.forEach(targetId => {
-          const linkId = [thread.id, targetId].sort().join('-');
-          if (!processedLinks.has(linkId)) {
-            links.push({
-              id: linkId,
-              source: thread.id,
-              target: targetId,
-              data: {
-                strength: 0.5 // Adjust this value to control link length
-              }
-            });
-            processedLinks.add(linkId);
-          }
-        });
-      }
+      };
+      console.log('Created node:', node);
+      return node;
     });
 
-    return { nodes, links };
+    // Create edges from thread links
+    const edges: GraphEdge[] = threads.flatMap(thread => {
+      const connections = thread.linkedNotes || [];
+      return connections
+        .filter(linkedId => threads.some(t => t.id === linkedId))
+        .map(linkedId => ({
+          id: `${thread.id}-${linkedId}`,
+          source: thread.id,
+          target: linkedId,
+          label: '',
+          data: {
+            weight: 1
+          }
+        }));
+    });
+
+    console.log('Final nodes:', nodes);
+    console.log('Final edges:', edges);
+
+    return { nodes, edges };
   }, [threads]);
 
-  // Custom tooltip renderer
-  const getNodeTooltip = useCallback((node: any) => {
-    const type = node.data.type === 'note' ? 'Note' : 'Thread';
-    return `
-      <div style="
-        background-color: rgba(0, 0, 0, 0.8);
-        color: #fff;
-        padding: 8px 12px;
-        max-width: 240px;
-        font-family: ui-monospace, monospace;
-        font-size: 12px;
-        border-radius: 6px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-      ">
-        <div style="font-weight: 600; margin-bottom: 4px;">${node.label}</div>
-        <div style="color: #999; margin-bottom: 4px; font-size: 11px;">
-          ${type} • ${node.data.linkedCount} connection${node.data.linkedCount !== 1 ? 's' : ''}
-        </div>
-        ${node.data.content ? `
-          <div style="
-            color: #ccc;
-            font-size: 11px;
-            margin-top: 4px;
-            padding-top: 4px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            overflow: hidden;
-            text-overflow: ellipsis;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-          ">${node.data.content}</div>
-        ` : ''}
-      </div>
-    `;
-  }, []);
-
-  // Handle node click
-  const handleNodeClick = useCallback((node: any) => {
-    if (onNodeClick) {
-      onNodeClick(node.id);
-      window.dispatchEvent(new CustomEvent('switch-tab', {
-        detail: { tab: node.data.type === 'note' ? 'notes' : 'threads' }
-      }));
-    }
-  }, [onNodeClick]);
+  const { selections, onNodeClick } = useSelection({
+    ref: graphRef,
+    nodes,
+    edges,
+  });
 
   return (
-    <div className={cn("w-full h-full font-mono graph-container relative", className)} style={{
-      backgroundImage: `radial-gradient(circle at 1px 1px, rgba(100, 100, 100, 0.05) 1px, transparent 0)`,
-      backgroundSize: '24px 24px'
-    }}>
-      <ForceGraph2D
-        width={dimensions.width}
-        height={dimensions.height}
-        graphData={{ nodes, links }}
-        nodeLabel={getNodeTooltip}
-        nodeColor={node => node.data.color}
-        nodeRelSize={6}
-        linkColor={() => 'rgba(100, 100, 100, 0.2)'}
-        backgroundColor="transparent"
-        onNodeClick={handleNodeClick}
-        enableNodeDrag={true}
-        onNodeDragEnd={node => {
-          node.fx = node.x;
-          node.fy = node.y;
-        }}
-        linkWidth={1.5}
-        linkDirectionalParticles={2}
-        linkDirectionalParticleSpeed={0.004}
-        linkDirectionalParticleWidth={2}
-        d3VelocityDecay={0.3}
-        cooldownTicks={100}
-        d3AlphaDecay={0.01}
-        d3AlphaMin={0.001}
-        d3Force="charge"
-        d3ForceStrength={-300}
-        linkDistance={150}
-        warmupTicks={100}
-        nodeCanvasObject={(node: any, ctx, globalScale) => {
-          const size = node.data.size;
-          ctx.beginPath();
-          ctx.arc(node.x, node.y, size, 0, 2 * Math.PI);
-          ctx.fillStyle = node.data.color;
-          ctx.fill();
-          
-          // Add a white border
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-          ctx.lineWidth = 1;
-          ctx.stroke();
-          
-          // Draw label if zoomed in enough
-          const label = node.label;
-          if (globalScale >= 1) {
-            ctx.font = '4px Arial';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillStyle = '#fff';
-            ctx.fillText(label, node.x, node.y);
-          }
-        }}
-        nodePointerAreaPaint={(node: any, color, ctx) => {
-          ctx.beginPath();
-          ctx.arc(node.x, node.y, node.data.size * 1.5, 0, 2 * Math.PI);
-          ctx.fillStyle = color;
-          ctx.fill();
-        }}
-      />
-    </div>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        {trigger || (
+          <Button variant="outline" size="icon">
+            <Network className="h-4 w-4" />
+          </Button>
+        )}
+      </DialogTrigger>
+      <DialogContent className="max-w-[90vw] w-full h-[80vh] p-0 overflow-hidden">
+        <DialogHeader className="px-6 py-4">
+          <DialogTitle>Knowledge Graph</DialogTitle>
+        </DialogHeader>
+        <div className="h-[calc(100%)] w-full bg-white">
+          <GraphCanvas
+            ref={graphRef}
+            nodes={nodes}
+            edges={edges}
+            selections={selections}
+            onNodeClick={onNodeClick}
+            layoutType="forceDirected2d"
+            labelType="all"
+            draggable
+            animate
+            contextMenu={false}
+            edgeInterpolation="straight"
+            edgeArrowPosition="none"
+            nodeSize={30}
+            edgeWidth={1.5}
+            labelRenderer={({ label }) => (
+              <text
+                className="font-mono text-[11px]"
+                style={{ fontFamily: 'var(--font-mono)' }}
+                y={4}
+                textAnchor="middle"
+                fill="#000000"
+              >
+                {label}
+              </text>
+            )}
+            renderTooltip={({ node }) => (
+              <div className="bg-popover border border-border text-popover-foreground px-3 py-2 text-sm rounded-lg shadow-lg">
+                <div className="font-medium">{node.label}</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {node.data.isNote ? 'Note' : 'Thread'}
+                </div>
+              </div>
+            )}
+            theme={{
+              canvas: {
+                backgroundColor: '#fefefe',
+              },
+              node: {
+                fill: '#94a3b8',
+                activeFill: '#64748b',
+                stroke: '#475569',
+                strokeWidth: 2,
+                radius: 8,
+                opacity: 1,
+                selectedOpacity: 1,
+                inactiveOpacity: 0.7,
+                label: {
+                  fontFamily: 'var(--font-geist-mono)',
+                  fontSize: 11,
+                  color: '#000000',
+                  stroke: 'transparent',
+                  strokeWidth: 0,
+                  distance: 12,
+                },
+              },
+              edge: {
+                fill: '#000000',
+                activeFill: '#000000',
+                opacity: 0.15,
+                selectedOpacity: 0.3,
+                inactiveOpacity: 0.1,
+                label: {
+                  fontFamily: 'var(--font-geist-mono)',
+                  fontSize: 11,
+                  color: '#000000',
+                  stroke: 'transparent',
+                  strokeWidth: 0,
+                },
+              },
+              lasso: {
+                border: 'rgba(0, 0, 0, 0.2)',
+                fill: 'rgba(0, 0, 0, 0.05)',
+              },
+              ring: {
+                fill: 'rgba(0, 0, 0, 0.2)',
+                activeFill: 'rgba(0, 0, 0, 0.4)',
+              },
+              arrow: {
+                fill: 'rgba(0, 0, 0, 0.2)',
+                activeFill: 'rgba(0, 0, 0, 0.4)',
+              }
+            }}
+            style={{
+              width: '100%',
+              height: '100%',
+              borderRadius: '0.5rem',
+            }}
+            nodeStyle={(node) => ({
+              fill: node?.data?.isNote === true ? '#94a3b8' : '#6366f1',
+              stroke: '#475569',
+              strokeWidth: 2,
+              radius: 8,
+            })}
+          />
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 };

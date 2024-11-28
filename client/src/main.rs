@@ -36,6 +36,7 @@ fn main() {
             speech::download_whisper_model,
             speech::start_recording,
             speech::stop_recording,
+            cache::init_cache_dir,
         ])
         .setup(|app| {
             // Initialize cache directory

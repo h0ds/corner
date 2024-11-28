@@ -150,19 +150,33 @@ export const Storage: React.FC = () => {
     setClearing(section.id);
     setError(null);
     try {
+      console.log(`Clearing section: ${section.id}`);
       await section.clearAction();
+      console.log(`Successfully cleared section: ${section.id}`);
+      
+      // For whisper model, verify it's actually deleted
+      if (section.id === 'whisper_model') {
+        const modelExists = await checkWhisperModel();
+        console.log('Checking if model still exists:', modelExists);
+        if (modelExists) {
+          throw new Error('Model file still exists after deletion');
+        }
+      }
+      
       // Update sizes after clearing
       const newSize = section.getSize 
         ? await section.getSize()
         : await calculateCacheSize(section.id === 'all' ? '' : section.id);
+      console.log(`New size for ${section.id}:`, newSize);
+      
       setSections(prev => prev.map(s => 
         s.id === section.id 
           ? { ...s, size: newSize, hasDownloadAction: section.id === 'whisper_model' } 
           : s
       ));
     } catch (err) {
-      setError(`Failed to clear ${section.title.toLowerCase()}`);
-      console.error(err);
+      console.error('Error during clear:', err);
+      setError(`Failed to clear ${section.title.toLowerCase()}: ${err}`);
     } finally {
       setClearing(null);
     }

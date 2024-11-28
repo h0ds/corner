@@ -11,6 +11,7 @@ import { ReferenceMenu } from './ReferenceMenu';
 import { Thread } from '@/types';
 import { showToast } from '@/lib/toast';
 import { VoiceDictation } from './VoiceDictation';
+import cn from 'classnames';
 
 interface ChatInputProps {
   onSendMessage: (message: string, overrideModel?: string) => void;
@@ -407,39 +408,52 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               Discussion paused - send a message to continue
             </div>
           )}
-          <div className="flex gap-2">
-            <Input
-              ref={inputRef}
-              value={message}
-              onChange={handleChange}
-              onKeyDown={handleKeyDown}
-              placeholder={
-                isDiscussing && isPaused 
-                  ? "Send a message to continue the discussion..." 
-                  : selectedCommand 
-                    ? `Type a message to ${selectedCommand}...` 
-                    : "Type a message"
-              }
-              disabled={disabled}
-              className={`h-[35px] resize-none rounded-lg text-sm shadow-none
-                       bg-background placeholder:text-muted-foreground/50 selectable-text selection:bg-palette-blue selection:text-white
-                       ${selectedCommand ? 'border-primary' : ''}
-                       ${isDiscussing && isPaused ? 'border-yellow-500' : ''}`}
+          <div className="flex gap-1">
+            <div className="relative flex-1">
+              <Input
+                ref={inputRef}
+                value={message}
+                onChange={handleChange}
+                onKeyDown={handleKeyDown}
+                placeholder={
+                  isDiscussing && isPaused 
+                    ? "Send a message to continue the discussion..." 
+                    : selectedCommand 
+                      ? `Type a message to ${selectedCommand}...` 
+                      : "Type a message"
+                }
+                disabled={disabled}
+                className={cn(
+                  "h-[35px] resize-none rounded-lg text-sm shadow-none pr-[42px]",
+                  "bg-background placeholder:text-muted-foreground/50",
+                  "selectable-text selection:bg-palette-blue selection:text-white",
+                  "focus-visible:ring-0 focus-visible:ring-offset-0",
+                  selectedCommand && "border-primary",
+                  isDiscussing && isPaused && "border-yellow-500"
+                )}
+              />
+              <Button 
+                type="submit" 
+                disabled={disabled || !message.trim()}
+                size="icon"
+                className={cn(
+                  "absolute right-1.5 top-1/2 -translate-y-1/2",
+                  "h-[27px] w-[27px] rounded-lg",
+                  "bg-accent-foreground hover:bg-accent",
+                  "border-0 hover:border-0",
+                  !message.trim() && "opacity-50",
+                  "transition-colors"
+                )}
+              >
+                <Send className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+            <VoiceDictation 
+              onTranscriptionResult={handleTranscriptionResult}
+              className="shrink-0"
             />
           </div>
         </div>
-        <VoiceDictation 
-          onTranscriptionResult={handleTranscriptionResult}
-          className="shrink-0"
-        />
-        <Button 
-          type="submit" 
-          disabled={disabled || !message.trim()}
-          size="icon"
-          className="rounded-lg shrink-0 h-[35px] w-[35px]"
-        >
-          <Send className="h-4 w-4" />
-        </Button>
       </form>
       {selectedCommand === 'compare' && (
         <div className="absolute -top-8 left-0 text-xs text-muted-foreground">

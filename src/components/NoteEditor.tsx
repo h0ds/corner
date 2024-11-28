@@ -889,10 +889,12 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
           <Tooltip>
             <TooltipTrigger asChild>
               <div>
-                <VoiceDictation 
-                  onTranscriptionResult={handleTranscriptionResult}
-                  className="shrink-0"
-                />
+                {viewMode === 'edit' && (
+                  <VoiceDictation 
+                    onTranscriptionResult={handleTranscriptionResult}
+                    className="shrink-0"
+                  />
+                )}
               </div>
             </TooltipTrigger>
             <TooltipContent side="left">
@@ -907,7 +909,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
                 variant="outline"
                 size="icon"
                 className={cn(
-                  "h-10 w-10 rounded-lg",
+                  "h-10 w-10 rounded-xl",
                   showLinkedNotes && "bg-accent text-accent-foreground"
                 )}
                 onClick={() => setShowLinkedNotes(!showLinkedNotes)}

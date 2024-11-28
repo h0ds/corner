@@ -28,7 +28,6 @@ import { ThreadHeader } from './components/ThreadHeader';
 import { cn } from '@/lib/utils';
 import { Sidebar } from './components/Sidebar';
 import { ChatView } from './components/ChatView';
-import { KnowledgeGraph } from './components/KnowledgeGraph';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { FileLinkMenu } from './components/FileLinkMenu';
 import { SearchPanel } from './components/SearchPanel';
@@ -111,8 +110,6 @@ function App() {
   const [isDiscussionPaused, setIsDiscussionPaused] = useState(false);
   const stopDiscussionRef = useRef(false);
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
-  const [showKnowledgeGraph, setShowKnowledgeGraph] = useState(false);
-  const [view, setView] = useState<'thread' | 'note' | 'graph'>('thread');
   const [showFilePreview, setShowFilePreview] = useState(false);
   const [previewFile, setPreviewFile] = useState<FileAttachment | null>(null);
   const [showFileLinkMenu, setShowFileLinkMenu] = useState(false);
@@ -204,9 +201,9 @@ function App() {
     setActiveThreadId(newThread.id);
     
     if (isNote) {
-      setView('note');
+      // setView('note');
     } else {
-      setView('thread');
+      // setView('thread');
     }
     
     return newThread;
@@ -303,7 +300,7 @@ function App() {
           }));
           
           // Set view and active thread
-          setView('thread');
+          // setView('thread');
           setActiveThreadId(newThreadId);
         }
       });
@@ -317,7 +314,7 @@ function App() {
     threads,
     handleNewThread,
     handleNewNote,
-    setView,
+    // setView,
     setActiveThreadId,
     setThreadToDelete,
     setShowDeleteConfirm
@@ -930,7 +927,7 @@ function App() {
 
   useEffect(() => {
     if (activeThreadId) {
-      setView(activeThread?.isNote ? 'note' : 'thread');
+      // setView(activeThread?.isNote ? 'note' : 'thread');
     }
   }, [activeThreadId, activeThread?.isNote]);
 
@@ -938,8 +935,7 @@ function App() {
     const thread = threads.find(t => t.id === threadId);
     if (thread) {
       setActiveThreadId(threadId);
-      // Set the correct view based on thread type
-      setView(thread.isNote ? 'note' : 'thread');
+      // setView(thread.isNote ? 'note' : 'thread');
       // Also switch to the correct tab in ThreadContainer
       const event = new CustomEvent('switch-tab', {
         detail: { tab: thread.isNote ? 'notes' : 'threads' }
@@ -1376,7 +1372,6 @@ function App() {
                     threads={threads}
                     onFileSelect={handleFileUpload}
                     onFileDelete={handleFileDelete}
-                    onShowKnowledgeGraph={() => setView('graph')}
                     onShowSearch={() => setShowSearch(true)}
                     onShowPreferences={() => setShowPreferences(true)}
                   />
@@ -1393,11 +1388,11 @@ function App() {
                 className={cn(
                   "flex-1 overflow-y-auto min-w-0",
                   "transition-spacing duration-200", 
-                  !activeThread?.isNote && view === 'thread' && "flex flex-col h-full mb-4 mt-12 mx-3 rounded-xl"
+                  !activeThread?.isNote && "flex flex-col h-full mb-4 mt-12 mx-3 rounded-xl"
                 )}
                 onClick={(e) => e.stopPropagation()}
               >
-                {activeThread && !activeThread.isNote && view !== 'graph' && (
+                {activeThread && !activeThread.isNote && (
                   <ThreadHeader
                     thread={activeThread}
                     onRename={(newName) => handleRenameThread(activeThread.id, newName)}
@@ -1409,12 +1404,7 @@ function App() {
                     selectedModel={selectedModel}
                   />
                 )}
-                {view === 'graph' ? (
-                  <KnowledgeGraph 
-                    threads={threads} 
-                    onNodeClick={handleKnowledgeGraphNodeClick}
-                  />
-                ) : activeThread ? (
+                {activeThread ? (
                   activeThread.isNote ? (
                     <NoteEditor 
                       note={activeThread as NoteThread}
@@ -1519,7 +1509,7 @@ function App() {
                 const thread = threads.find(t => t.id === threadId);
                 if (thread) {
                   setActiveThreadId(threadId);
-                  setView(thread.isNote ? 'note' : 'thread');
+                  // setView(thread.isNote ? 'note' : 'thread');
                 }
                 setShowSearch(false);
               }}

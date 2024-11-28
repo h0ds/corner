@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { Button } from '@/components/ui/button';
@@ -119,7 +119,7 @@ export const VoiceDictation: React.FC<VoiceDictationProps> = ({ onTranscriptionR
         size="icon"
         className={cn(
           "h-10 w-10 shrink-0 rounded-lg",
-          isRecording && "relative after:absolute after:inset-0 after:z-[1] after:rounded-lg after:animate-ping-slow after:bg-destructive/50"
+          isRecording && "relative after:absolute after:inset-0 after:z-[1] after:rounded-xl after:animate-ping-slow after:bg-destructive/50"
         )}
       >
         {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}

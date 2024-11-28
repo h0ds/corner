@@ -8,13 +8,13 @@ import {
 } from "@/components/ui/tooltip";
 import { FileMenu } from './FileMenu';
 import { FileAttachment, Thread } from '@/types';
+import { KnowledgeGraph } from './KnowledgeGraph';
 
 interface FooterProps {
   files: FileAttachment[];
   threads: Thread[];
   onFileSelect: (file: File) => void;
   onFileDelete?: (fileId: string) => void;
-  onShowKnowledgeGraph: () => void;
   onShowSearch: () => void;
   onShowPreferences: () => void;
   onShowPreferencesTab?: (tab: string) => void;
@@ -22,9 +22,9 @@ interface FooterProps {
 
 export const Footer: React.FC<FooterProps> = ({
   files,
+  threads,
   onFileSelect,
   onFileDelete,
-  onShowKnowledgeGraph,
   onShowSearch,
   onShowPreferences,
   onShowPreferencesTab,
@@ -52,21 +52,16 @@ export const Footer: React.FC<FooterProps> = ({
               </Tooltip>
             </TooltipProvider>
 
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={onShowKnowledgeGraph}
-                    className="p-2 bg-background hover:bg-accent rounded-lg transition-colors border border-border"
-                  >
-                    <Network className="h-4 w-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="text-xs">
-                  Knowledge Graph
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <KnowledgeGraph
+              threads={threads}
+              trigger={
+                <button
+                  className="p-2 bg-background hover:bg-accent rounded-lg transition-colors border border-border"
+                >
+                  <Network className="h-4 w-4" />
+                </button>
+              }
+            />
             
             <TooltipProvider>
               <Tooltip>
@@ -84,22 +79,6 @@ export const Footer: React.FC<FooterProps> = ({
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-{/* 
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => onShowPreferencesTab?.('actions')}
-                    className="p-2 bg-background hover:bg-accent rounded-lg transition-colors border border-border"
-                  >
-                    <Zap className="h-4 w-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="text-xs">
-                  Quick Actions
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider> */}
 
             <TooltipProvider>
               <Tooltip>
@@ -129,4 +108,4 @@ export const Footer: React.FC<FooterProps> = ({
       />
     </>
   );
-}; 
+};

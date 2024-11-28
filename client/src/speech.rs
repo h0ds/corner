@@ -12,6 +12,7 @@ use std::time::{Duration, Instant};
 use tokio::time::sleep;
 use regex::Regex;
 use once_cell::sync::Lazy;
+use std::os::unix::fs::PermissionsExt;
 
 // Using ggml-base.en.bin from whisper.cpp models
 const MODEL_URL: &str = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin";
@@ -483,9 +484,22 @@ pub async fn delete_whisper_model() -> Result<(), String> {
         .join("models")
         .join(MODEL_FILENAME);
     
+    println!("Attempting to delete whisper model at: {:?}", model_path);
+    
     if model_path.exists() {
+        println!("Model file exists, attempting to set permissions...");
+        // First try to make the file writable
+        std::fs::set_permissions(&model_path, std::fs::Permissions::from_mode(0o644))
+            .map_err(|e| format!("Failed to set file permissions: {}", e))?;
+            
+        println!("Permissions set successfully, attempting to delete...");
+        // Then try to delete it
         std::fs::remove_file(&model_path)
             .map_err(|e| format!("Failed to delete model: {}", e))?;
+            
+        println!("Successfully deleted whisper model");
+    } else {
+        println!("Whisper model file not found at: {:?}", model_path);
     }
     Ok(())
 }
