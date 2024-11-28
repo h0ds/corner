@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useRef, useEffect, useMemo, useCallback, KeyboardEvent as ReactKeyboardEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { Preferences } from "./components/Preferences";
@@ -18,7 +18,7 @@ import {
 } from '@/lib/storage';
 import { ModelIcon } from './components/ModelIcon';
 import { nanoid } from 'nanoid';
-import { Message, Thread, NoteThread } from '@/types';
+import { Message, Thread, NoteThread, ChatThread, FileAttachment } from '@/types';
 import { initializeCache } from '@/lib/fileCache';
 import { KeyboardShortcut, loadShortcuts, matchesShortcut } from '@/lib/shortcuts';
 import { Footer } from './components/Footer';
@@ -118,6 +118,109 @@ function App() {
   const [noteNavigationStack, setNoteNavigationStack] = useState<string[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [threadToDelete, setThreadToDelete] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'threads' | 'notes'>('threads');
+
+  // Memoize filtered threads for the current tab
+  const filteredThreads = useMemo(() => {
+    // Ensure threads is a valid array
+    const validThreads = Array.isArray(threads) ? threads : [];
+    
+    // Filter threads based on active tab and validate each thread
+    const filtered = validThreads.filter(thread => 
+      thread && 
+      typeof thread.id === 'string' && 
+      typeof thread.isNote === 'boolean' && 
+      (activeTab === 'notes' ? thread.isNote : !thread.isNote)
+    );
+
+    console.log('Filtering threads:', {
+      total: validThreads.length,
+      filtered: filtered.length,
+      notes: validThreads.filter(t => t.isNote).length,
+      chats: validThreads.filter(t => !t.isNote).length,
+      activeTab
+    });
+
+    return filtered;
+  }, [threads, activeTab]);
+
+  // Update handleThreadSelect to handle tab switching
+  const handleThreadSelect = useCallback((threadId: string) => {
+    const thread = threads.find(t => t.id === threadId);
+    if (thread && typeof thread.isNote === 'boolean') {
+      console.log('Selecting thread:', {
+        id: threadId,
+        isNote: thread.isNote,
+        currentTab: activeTab,
+        switchingTo: thread.isNote ? 'notes' : 'threads'
+      });
+      
+      // Update the tab based on the thread type
+      setActiveTab(thread.isNote ? 'notes' : 'threads');
+      // Then set the active thread
+      setActiveThreadId(threadId);
+    }
+  }, [threads, activeTab]);
+
+  // Update handleTabAndThreadChange to handle tab switching
+  const handleTabAndThreadChange = useCallback((threadId: string, isNote: boolean) => {
+    console.log('Handling tab and thread change:', { 
+      threadId, 
+      isNote, 
+      currentTab: activeTab,
+      thread: threads.find(t => t.id === threadId)
+    });
+    
+    // First switch the tab
+    setActiveTab(isNote ? 'notes' : 'threads');
+    
+    // Then select the thread
+    setActiveThreadId(threadId);
+  }, [threads, activeTab]);
+
+  // Create a memoized version of handleNewThread
+  const handleNewThread = useCallback((isNote: boolean = false) => {
+    const baseThread = {
+      id: nanoid(),
+      name: isNote ? 'New Note' : 'New Thread',
+      files: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      cachedFiles: [],
+      linkedNotes: [],
+      isPinned: false,
+    };
+
+    const newThread: Thread = isNote ? {
+      ...baseThread,
+      isNote: true,
+      content: '',
+      parentId: null,
+      children: [],
+    } : {
+      ...baseThread,
+      isNote: false,
+      messages: [],
+      lastUsedModel: selectedModel,
+    };
+    
+    console.log('Creating new thread:', {
+      id: newThread.id,
+      isNote: newThread.isNote,
+      type: isNote ? 'note' : 'chat',
+      currentTab: activeTab,
+      switchingTo: isNote ? 'notes' : 'threads'
+    });
+
+    // Switch to the appropriate tab
+    setActiveTab(isNote ? 'notes' : 'threads');
+    
+    // Add the new thread and set it as active
+    setThreads(prev => [newThread, ...prev]);
+    setActiveThreadId(newThread.id);
+    
+    return newThread.id;
+  }, [selectedModel, activeTab]);
 
   // Initialize cache on mount
   useEffect(() => {
@@ -129,7 +232,7 @@ function App() {
     const activeThread = threads.find(t => t.id === activeThreadId);
     console.log('Getting messages for thread:', {
       threadId: activeThread?.id,
-      messageCount: activeThread?.messages?.length || 0,
+      messageCount: (activeThread as ChatThread)?.messages?.length || 0,
       isNote: activeThread?.isNote
     });
     
@@ -138,8 +241,9 @@ function App() {
       return [];
     }
     
-    // Ensure we're returning a new array to avoid reference issues
-    return [...activeThread.messages].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+    // Cast to ChatThread since we know it's not a note
+    const chatThread = activeThread as ChatThread;
+    return [...chatThread.messages].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
   }, [threads, activeThreadId]);
 
   // Update thread storage when threads change
@@ -165,53 +269,9 @@ function App() {
     return shortcuts.find(s => s.id === 'clear-history')?.currentKey || '⌘/Ctrl + K';
   }, [shortcuts]);
 
-  // Create a memoized version of handleNewThread
-  const handleNewThread = useCallback((isNote: boolean = false) => {
-    const baseThread = {
-      id: nanoid(),
-      name: isNote ? 'New Note' : 'New Thread',
-      files: [],
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      cachedFiles: [],
-      linkedNotes: [],
-    };
-
-    const newThread: Thread = isNote ? {
-      ...baseThread,
-      isNote: true,
-      content: '',
-      parentId: null,
-      children: [],
-    } : {
-      ...baseThread,
-      isNote: false,
-      messages: [],
-      lastUsedModel: selectedModel,
-    };
-    
-    console.log('Creating new thread:', {
-      id: newThread.id,
-      isNote: newThread.isNote,
-      type: isNote ? 'note' : 'chat',
-      messageCount: isNote ? undefined : 0
-    });
-
-    setThreads(prev => [newThread, ...prev]);
-    setActiveThreadId(newThread.id);
-    
-    if (isNote) {
-      // setView('note');
-    } else {
-      // setView('thread');
-    }
-    
-    return newThread;
-  }, [selectedModel]);
-
   // Create a memoized version of handleNewNote
   const handleNewNote = useCallback(() => {
-    handleNewThread(true);
+    return handleNewThread(true);
   }, [handleNewThread]);
 
   const handleDeleteThread = (threadId: string) => {
@@ -235,7 +295,7 @@ function App() {
 
   // Update the keyboard shortcut effect
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const handleKeyDown = (e: ReactKeyboardEvent<HTMLElement>) => {
       // Check for delete shortcut (Cmd/Ctrl + Backspace)
       if ((e.metaKey || e.ctrlKey) && e.key === 'Backspace') {
         e.preventDefault();
@@ -299,26 +359,24 @@ function App() {
             detail: { tab: 'threads' }
           }));
           
-          // Set view and active thread
-          // setView('thread');
           setActiveThreadId(newThreadId);
         }
       });
     };
 
     // Add the event listener to the window
-    window.addEventListener('keydown', handleKeyDown, { capture: true });
-    return () => window.removeEventListener('keydown', handleKeyDown, { capture: true });
+    const handler = (e: KeyboardEvent) => handleKeyDown(e as unknown as ReactKeyboardEvent<HTMLElement>);
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
   }, [
     activeThreadId,
     threads,
     handleNewThread,
     handleNewNote,
-    // setView,
     setActiveThreadId,
     setThreadToDelete,
     setShowDeleteConfirm
-  ]); // Add all necessary dependencies
+  ]);
 
   const handleSendMessage = async (message: string, overrideModel?: string) => {
     setLoading(true);
@@ -335,80 +393,22 @@ function App() {
 
       // Update thread with user message
       setThreads(prev => prev.map(thread => {
-        if (thread.id === activeThreadId) {
+        if (thread.id === activeThreadId && !thread.isNote) {
+          const chatThread = thread as ChatThread;
           console.log('Adding message to thread:', {
             threadId: thread.id,
             messageContent: message.slice(0, 50)
           });
           return {
-            ...thread,
-            messages: [...thread.messages, userMessage],
+            ...chatThread,
+            messages: [...chatThread.messages, userMessage],
             lastUsedModel: modelToUse,
-            updatedAt: Date.now(),
+            updatedAt: Date.now()
           };
         }
         return thread;
       }));
-
-      try {
-        const model = AVAILABLE_MODELS.find(m => m.id === modelToUse);
-        if (!model) throw new Error('Invalid model selected');
-
-        const response = await invoke<ApiResponse>('send_message', {
-          request: {
-            message,
-            model: modelToUse,
-            provider: model.provider
-          }
-        });
-        
-        if (response.error) {
-          // Add error message with timestamp
-          setThreads(prev => prev.map(thread => {
-            if (thread.id === activeThreadId) {
-              return {
-                ...thread,
-                messages: [...thread.messages, { 
-                  role: 'error', 
-                  content: response.error!,
-                  timestamp: Date.now()
-                }],
-                updatedAt: Date.now(),
-              };
-            }
-            return thread;
-          }));
-        } else if (response.content) {
-          // Add assistant message with timestamp
-          setThreads(prev => prev.map(thread => {
-            if (thread.id === activeThreadId && !thread.isNote) {
-              return {
-                ...thread,
-                messages: [...thread.messages, { 
-                  role: 'assistant', 
-                  content: response.content!,
-                  modelId: modelToUse,
-                  citations: response.citations,
-                  isAudioResponse: response.content.startsWith('data:audio/'),
-                  timestamp: Date.now()
-                }],
-                updatedAt: Date.now(),
-              };
-            }
-            return thread;
-          }));
-        }
-      } catch (error) {
-        console.error('Failed to send message:', error);
-        toast({
-          variant: "destructive",
-          description: "Failed to send message",
-          duration: 2000,
-        });
-      }
     }
-
-    setLoading(false);
   };
 
   const handleRenameThread = (threadId: string, newName: string) => {
@@ -424,10 +424,42 @@ function App() {
     }));
   };
 
-  const handleReorderThreads = (newThreads: Thread[]) => {
-    setThreads(newThreads);
-    saveThreadOrder(newThreads.map(t => t.id));
-  };
+  const handleReorderThreads = useCallback((newThreads: Thread[]) => {
+    // Create a Set of thread IDs from the reordered threads for quick lookup
+    const reorderedIds = new Set(newThreads.map(t => t.id));
+    
+    // Get threads from the current tab that weren't reordered
+    const currentTabThreads = threads.filter(
+      t => (activeTab === 'notes' ? t.isNote : !t.isNote) && !reorderedIds.has(t.id)
+    );
+    
+    // Get threads from the other tab
+    const otherTabThreads = threads.filter(
+      t => (activeTab === 'notes' ? !t.isNote : t.isNote)
+    );
+
+    // Combine all threads in the correct order:
+    // 1. Reordered threads (maintaining their new order)
+    // 2. Any remaining threads from current tab
+    // 3. All threads from other tab
+    const updatedThreads = [
+      ...newThreads,
+      ...currentTabThreads,
+      ...otherTabThreads
+    ];
+
+    console.log('Reordering threads:', {
+      total: threads.length,
+      reordered: newThreads.length,
+      currentTab: activeTab,
+      currentTabRemaining: currentTabThreads.length,
+      otherTab: otherTabThreads.length,
+      reorderedIds: Array.from(reorderedIds)
+    });
+    
+    setThreads(updatedThreads);
+    saveThreadOrder(updatedThreads.map(t => t.id));
+  }, [threads, activeTab]);
 
   // Get active thread
   const activeThread = useMemo(() => {
@@ -531,39 +563,13 @@ function App() {
     loadPlugins().then(setPlugins);
   }, []);
 
-  // Add new state to track active tab
-  const [activeTab, setActiveTab] = useState<'threads' | 'notes'>('threads');
-
-  // Update handleThreadSelect to also set the active tab
-  const handleThreadSelect = (threadId: string) => {
-    setActiveThreadId(threadId);
-    
-    // Find the thread
+  // Update handleKnowledgeGraphNodeClick to use handleTabAndThreadChange
+  const handleKnowledgeGraphNodeClick = useCallback((threadId: string) => {
     const thread = threads.find(t => t.id === threadId);
     if (thread) {
-      // Set the active tab based on thread type
-      setActiveTab(thread.isNote ? 'notes' : 'threads');
-      
-      if (!thread.isNote) {
-        // For chat threads, handle model selection
-        const lastModelMessage = thread.messages
-          .reverse()
-          .find(m => m.modelId);
-
-        if (lastModelMessage?.modelId) {
-          const modelExists = AVAILABLE_MODELS.some(m => m.id === lastModelMessage.modelId);
-          if (modelExists) {
-            setSelectedModel(lastModelMessage.modelId);
-          }
-        } else if (thread.lastUsedModel) {
-          const modelExists = AVAILABLE_MODELS.some(m => m.id === thread.lastUsedModel);
-          if (modelExists) {
-            setSelectedModel(thread.lastUsedModel);
-          }
-        }
-      }
+      handleTabAndThreadChange(threadId, thread.isNote);
     }
-  };
+  }, [threads, handleTabAndThreadChange]);
 
   const clearCurrentThread = () => {
     if (activeThreadId) {
@@ -864,7 +870,7 @@ function App() {
     }));
   };
 
-  const handleThreadColorChange = (threadId: string, color: string) => {
+  const handleColorChange = (threadId: string, color: string) => {
     setThreads(prev => prev.map(thread => {
       if (thread.id === threadId) {
         return {
@@ -877,7 +883,7 @@ function App() {
     }));
   };
 
-  const handleThreadIconChange = (threadId: string, icon: string) => {
+  const handleIconChange = (threadId: string, icon: string) => {
     setThreads(prev => prev.map(thread => {
       if (thread.id === threadId) {
         return {
@@ -890,7 +896,7 @@ function App() {
     }));
   };
 
-  const handleThreadTextColorChange = (threadId: string, color: string) => {
+  const handleTextColorChange = (threadId: string, color: string) => {
     setThreads(prev => prev.map(thread => {
       if (thread.id === threadId) {
         return {
@@ -931,19 +937,6 @@ function App() {
     }
   }, [activeThreadId, activeThread?.isNote]);
 
-  const handleKnowledgeGraphNodeClick = (threadId: string) => {
-    const thread = threads.find(t => t.id === threadId);
-    if (thread) {
-      setActiveThreadId(threadId);
-      // setView(thread.isNote ? 'note' : 'thread');
-      // Also switch to the correct tab in ThreadContainer
-      const event = new CustomEvent('switch-tab', {
-        detail: { tab: thread.isNote ? 'notes' : 'threads' }
-      });
-      window.dispatchEvent(event);
-    }
-  };
-
   const handleCreateNote = (name: string) => {
     const newNote: NoteThread = {
       id: nanoid(),
@@ -954,10 +947,14 @@ function App() {
       createdAt: Date.now(),
       updatedAt: Date.now(),
       cachedFiles: [],
+      linkedNotes: [],
+      parentId: null,
+      children: [],
+      isPinned: false,
     };
-    
-    setThreads(prev => [...prev, newNote]);
-    return newNote;
+    setThreads(prev => [newNote, ...prev]);
+    setActiveThreadId(newNote.id);
+    setActiveTab('notes');
   };
 
   const handleShowFileLinkMenu = () => {
@@ -1032,21 +1029,21 @@ function App() {
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown as unknown as EventListener);
+    return () => window.removeEventListener('keydown', handleKeyDown as unknown as EventListener);
   }, []);
 
   // Simplify delete handler
   const handleDeleteKeyPress = useCallback((e: KeyboardEvent) => {
-    console.log('Key pressed:', e.key, 'Ctrl/Cmd:', e.metaKey || e.ctrlKey); // Debug log
+    console.log('Key pressed:', e.key, 'Ctrl/Cmd:', e.metaKey || e.ctrlKey);
 
     if (e.key === 'Backspace' && (e.metaKey || e.ctrlKey)) {
-      console.log('Delete shortcut triggered'); // Debug log
+      console.log('Delete shortcut triggered');
       e.preventDefault();
       e.stopPropagation();
 
       if (activeThreadId) {
-        console.log('Active thread found:', activeThreadId); // Debug log
+        console.log('Active thread found:', activeThreadId);
         setThreadToDelete(activeThreadId);
         setShowDeleteConfirm(true);
       }
@@ -1055,8 +1052,8 @@ function App() {
 
   // Add keyboard shortcut effect
   useEffect(() => {
-    window.addEventListener('keydown', handleDeleteKeyPress);
-    return () => window.removeEventListener('keydown', handleDeleteKeyPress);
+    window.addEventListener('keydown', handleDeleteKeyPress as unknown as EventListener);
+    return () => window.removeEventListener('keydown', handleDeleteKeyPress as unknown as EventListener);
   }, [handleDeleteKeyPress]);
 
   // Add delete confirmation handler
@@ -1353,27 +1350,31 @@ function App() {
               >
                 <div className="h-full relative" style={{ width: '100%' }}>
                   <Sidebar
-                    threads={threads}
+                    threads={filteredThreads}
                     activeThreadId={activeThreadId}
                     onThreadSelect={handleThreadSelect}
-                    onNewThread={() => handleNewThread(false)}
+                    onNewThread={handleNewThread}
                     onNewNote={handleNewNote}
                     onDeleteThread={handleDeleteThread}
                     onRenameThread={handleRenameThread}
                     onReorderThreads={handleReorderThreads}
                     onTogglePin={handleTogglePin}
-                    onColorChange={handleThreadColorChange}
-                    onIconChange={handleThreadIconChange}
-                    onTextColorChange={handleThreadTextColorChange}
-                    initialTab={activeTab}
+                    onColorChange={handleColorChange}
+                    onIconChange={handleIconChange}
+                    onTextColorChange={handleTextColorChange}
+                    activeTab={activeTab}
+                    onTabChange={setActiveTab}
                   />
-                  <Footer 
+                  <Footer
                     files={activeThread?.files || []}
                     threads={threads}
                     onFileSelect={handleFileUpload}
                     onFileDelete={handleFileDelete}
                     onShowSearch={() => setShowSearch(true)}
                     onShowPreferences={() => setShowPreferences(true)}
+                    onShowPreferencesTab={setPreferenceTab}
+                    onTabChange={setActiveTab}
+                    onSelectNode={handleTabAndThreadChange}
                   />
                 </div>
               </ResizeObserver>
@@ -1396,7 +1397,7 @@ function App() {
                   <ThreadHeader
                     thread={activeThread}
                     onRename={(newName) => handleRenameThread(activeThread.id, newName)}
-                    onIconChange={(newIcon) => handleThreadIconChange(activeThread.id, newIcon)}
+                    onIconChange={(newIcon) => handleIconChange(activeThread.id, newIcon)}
                     onOpenModelSelect={() => {
                       setPreferenceTab('models');
                       setShowPreferences(true);

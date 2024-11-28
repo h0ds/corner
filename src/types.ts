@@ -1,55 +1,52 @@
 export interface Message {
-  role: 'user' | 'assistant' | 'error' | 'comparison' | 'system';
+  role: 'user' | 'assistant' | 'error' | 'system' | 'comparison';
   content: string;
+  timestamp?: number;
   modelId?: string;
-  file?: FileAttachment;
-  plugins?: PluginModification[];
+  citations?: any[];
+  isAudioResponse?: boolean;
   comparison?: {
     message: string;
     model1: { id: string; response: string };
     model2: { id: string; response: string };
   };
-  citations?: { url: string; title?: string }[];
-  images?: string[];
-  relatedQuestions?: string[];
-  isAudioResponse?: boolean;
-  audioData?: string;
-  timestamp: number;
 }
 
 export interface FileAttachment {
   id: string;
   name: string;
   content: string;
+  type: string;
+  timestamp: number;
   cacheId?: string;
-  type?: string;
 }
 
 export interface BaseThread {
   id: string;
   name: string;
+  files: FileAttachment[];
   createdAt: number;
   updatedAt: number;
-  files: FileAttachment[];
   cachedFiles: string[];
+  linkedNotes: string[];
   isPinned?: boolean;
   color?: string;
-  textColor?: string;
   icon?: string;
-  linkedNotes: string[];
+  textColor?: string;
+  isNote: boolean;
 }
 
 export interface ChatThread extends BaseThread {
   isNote: false;
   messages: Message[];
-  lastUsedModel?: string;
+  lastUsedModel: string;
 }
 
 export interface NoteThread extends BaseThread {
   isNote: true;
   content: string;
-  parentId?: string | null;
-  children?: string[];
+  parentId: string | null;
+  children: string[];
 }
 
 export type Thread = ChatThread | NoteThread;

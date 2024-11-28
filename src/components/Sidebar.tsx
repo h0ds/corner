@@ -3,6 +3,7 @@ import { ThreadNoteList } from './ThreadNoteList';
 import { SidebarTabs } from './SidebarTabs';
 import { Thread, NoteThread, ChatThread } from '@/types';
 import { Plus, StickyNote } from 'lucide-react';
+import { loadThreadOrder, saveThreadOrder } from '../lib/storage';
 
 interface SidebarProps {
   threads: Thread[];
@@ -17,7 +18,8 @@ interface SidebarProps {
   onColorChange: (threadId: string, color: string) => void;
   onIconChange: (threadId: string, icon: string) => void;
   onTextColorChange: (threadId: string, color: string) => void;
-  initialTab?: 'threads' | 'notes';
+  activeTab: 'threads' | 'notes';
+  onTabChange: (tab: 'threads' | 'notes') => void;
 }
 
 function generateUniqueName(baseName: string, existingThreads: Thread[]): string {
@@ -47,71 +49,75 @@ export const Sidebar: React.FC<SidebarProps> = ({
   activeThreadId,
   onThreadSelect,
   onNewNote,
-  ...props
+  onNewThread,
+  onDeleteThread,
+  onRenameThread,
+  onReorderThreads,
+  onTogglePin,
+  onColorChange,
+  onIconChange,
+  onTextColorChange,
+  activeTab,
+  onTabChange,
 }) => {
-  const [activeTab, setActiveTab] = useState(props.initialTab || 'threads');
-
-  // Listen for tab change events from Knowledge Graph clicks
-  useEffect(() => {
-    const handleTabChange = (event: CustomEvent<{ tab: 'threads' | 'notes' }>) => {
-      setActiveTab(event.detail.tab);
-    };
-
-    const handleNoteSelect = (event: CustomEvent<{ noteId: string; switchTab: boolean }>) => {
-      if (event.detail.switchTab) {
-        setActiveTab('notes');
-      }
-      onThreadSelect(event.detail.noteId);
-    };
-
-    window.addEventListener('switch-tab', handleTabChange as any);
-    window.addEventListener('select-note', handleNoteSelect as any);
-
-    return () => {
-      window.removeEventListener('switch-tab', handleTabChange as any);
-      window.removeEventListener('select-note', handleNoteSelect as any);
-    };
-  }, [onThreadSelect]);
-
   // Memoize thread and note counts
   const { filteredThreads, threadCount, noteCount } = useMemo(() => {
-    // Ensure threads is an array
-    const validThreads = Array.isArray(threads) ? threads : [];
+    // Ensure threads is an array and all items are valid
+    const validThreads = Array.isArray(threads) ? threads.filter(thread => 
+      thread && 
+      typeof thread.id === 'string' && 
+      typeof thread.isNote === 'boolean'
+    ) : [];
     
     // Calculate total counts and sort items
-    const notes = validThreads.filter(thread => 
-      thread && typeof thread.isNote === 'boolean' && thread.isNote === true
-    ).sort((a, b) => {
-      // Sort by pinned status first
-      if (a.isPinned && !b.isPinned) return -1;
-      if (!a.isPinned && b.isPinned) return 1;
-      // Then by updated time for unpinned items
-      if (!a.isPinned && !b.isPinned) {
-        return b.updatedAt - a.updatedAt;
-      }
-      // Keep pinned items in their relative order
-      return 0;
-    });
+    const notes = validThreads.filter(thread => thread.isNote === true)
+      .sort((a, b) => {
+        // Sort by pinned status first
+        if (a.isPinned && !b.isPinned) return -1;
+        if (!a.isPinned && b.isPinned) return 1;
+        // Then by saved order for unpinned items
+        const savedOrder = loadThreadOrder();
+        if (savedOrder && !a.isPinned && !b.isPinned) {
+          const aIndex = savedOrder.indexOf(a.id);
+          const bIndex = savedOrder.indexOf(b.id);
+          if (aIndex !== -1 && bIndex !== -1) {
+            return aIndex - bIndex;
+          }
+        }
+        // Fall back to updated time if no saved order
+        if (!a.isPinned && !b.isPinned) {
+          return (b.updatedAt || 0) - (a.updatedAt || 0);
+        }
+        return 0;
+      });
 
-    const chats = validThreads.filter(thread => 
-      thread && typeof thread.isNote === 'boolean' && thread.isNote === false
-    ).sort((a, b) => {
-      // Sort by pinned status first
-      if (a.isPinned && !b.isPinned) return -1;
-      if (!a.isPinned && b.isPinned) return 1;
-      // Then by updated time for unpinned items
-      if (!a.isPinned && !b.isPinned) {
-        return b.updatedAt - a.updatedAt;
-      }
-      // Keep pinned items in their relative order
-      return 0;
-    });
+    const chats = validThreads.filter(thread => thread.isNote === false)
+      .sort((a, b) => {
+        // Sort by pinned status first
+        if (a.isPinned && !b.isPinned) return -1;
+        if (!a.isPinned && b.isPinned) return 1;
+        // Then by saved order for unpinned items
+        const savedOrder = loadThreadOrder();
+        if (savedOrder && !a.isPinned && !b.isPinned) {
+          const aIndex = savedOrder.indexOf(a.id);
+          const bIndex = savedOrder.indexOf(b.id);
+          if (aIndex !== -1 && bIndex !== -1) {
+            return aIndex - bIndex;
+          }
+        }
+        // Fall back to updated time if no saved order
+        if (!a.isPinned && !b.isPinned) {
+          return (b.updatedAt || 0) - (a.updatedAt || 0);
+        }
+        return 0;
+      });
     
     // Filter based on active tab
     const filtered = activeTab === 'notes' ? notes : chats;
 
     console.log('Thread filtering:', {
       total: validThreads.length,
+      validThreads: validThreads.map(t => ({ id: t.id, isNote: t.isNote })),
       filtered: filtered.length,
       notes: notes.length,
       chats: chats.length,
@@ -132,7 +138,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     console.log('Active thread:', {
       id: activeThreadId,
       type: activeThread?.isNote ? 'note' : 'thread',
-      name: activeThread?.name
+      name: activeThread?.name,
+      isValid: activeThread && typeof activeThread.isNote === 'boolean'
     });
   }, [activeThreadId, threads]);
 
@@ -152,7 +159,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       console.log('Auto-selecting first item:', {
         reason: !activeThread ? 'no active thread' : 'type mismatch',
         selectedId: filteredThreads[0].id,
-        isNote: filteredThreads[0].isNote
+        isNote: filteredThreads[0].isNote,
+        currentTab: activeTab
       });
       onThreadSelect(filteredThreads[0].id);
     }
@@ -171,18 +179,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }, [threads, onNewNote]);
 
   return (
-    <div className="absolute inset-0 border-r border-border      s flex flex-col">
+    <div className="absolute inset-0 border-r border-border flex flex-col">
       <div className="mt-1">
         <SidebarTabs
           activeTab={activeTab}
-          onTabChange={setActiveTab}
+          onTabChange={onTabChange}
           threadCount={threadCount}
           noteCount={noteCount}
         />
         
         <div className="px-2 py-1">
           <button
-            onClick={activeTab === 'threads' ? props.onNewThread : handleCreateNote}
+            onClick={() => {
+              if (activeTab === 'threads') {
+                onNewThread();
+              } else {
+                onNewNote();
+              }
+            }}
             className="w-full flex items-center gap-2 p-3 text-sm rounded-xl 
                      bg-accent text-foreground hover:bg-accent-light transition-colors
                      justify-start pl-3"
@@ -207,15 +221,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
           items={filteredThreads}
           activeItemId={activeThreadId}
           onItemSelect={onThreadSelect}
-          onNewItem={activeTab === 'threads' ? props.onNewThread : handleCreateNote}
-          onDeleteItem={props.onDeleteThread}
-          onRenameItem={props.onRenameThread}
-          onReorderItems={props.onReorderThreads}
-          onTogglePin={props.onTogglePin}
-          onColorChange={props.onColorChange}
-          onIconChange={props.onIconChange}
-          onTextColorChange={props.onTextColorChange}
+          onNewItem={activeTab === 'threads' ? onNewThread : onNewNote}
+          onDeleteItem={onDeleteThread}
+          onRenameItem={onRenameThread}
+          onReorderItems={onReorderThreads}
+          onTogglePin={onTogglePin}
+          onColorChange={onColorChange}
+          onIconChange={onIconChange}
+          onTextColorChange={onTextColorChange}
           isNoteList={activeTab === 'notes'}
+          saveThreadOrder={saveThreadOrder}
         />
       </div>
     </div>

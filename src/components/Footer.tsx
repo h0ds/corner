@@ -18,6 +18,8 @@ interface FooterProps {
   onShowSearch: () => void;
   onShowPreferences: () => void;
   onShowPreferencesTab?: (tab: string) => void;
+  onTabChange?: (tab: 'threads' | 'notes') => void;
+  onSelectNode?: (threadId: string, isNote: boolean) => void;
 }
 
 export const Footer: React.FC<FooterProps> = ({
@@ -28,6 +30,8 @@ export const Footer: React.FC<FooterProps> = ({
   onShowSearch,
   onShowPreferences,
   onShowPreferencesTab,
+  onTabChange,
+  onSelectNode,
 }) => {
   const [showFileMenu, setShowFileMenu] = useState(false);
 
@@ -54,6 +58,8 @@ export const Footer: React.FC<FooterProps> = ({
 
             <KnowledgeGraph
               threads={threads}
+              onSelectNode={onSelectNode}
+              onTabChange={onTabChange}
               trigger={
                 <button
                   className="p-2 bg-background hover:bg-accent rounded-lg transition-colors border border-border"

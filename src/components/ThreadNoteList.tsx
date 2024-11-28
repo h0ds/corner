@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Thread } from "@/types";
 import { cn } from "@/lib/utils";
 import {
@@ -49,6 +49,7 @@ interface ThreadNoteListProps {
   onIconChange: (itemId: string, icon: string) => void;
   onTextColorChange: (itemId: string, color: string) => void;
   isNoteList?: boolean;
+  saveThreadOrder: (ids: string[]) => void;
 }
 
 interface SortableItemProps {
@@ -223,6 +224,7 @@ export const ThreadNoteList: React.FC<ThreadNoteListProps> = ({
   onColorChange,
   onIconChange,
   onTextColorChange,
+  saveThreadOrder,
   isNoteList = false,
 }) => {
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
@@ -233,6 +235,19 @@ export const ThreadNoteList: React.FC<ThreadNoteListProps> = ({
     position: "before" | "after";
   } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+
+  // Ensure we're working with unique items by ID
+  const uniqueItems = useMemo(() => {
+    const seen = new Set<string>();
+    return items.filter(item => {
+      if (seen.has(item.id)) {
+        console.warn(`Duplicate item found with ID: ${item.id}`);
+        return false;
+      }
+      seen.add(item.id);
+      return true;
+    });
+  }, [items]);
 
   const handleStartRename = (item: Thread) => {
     setEditingItemId(item.id);
@@ -263,6 +278,49 @@ export const ThreadNoteList: React.FC<ThreadNoteListProps> = ({
     setIsDragging(true);
   };
 
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const activeItem = uniqueItems.find(t => t.id === active.id);
+      const overItem = uniqueItems.find(t => t.id === over.id);
+      
+      // Don't allow reordering if either item is pinned
+      if (activeItem?.isPinned || overItem?.isPinned) {
+        setActiveId(null);
+        setIsDragging(false);
+        setDropTarget(null);
+        return;
+      }
+
+      // Get all non-pinned items
+      const nonPinnedItems = uniqueItems.filter(item => !item.isPinned);
+      const pinnedItems = uniqueItems.filter(item => item.isPinned);
+
+      // Find the indices within non-pinned items
+      const oldIndex = nonPinnedItems.findIndex(t => t.id === active.id);
+      const newIndex = nonPinnedItems.findIndex(t => t.id === over.id);
+
+      // Create a new array and move the item
+      const reorderedNonPinned = [...nonPinnedItems];
+      const [movedItem] = reorderedNonPinned.splice(oldIndex, 1);
+      reorderedNonPinned.splice(newIndex, 0, movedItem);
+
+      // Combine pinned and reordered non-pinned items
+      const reorderedItems = [...pinnedItems, ...reorderedNonPinned];
+      
+      // Save the new order to storage
+      saveThreadOrder(reorderedItems.map(item => item.id));
+      
+      // Call the parent's reorder handler
+      onReorderItems(reorderedItems);
+    }
+
+    setActiveId(null);
+    setIsDragging(false);
+    setDropTarget(null);
+  };
+
   const handleDragOver = (event: DragOverEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) {
@@ -270,19 +328,11 @@ export const ThreadNoteList: React.FC<ThreadNoteListProps> = ({
       return;
     }
 
-    const overItem = items.find(t => t.id === over.id);
-    // Don't show drop target if the target item is pinned
-    if (overItem?.isPinned) {
-      setDropTarget(null);
-      return;
-    }
+    const overItem = uniqueItems.find(t => t.id === over.id);
+    const activeItem = uniqueItems.find(t => t.id === active.id);
 
-    // Find the last pinned item's index
-    const lastPinnedIndex = items.findIndex(item => !item.isPinned) - 1;
-    const overIndex = items.findIndex(t => t.id === over.id);
-
-    // Don't show drop target if trying to drop before pinned items
-    if (lastPinnedIndex >= 0 && overIndex <= lastPinnedIndex) {
+    // Don't show drop target if either item is pinned
+    if (overItem?.isPinned || activeItem?.isPinned) {
       setDropTarget(null);
       return;
     }
@@ -293,43 +343,6 @@ export const ThreadNoteList: React.FC<ThreadNoteListProps> = ({
     const position = activeRect.top < threshold ? "before" : "after";
 
     setDropTarget({ id: over.id as string, position });
-  };
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-
-    if (over && active.id !== over.id) {
-      const activeItem = items.find(t => t.id === active.id);
-      const overItem = items.find(t => t.id === over.id);
-      
-      // Don't allow reordering if either item is pinned
-      if (activeItem?.isPinned || overItem?.isPinned) {
-        setActiveId(null);
-        setIsDragging(false);
-        setDropTarget(null);
-        return;
-      }
-
-      // Find the last pinned item's index
-      const lastPinnedIndex = items.findIndex(item => !item.isPinned) - 1;
-      const oldIndex = items.findIndex(t => t.id === active.id);
-      let newIndex = items.findIndex(t => t.id === over.id);
-
-      // Ensure new position is after pinned items
-      if (lastPinnedIndex >= 0) {
-        newIndex = Math.max(newIndex, lastPinnedIndex + 1);
-      }
-
-      const reorderedItems = [...items];
-      const [movedItem] = reorderedItems.splice(oldIndex, 1);
-      reorderedItems.splice(newIndex, 0, movedItem);
-      
-      onReorderItems(reorderedItems);
-    }
-
-    setActiveId(null);
-    setIsDragging(false);
-    setDropTarget(null);
   };
 
   const handleDragCancel = () => {
@@ -347,9 +360,9 @@ export const ThreadNoteList: React.FC<ThreadNoteListProps> = ({
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
-      <SortableContext items={items.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+      <SortableContext items={uniqueItems.map((t) => t.id)} strategy={verticalListSortingStrategy}>
         <div className="flex flex-col gap-1 p-2 pb-20">
-          {items.map((item) => (
+          {uniqueItems.map((item) => (
             <React.Fragment key={item.id}>
               {dropTarget?.id === item.id && dropTarget.position === "before" && (
                 <motion.div
@@ -400,7 +413,7 @@ export const ThreadNoteList: React.FC<ThreadNoteListProps> = ({
             className="pointer-events-none"
           >
             <SortableItem
-              item={items.find(t => t.id === activeId)!}
+              item={uniqueItems.find(t => t.id === activeId)!}
               activeItemId={activeItemId}
               editingItemId={editingItemId}
               editingName={editingName}

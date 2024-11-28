@@ -10,22 +10,68 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  GraphCanvas, GraphNode,
+  GraphCanvas,
+  GraphNode,
   GraphEdge,
   useSelection
 } from 'reagraph';
 
+/*
+Example usage in parent component:
+
+function ParentComponent() {
+  const handleSelectNode = (threadId: string, isNote: boolean) => {
+    // Switch to appropriate tab
+    setActiveTab(isNote ? 'notes' : 'threads');
+    
+    // Open the selected thread/note
+    setSelectedThreadId(threadId);
+  };
+
+  return (
+    <KnowledgeGraph 
+      threads={threads} 
+      onSelectNode={handleSelectNode}
+    />
+  );
+}
+*/
+
 interface KnowledgeGraphProps {
   threads: Thread[];
   trigger?: React.ReactNode;
+  onSelectNode?: (threadId: string, isNote: boolean) => void;
+  onTabChange?: (tab: 'threads' | 'notes') => void;
 }
 
 export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
   threads,
-  trigger
+  trigger,
+  onSelectNode,
+  onTabChange
 }) => {
   const [open, setOpen] = useState(false);
   const graphRef = useRef(null);
+
+  const handleNodeClick = (node: GraphNode) => {
+    console.log('Node clicked:', node);
+    if (node) {
+      const isNote = Boolean(node.data?.isNote);
+      
+      // Switch to appropriate tab first
+      if (onTabChange) {
+        onTabChange(isNote ? 'notes' : 'threads');
+      }
+
+      // Then select the node
+      if (onSelectNode) {
+        onSelectNode(node.id, isNote);
+      }
+
+      // Close the modal
+      setOpen(false);
+    }
+  };
 
   const { nodes, edges } = useMemo(() => {
     console.log('Threads:', threads);
@@ -68,7 +114,7 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     return { nodes, edges };
   }, [threads]);
 
-  const { selections, onNodeClick } = useSelection({
+  const { selections } = useSelection({
     ref: graphRef,
     nodes,
     edges,
@@ -93,7 +139,7 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
             nodes={nodes}
             edges={edges}
             selections={selections}
-            onNodeClick={onNodeClick}
+            onNodeClick={handleNodeClick}
             layoutType="forceDirected2d"
             labelType="all"
             draggable
@@ -103,6 +149,8 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
             edgeArrowPosition="none"
             nodeSize={30}
             edgeWidth={1.5}
+            onClick={(e) => console.log('Canvas clicked:', e)}
+            onCanvasClick={(e) => console.log('Canvas background clicked:', e)}
             labelRenderer={({ label }) => (
               <text
                 className="font-mono text-[11px]"

@@ -89,6 +89,19 @@ export function saveThreadOrder(threadIds: string[]): void {
   }
 }
 
+export function loadThreadOrder(): string[] | null {
+  try {
+    const orderJson = localStorage.getItem(THREAD_ORDER_KEY);
+    if (!orderJson) {
+      return null;
+    }
+    return JSON.parse(orderJson);
+  } catch (error) {
+    console.error('Failed to load thread order:', error);
+    return null;
+  }
+}
+
 export function deleteThread(threadId: string): void {
   try {
     const threads = loadThreads();

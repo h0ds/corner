@@ -349,8 +349,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
       <audio ref={audioRef} className="hidden" />
 
-      <div className="relative mt-4">
-        <div className="absolute right-4 -top-12 flex items-center gap-2">
+      <div className="relative mt-2">
+        <div className="absolute right-4 flex items-center gap-2">
           {(audioPlaying || audioLoading) && audioRef.current?.src && (
             <AudioControls
               isPlaying={audioPlaying}
