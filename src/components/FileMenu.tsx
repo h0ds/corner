@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Upload, Eye, Trash2, FolderOpen, Image as ImageIcon } from 'lucide-react';
+import { FileText, Upload, Eye, Trash2, FolderOpen } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -109,7 +109,7 @@ export const FileMenu: React.FC<FileMenuProps> = ({
         <DialogContent className="sm:max-w-[800px] p-6" hideCloseButton>
           <DialogHeader className="pb-4 border-b">
             <div className="flex items-center justify-between">
-              <DialogTitle>
+              <DialogTitle className="flex w-full">
                 {previewFile ? (
                   <div className="flex items-center gap-3">
                     <button
@@ -122,7 +122,7 @@ export const FileMenu: React.FC<FileMenuProps> = ({
                     <span className="text-sm font-semibold">{previewFile.name}</span>
                   </div>
                 ) : (
-                  <div className="flex items-center w-full">
+                  <div className="flex flex-row w-full justify-between">
                     <span className="font-geist text-lg tracking-tight">Files</span>
                     <div className="ml-auto">
                       <Button

@@ -134,14 +134,15 @@ const SortableItem = ({
             )}
             onClick={() => !isEditing && onItemSelect(item.id)}
           >
-            {!item.isPinned && (
-              <div
-                {...(!isEditing && item.isPinned ? {} : { ...attributes, ...listeners })}
-                className="cursor-grab opacity-0 group-hover:opacity-100 hover:text-accent-foreground"
-              >
-                <GripVertical className="h-4 w-4" />
-              </div>
-            )}
+            <div
+              {...(!isEditing && !item.isPinned ? { ...attributes, ...listeners } : {})}
+              className={cn(
+                "w-4 flex items-center",
+                !item.isPinned && "cursor-grab opacity-0 group-hover:opacity-100 hover:text-accent-foreground"
+              )}
+            >
+              {!item.isPinned && <GripVertical className="h-4 w-4" />}
+            </div>
             {item.icon && (
               <span className="text-sm">{item.icon}</span>
             )}

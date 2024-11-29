@@ -69,51 +69,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
       typeof thread.isNote === 'boolean'
     ) : [];
     
-    // Calculate total counts and sort items
-    const notes = validThreads.filter(thread => thread.isNote === true)
-      .sort((a, b) => {
-        // Sort by pinned status first
-        if (a.isPinned && !b.isPinned) return -1;
-        if (!a.isPinned && b.isPinned) return 1;
-        // Then by saved order for unpinned items
-        const savedOrder = loadThreadOrder();
-        if (savedOrder && !a.isPinned && !b.isPinned) {
-          const aIndex = savedOrder.indexOf(a.id);
-          const bIndex = savedOrder.indexOf(b.id);
-          if (aIndex !== -1 && bIndex !== -1) {
-            return aIndex - bIndex;
-          }
-        }
-        // Fall back to updated time if no saved order
-        if (!a.isPinned && !b.isPinned) {
-          return (b.updatedAt || 0) - (a.updatedAt || 0);
-        }
-        return 0;
-      });
-
-    const chats = validThreads.filter(thread => thread.isNote === false)
-      .sort((a, b) => {
-        // Sort by pinned status first
-        if (a.isPinned && !b.isPinned) return -1;
-        if (!a.isPinned && b.isPinned) return 1;
-        // Then by saved order for unpinned items
-        const savedOrder = loadThreadOrder();
-        if (savedOrder && !a.isPinned && !b.isPinned) {
-          const aIndex = savedOrder.indexOf(a.id);
-          const bIndex = savedOrder.indexOf(b.id);
-          if (aIndex !== -1 && bIndex !== -1) {
-            return aIndex - bIndex;
-          }
-        }
-        // Fall back to updated time if no saved order
-        if (!a.isPinned && !b.isPinned) {
-          return (b.updatedAt || 0) - (a.updatedAt || 0);
-        }
-        return 0;
-      });
+    // Calculate total counts
+    const notes = validThreads.filter(thread => thread.isNote === true);
+    const chats = validThreads.filter(thread => thread.isNote === false);
     
-    // Filter based on active tab
-    const filtered = activeTab === 'notes' ? notes : chats;
+    // Get the list to display based on active tab
+    const filtered = (activeTab === 'notes' ? notes : chats)
+      .sort((a, b) => {
+        // Sort by pinned status first
+        if (a.isPinned && !b.isPinned) return -1;
+        if (!a.isPinned && b.isPinned) return 1;
+        // Then by saved order for unpinned items
+        const savedOrder = loadThreadOrder();
+        if (savedOrder && !a.isPinned && !b.isPinned) {
+          const aIndex = savedOrder.indexOf(a.id);
+          const bIndex = savedOrder.indexOf(b.id);
+          if (aIndex !== -1 && bIndex !== -1) {
+            return aIndex - bIndex;
+          }
+        }
+        // Fall back to updated time if no saved order
+        if (!a.isPinned && !b.isPinned) {
+          return (b.updatedAt || 0) - (a.updatedAt || 0);
+        }
+        return 0;
+      });
 
     console.log('Thread filtering:', {
       total: validThreads.length,

@@ -18,6 +18,9 @@ export default {
       },
     },
     extend: {
+      transitionDuration: {
+        DEFAULT: '150ms'
+      },
       fontFamily: {
         sans: ["Geist", ...fontFamily.sans],
         mono: ["Geist Mono", ...fontFamily.mono],

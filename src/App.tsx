@@ -120,16 +120,30 @@ function App() {
   const [threadToDelete, setThreadToDelete] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'threads' | 'notes'>('threads');
 
-  // Memoize filtered threads for the current tab
-  const filteredThreads = useMemo(() => {
-    // Ensure threads is a valid array
-    const validThreads = Array.isArray(threads) ? threads : [];
-    
-    // Filter threads based on active tab and validate each thread
-    const filtered = validThreads.filter(thread => 
+  // Memoize valid threads
+  const validThreads = useMemo(() => {
+    // Ensure threads is a valid array and validate each thread
+    return Array.isArray(threads) ? threads.filter(thread => 
       thread && 
       typeof thread.id === 'string' && 
-      typeof thread.isNote === 'boolean' && 
+      typeof thread.isNote === 'boolean'
+    ) : [];
+  }, [threads]);
+
+  // Log thread counts
+  useEffect(() => {
+    console.log('Thread counts:', {
+      total: validThreads.length,
+      notes: validThreads.filter(t => t.isNote).length,
+      chats: validThreads.filter(t => !t.isNote).length,
+      activeTab
+    });
+  }, [validThreads, activeTab]);
+
+  // Memoize filtered threads for the current tab
+  const filteredThreads = useMemo(() => {
+    // Filter threads based on active tab
+    const filtered = validThreads.filter(thread => 
       (activeTab === 'notes' ? thread.isNote : !thread.isNote)
     );
 
@@ -142,7 +156,7 @@ function App() {
     });
 
     return filtered;
-  }, [threads, activeTab]);
+  }, [validThreads, activeTab]);
 
   // Update handleThreadSelect to handle tab switching
   const handleThreadSelect = useCallback((threadId: string) => {
@@ -1341,7 +1355,6 @@ function App() {
               <ResizeObserver
                 onResize={(entry) => {
                   const width = entry.contentRect.width;
-                  setSidebarWidth(width);
                   
                   if (width < 250 || window.innerWidth < 500) {
                     setSidebarVisible(false);
@@ -1350,7 +1363,7 @@ function App() {
               >
                 <div className="h-full relative" style={{ width: '100%' }}>
                   <Sidebar
-                    threads={filteredThreads}
+                    threads={validThreads}
                     activeThreadId={activeThreadId}
                     onThreadSelect={handleThreadSelect}
                     onNewThread={handleNewThread}
