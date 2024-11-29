@@ -35,20 +35,20 @@ export const TypingIndicator = () => {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 10 }}
       transition={{ duration: 0.2 }}
-      className="flex items-center gap-3 px-3 py-2 bg-accent-foreground/30 dark:bg-card/80 rounded-xl shadow-none w-fit"
+      className="flex items-center gap-3 px-3 py-2 bg-accent-foreground dark:bg-card/80 rounded-xl shadow-none w-fit"
     >
-      <div className="flex items-center gap-[2px] h-4">
+      <div className="flex items-center gap-[2px] h-2">
         {[0, 1, 2, 3].map((i) => (
           <motion.div
             key={i}
             custom={i}
             variants={barVariants}
             animate="animate"
-            className="w-[3px] h-full bg-white rounded-full origin-bottom"
+            className="w-[2px] h-full bg-white rounded-full origin-bottom"
           />
         ))}
       </div>
-      <span className="text-sm text-white font-medium min-w-[70px]">
+      <span className="text-sm text-white font-normal min-w-[70px]">
         Thinking{dots}
       </span>
     </motion.div>

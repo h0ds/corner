@@ -7,11 +7,17 @@ mod keyboard_shortcuts;
 mod models;
 mod utils;
 mod speech;
+mod files;
 
 use dotenv::dotenv;
 use tauri::Manager;
 use crate::api::{ApiState, ApiKeys};
 use std::sync::{Arc, Mutex};
+
+#[tauri::command]
+async fn handle_file_drop(path: String) -> Result<String, String> {
+    files::read_file_content(path).await
+}
 
 fn main() {
     dotenv().ok();
@@ -37,6 +43,7 @@ fn main() {
             speech::start_recording,
             speech::stop_recording,
             cache::init_cache_dir,
+            handle_file_drop,
         ])
         .setup(|app| {
             // Initialize cache directory

@@ -483,39 +483,65 @@ function App() {
   // Fix handleFileUpload function to not send file content to API
   const handleFileUpload = async (file: File) => {
     try {
-      const id = toast.loading('Reading file...');
+      toast({
+        title: "Reading file",
+        description: `Reading ${file.name}...`,
+      });
+
       let content: string;
       const nativeFile = file as any;
       
+      console.log('File object:', {
+        file,
+        nativeFile,
+        type: file.type,
+        name: file.name,
+        path: nativeFile.path,
+        webkitRelativePath: file.webkitRelativePath,
+      });
+
       if (nativeFile.path) {
-        content = await invoke('handle_file_drop', { path: nativeFile.path });
+        // For Tauri drag-and-drop, use the native path
+        content = await invoke('handle_file_drop', { 
+          path: nativeFile.path 
+        });
       } else {
+        // For regular file input, use the file reader
         content = await getFileHandler(file);
       }
 
       if (activeThreadId) {
         setThreads(prev => prev.map(thread => {
           if (thread.id === activeThreadId) {
+            const newFile = {
+              id: nanoid(),
+              name: file.name,
+              content,
+              type: file.type,
+              timestamp: Date.now()
+            };
+            
+            toast({
+              title: "Success",
+              description: `Successfully uploaded ${file.name}`,
+            });
+
             return {
               ...thread,
-              files: [...thread.files, {
-                id: nanoid(),
-                name: file.name,
-                content,
-                type: file.type,
-                timestamp: Date.now()
-              }],
+              files: [...thread.files, newFile],
               updatedAt: Date.now()
             };
           }
           return thread;
         }));
-        toast.dismiss(id);
-        toast.success('File uploaded successfully');
       }
     } catch (error) {
       console.error('File read error:', error);
-      toast.error('Failed to read file');
+      toast({
+        title: "Error",
+        description: "Failed to read file",
+        variant: "destructive",
+      });
     }
   };
 
