@@ -27,9 +27,9 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
     <Card className="rounded-xl relative border-none p-2 shadow-none">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          {/* <span className="text-sm font-medium">
+          <span className="text-sm font-medium">
             {fileName}
-          </span> */}
+          </span>
           {showToggle && (
             <Button
               variant="ghost"
@@ -49,43 +49,45 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6"
+            className="h-6 w-6 hover:bg-destructive/10"
             onClick={onClear}
           >
             <X className="h-4 w-4" />
           </Button>
         )}
       </div>
-      <div className={cn(
-        "relative transition-all duration-200",
-        !isExpanded && "h-0 overflow-hidden opacity-0",
-        isExpanded && "opacity-100"
-      )}>
-        {isImage ? (
-          <div className="max-w-2xl">
+      {isExpanded && (
+        <div className={cn(
+          "mt-2 rounded-lg overflow-hidden",
+          isImage ? "bg-transparent" : "bg-muted p-4"
+        )}>
+          {isImage ? (
             <img 
               src={content} 
-              alt={fileName}
-              className="rounded-xl max-h-[300px] object-contain"
+              alt={fileName} 
+              className="max-h-96 w-auto mx-auto rounded-lg"
+              onError={(e) => {
+                console.error('Image load error:', e);
+                e.currentTarget.style.display = 'none';
+                e.currentTarget.nextElementSibling?.classList.remove('hidden');
+              }}
             />
-          </div>
-        ) : isPdf ? (
-          <div className="max-w-2xl h-[500px]">
+          ) : isPdf ? (
             <iframe
               src={content}
+              className="w-full h-96 rounded-lg"
               title={fileName}
-              className="w-full h-full rounded-xl"
             />
-          </div>
-        ) : (
-          <div className="relative">
-            <pre className="text-sm whitespace-pre-wrap overflow-auto max-h-[300px] bg-background p-4 rounded-xl">
+          ) : (
+            <pre className="text-sm whitespace-pre-wrap break-words max-h-96 overflow-y-auto">
               {content}
             </pre>
-            <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-background to-transparent pointer-events-none" />
+          )}
+          <div className="hidden mt-2 text-sm text-red-500">
+            Failed to load image. The file might be corrupted or in an unsupported format.
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </Card>
   );
 }; 

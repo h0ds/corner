@@ -15,8 +15,22 @@ use crate::api::{ApiState, ApiKeys};
 use std::sync::{Arc, Mutex};
 
 #[tauri::command]
-async fn handle_file_drop(path: String) -> Result<String, String> {
-    files::read_file_content(path).await
+async fn handle_file_drop(path: String, app: tauri::AppHandle) -> Result<String, String> {
+    println!("Handling file drop for path: {}", path);
+    
+    // Use the original file path directly
+    let file_path = std::path::PathBuf::from(&path);
+    println!("Using file path: {:?}", file_path);
+    
+    files::read_file_content(file_path.to_string_lossy().into_owned()).await
+}
+
+#[tauri::command]
+async fn check_file_exists(path: String) -> bool {
+    let path = std::path::PathBuf::from(path);
+    println!("Checking file existence: {:?}", path);
+    println!("Current dir: {:?}", std::env::current_dir().unwrap_or_default());
+    path.exists()
 }
 
 fn main() {
@@ -44,6 +58,7 @@ fn main() {
             speech::stop_recording,
             cache::init_cache_dir,
             handle_file_drop,
+            check_file_exists,
         ])
         .setup(|app| {
             // Initialize cache directory

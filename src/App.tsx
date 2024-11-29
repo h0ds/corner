@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback, KeyboardEvent as ReactKeyboardEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { os } from '@tauri-apps/api';
 import { Preferences } from "./components/Preferences";
 import { AVAILABLE_MODELS } from "./components/ModelSelector";
 import { FilePreview } from "./components/FilePreview";
@@ -480,7 +481,7 @@ function App() {
     return threads.find(t => t.id === activeThreadId);
   }, [threads, activeThreadId]);
 
-  // Fix handleFileUpload function to not send file content to API
+  // Improved file upload handling with size limits and better error handling
   const handleFileUpload = async (file: File) => {
     try {
       toast({
@@ -496,18 +497,51 @@ function App() {
         nativeFile,
         type: file.type,
         name: file.name,
+        size: file.size,
         path: nativeFile.path,
         webkitRelativePath: file.webkitRelativePath,
       });
 
+      // Check file size (10MB limit)
+      const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB in bytes
+      if (file.size > MAX_FILE_SIZE) {
+        throw new Error(`File size exceeds 10MB limit. Current size: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
+      }
+
       if (nativeFile.path) {
         // For Tauri drag-and-drop, use the native path
-        content = await invoke('handle_file_drop', { 
-          path: nativeFile.path 
+        let filePath = nativeFile.path;
+        
+        // Handle file:// protocol
+        if (filePath.startsWith('file://')) {
+          filePath = decodeURIComponent(filePath.replace('file://', ''));
+        }
+        
+        // On macOS, handle spaces in paths
+        if (filePath.includes(' ')) {
+          filePath = filePath.replace(/ /g, '\\ ');
+        }
+
+        console.log('Processing file path:', {
+          original: nativeFile.path,
+          processed: filePath,
+          isAbsolute: filePath.startsWith('/'),
         });
+        
+        try {
+          content = await invoke('handle_file_drop', { path: filePath });
+        } catch (error) {
+          // If file reading fails, fall back to FileReader
+          console.log('Falling back to FileReader');
+          content = await getFileHandler(file);
+        }
       } else {
         // For regular file input, use the file reader
         content = await getFileHandler(file);
+      }
+
+      if (!content) {
+        throw new Error('Failed to read file content');
       }
 
       if (activeThreadId) {
@@ -539,7 +573,7 @@ function App() {
       console.error('File read error:', error);
       toast({
         title: "Error",
-        description: "Failed to read file",
+        description: error instanceof Error ? error.message : 'Failed to read file',
         variant: "destructive",
       });
     }
