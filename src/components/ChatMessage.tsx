@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { Message, PluginModification, Thread } from '@/types';
 import { ModelIcon } from './ModelIcon';
@@ -23,6 +23,8 @@ import katex from 'katex';
 import { ChatMessageContextMenu } from './ChatMessageContextMenu';
 import { nanoid } from 'nanoid';
 import { showToast } from '@/lib/toast';
+import { textToSpeech } from '@/lib/api';
+import { AudioPlayer } from './AudioPlayer';
 
 interface ChatMessageProps {
   role: Message['role'];
@@ -141,246 +143,121 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   onDelete,
   setThreads,
 }) => {
-  const renderContent = () => {
-    console.log('Raw content:', content);
-    if (content.startsWith('data:audio/') || isAudioResponse) {
+  const [isConverting, setIsConverting] = useState(false);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const setupAudioListeners = (audio: HTMLAudioElement) => {
+    const handlePlay = () => setIsPlaying(true);
+    const handlePause = () => setIsPlaying(false);
+    const handleEnded = () => setIsPlaying(false);
+
+    audio.addEventListener('play', handlePlay);
+    audio.addEventListener('pause', handlePause);
+    audio.addEventListener('ended', handleEnded);
+
+    return () => {
+      audio.removeEventListener('play', handlePlay);
+      audio.removeEventListener('pause', handlePause);
+      audio.removeEventListener('ended', handleEnded);
+    };
+  };
+
+  const handlePlay = async () => {
+    if (audioRef.current) {
+      try {
+        await audioRef.current.play();
+      } catch (error) {
+        console.error('Failed to play audio:', error);
+      }
+    }
+  };
+
+  const handlePause = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
+  };
+
+  const handleTextToSpeech = async (text: string) => {
+    try {
+      setIsConverting(true);
+      const response = await textToSpeech(text);
+      
+      if (response.success && response.data) {
+        setAudioUrl(response.data);
+        
+        // Create and set up new audio element
+        if (audioRef.current) {
+          audioRef.current.src = response.data;
+        } else {
+          audioRef.current = new Audio(response.data);
+          const cleanup = setupAudioListeners(audioRef.current);
+          // Cleanup previous listeners when component unmounts
+          return () => cleanup();
+        }
+        
+        // Start playback
+        await handlePlay();
+      } else {
+        const errorMessage = response.error || 'Failed to convert text to speech';
+        showToast({
+          title: response.error?.toLowerCase().includes('rate limit') ? 'Rate Limit' : 'Error',
+          description: errorMessage,
+          variant: "destructive",
+          duration: 5000,
+        });
+      }
+    } catch (err) {
+      console.error('Failed to convert to speech:', err);
+      showToast({
+        title: "Error",
+        description: err instanceof Error ? err.message : "Failed to convert text to speech",
+        variant: "destructive",
+      });
+    } finally {
+      setIsConverting(false);
+    }
+  };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (audio) {
+      const cleanup = setupAudioListeners(audio);
+      return () => {
+        cleanup();
+        audio.pause();
+      };
+    }
+  }, []);
+
+  const renderAudioPlayer = () => {
+    if (isConverting) {
       return (
-        <div className="flex flex-col gap-2">
-          <audio 
-            controls 
-            src={content} 
-            className="w-full max-w-[500px]"
-            preload="metadata"
-          >
-            Your browser does not support the audio element.
-          </audio>
+        <div className="absolute bottom-2 left-2 right-2 z-10 flex items-center gap-2 bg-background/80 backdrop-blur-sm p-2 rounded-lg border border-border">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <span className="text-xs text-muted-foreground">Converting to audio...</span>
         </div>
       );
     }
 
-    // Process content to wrap LaTeX in delimiters if needed
-    let processedContent = content;
-    
-    // First, normalize the expression by combining it into a single LaTeX expression
-    processedContent = processedContent
-      // Remove nested dollar signs
-      .replace(/\$\$([^$]+)\$\$/g, '$1')
-      // Handle function arguments
-      .replace(/\$([^$]+)\$\(([^)]+)\)/g, '$1($2)')
-      // Combine the entire expression
-      .replace(/\$([^$]+)\$\s*=\s*\$([^$]+)\$\s*\(([^)]+)\)\s*\+\s*i\$([^$]+)\$\s*\(([^)]+)\)/g, '$$1 = $2($3) + i$4($5)$');
-    
-    // If the content matches Euler's formula pattern, wrap it in display math
-    if (/e\^{i.*?}\s*=\s*\\cos\(.*?\)\s*\+\s*i\\sin\(.*?\)/.test(processedContent)) {
-      processedContent = processedContent.trim();
-    } else {
-      // Otherwise, proceed with normal LaTeX processing
-      const placeholders: {[key: string]: string} = {};
-      let counter = 0;
-      
-      processedContent = processedContent.replace(/\$.*?\$|\\\[.*?\\\]|\\\(.*?\\\)/g, (match) => {
-        const placeholder = `__LATEX_PLACEHOLDER_${counter}__`;
-        placeholders[placeholder] = match;
-        counter++;
-        return placeholder;
-      });
-      
-      const latexRegex = /\\[a-zA-Z]+{[^}]*}|\\[a-zA-Z]+\s*\{[^}]*\}|\\[a-zA-Z]+|[a-zA-Z0-9]+\^{[^}]*}|[a-zA-Z0-9]+_{[^}]*}/g;
-      const matches = processedContent.match(latexRegex);
-      
-      if (matches) {
-        matches.forEach(match => {
-          processedContent = processedContent.replace(match, `$${match}$`);
-        });
-      }
-      
-      Object.entries(placeholders).forEach(([placeholder, original]) => {
-        processedContent = processedContent.replace(placeholder, original);
-      });
+    if (audioUrl || (content.startsWith('data:audio/') || isAudioResponse)) {
+      return (
+        <div className="absolute bottom-2 left-2 right-2 z-10">
+          <AudioPlayer 
+            audioRef={audioRef}
+            className="w-full"
+            isPlaying={isPlaying}
+            onPlay={handlePlay}
+            onPause={handlePause}
+          />
+        </div>
+      );
     }
 
-    return (
-      <div>
-        <ReactMarkdown
-          remarkPlugins={[
-            remarkGfm,
-            [remarkMath, { 
-              singleDollarTextMath: true,
-              doubleBackslashDisplayMath: true
-            }]
-          ]}
-          rehypePlugins={[[rehypeKatex, {
-            strict: false,
-            trust: true,
-            output: 'html',
-            throwOnError: false,
-            displayMode: true,
-            macros: {
-              "\\N": "\\mathbb{N}",
-              "\\R": "\\mathbb{R}",
-              "\\Z": "\\mathbb{Z}",
-              "\\Q": "\\mathbb{Q}",
-              "\\C": "\\mathbb{C}",
-              "\\P": "\\mathbb{P}"
-            }
-          }]]}
-          components={{
-            code({ node, inline, className, children, ...props }) {
-              const match = /language-(\w+)/.exec(className || '');
-              const language = match ? match[1] : '';
-              
-              // Special handling for LaTeX code blocks
-              if (language === 'latex') {
-                const content = String(children)
-                  .replace(/\\\\(?=[a-zA-Z])/g, '\\') // Unescape LaTeX commands
-                  .trim();
-                return (
-                  <div className="my-4">
-                    <LatexRenderer 
-                      latex={content} 
-                      displayMode={true} 
-                    />
-                  </div>
-                );
-              }
-              
-              // Check if content looks like LaTeX
-              const content = String(children);
-              const hasLatexCommands = /\\[a-zA-Z]+({[^}]*}|\s*{[^}]*})?/.test(content);
-              const hasLatexDelimiters = /\$|\\\(|\\\[/.test(content);
-              const hasLatexOperators = /[_^{}\[\]]/.test(content);
-              
-              // If it looks like LaTeX and isn't explicitly marked as a programming language,
-              // render it as math
-              if (!language && (hasLatexCommands || (hasLatexDelimiters && hasLatexOperators))) {
-                return (
-                  <LatexRenderer 
-                    latex={content} 
-                    displayMode={!inline} 
-                  />
-                );
-              }
-              
-              if (inline) {
-                return (
-                  <code 
-                    className="bg-muted px-1.5 py-0.5 rounded-lg text-sm font-mono" 
-                    {...props}
-                  >
-                    {children}
-                  </code>
-                );
-              }
-
-              return (
-                <div className="relative group my-4 bg-[#282c34] font-mono rounded-lg">
-                  <div 
-                    className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 
-                              transition-opacity"
-                  >
-                    <button
-                      onClick={() => navigator.clipboard.writeText(String(children))}
-                      className="p-1.5 hover:bg-accent/10 rounded-lg text-muted-foreground 
-                                hover:text-accent-foreground"
-                    >
-                      <Copy className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <SyntaxHighlighter
-                    language={language}
-                    style={materialOceanic}
-                    codeTagProps={{style: {fontFamily: '"Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace'} }}
-                    customStyle={{
-                      background: 'transparent',
-                      fontSize: '0.875rem',
-                    }}
-                    {...props}
-                  >
-                    {String(children).replace(/\n$/, '')}
-                  </SyntaxHighlighter>
-                </div>
-              );
-            },
-            math: ({ value, ...props }) => {
-              console.log('Math component received:', { value, props });
-              return (
-                <div className="my-2">
-                  <LatexRenderer latex={value} displayMode={true} />
-                </div>
-              );
-            },
-            inlineMath: ({ value, ...props }) => {
-              console.log('InlineMath component received:', { value, props });
-              return <LatexRenderer latex={value} displayMode={false} />;
-            },
-            text: ({ value, ...props }) => {
-              console.log('Text component received:', { value, props });
-              return <span>{value}</span>;
-            },
-            p: ({children}) => <p className="mb-4 text-sm first:mt-1 last:mb-0">{children}</p>,
-            ul: ({children}) => <ul className="list-disc p-6 mb-6 last:mb-0 space-y-2 text-sm">{children}</ul>,
-            ol: ({children}) => <ol className="list-decimal px-8 py-6 last:mb-0 space-y-2 text-sm">{children}</ol>,
-            li: ({children}) => <li className="mb-2 last:mb-0">{children}</li>,
-            a: ({ node, children, ...props }: {
-              node?: any;
-              children?: React.ReactNode;
-              [key: string]: any;
-            }) => {
-              // Check if this is a citation link
-              const isCitation = children?.[0]?.toString?.().match(/^\[\d+\]$/);
-              
-              return (
-                <a
-                  {...props}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={cn(
-                    "cursor-pointer",
-                    isCitation 
-                      ? "text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 no-underline" 
-                      : "text-primary hover:underline"
-                  )}
-                />
-              );
-            },
-            strong: ({children}) => (
-              <span className="tracking-tighter font-medium underline">
-                {children}
-              </span>
-            ),
-            blockquote: ({children}) => (
-              <blockquote className="border-l-2 border-border pl-6 py-2 italic mb-6 last:mb-0 text-muted-foreground">
-                {children}
-              </blockquote>
-            ),
-            table: ({children}) => (
-              <div className="overflow-x-auto mb-6 last:mb-0">
-                <table className="border-collapse w-full">
-                  {children}
-                </table>
-              </div>
-            ),
-            th: ({children}) => (
-              <th className="border border-border px-6 py-3 bg-muted font-medium">
-                {children}
-              </th>
-            ),
-            td: ({children}) => (
-              <td className="border border-border px-6 py-3">
-                {children}
-              </td>
-            ),
-            h1: ({children}) => <h1 className="text-2xl font-bold mb-6 mt-8 first:mt-0">{children}</h1>,
-            h2: ({children}) => <h2 className="text-xl font-bold mb-4 mt-8 first:mt-0">{children}</h2>,
-            h3: ({children}) => <h3 className="text-lg font-bold mb-4 mt-6 first:mt-0">{children}</h3>,
-            h4: ({children}) => <h4 className="text-base font-bold mb-4 mt-6 first:mt-0">{children}</h4>,
-            hr: () => <hr className="border-border my-8" />,
-          }}
-        >
-          {processedContent}
-        </ReactMarkdown>
-      </div>
-    );
+    return null;
   };
 
   if (role === 'error') {
@@ -701,31 +578,282 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     );
   }
 
-  const handleForkToNote = (text: string) => {
-    const newThread: Thread = {
-      id: nanoid(),
-      name: 'Forked Note',
-      isNote: true,
-      content: text,
-      files: [],
-      cachedFiles: [],
-      linkedNotes: [],
-      createdAt: Date.now(),
-      updatedAt: Date.now()
-    };
-    
-    // Add the new thread first
-    setThreads(prev => [...prev, newThread]);
+  const renderContent = () => {
+    console.log('Raw content:', content);
+    if (content.startsWith('data:audio/') || isAudioResponse) {
+      return (
+        <div className="flex flex-col gap-2">
+          <AudioPlayer 
+            src={content} 
+            className="w-full max-w-[500px]"
+            preload="metadata"
+          />
+        </div>
+      );
+    }
 
-    // Switch to notes tab and select the new note in a single operation
+    // Process content to wrap LaTeX in delimiters if needed
+    let processedContent = content;
+    
+    // First, normalize the expression by combining it into a single LaTeX expression
+    processedContent = processedContent
+      // Remove nested dollar signs
+      .replace(/\$\$([^$]+)\$\$/g, '$1')
+      // Handle function arguments
+      .replace(/\$([^$]+)\$\(([^)]+)\)/g, '$1($2)')
+      // Combine the entire expression
+      .replace(/\$([^$]+)\$\s*=\s*\$([^$]+)\$\s*\(([^)]+)\)\s*\+\s*i\$([^$]+)\$\s*\(([^)]+)\)/g, '$$1 = $2($3) + i$4($5)$');
+    
+    // If the content matches Euler's formula pattern, wrap it in display math
+    if (/e\^{i.*?}\s*=\s*\\cos\(.*?\)\s*\+\s*i\\sin\(.*?\)/.test(processedContent)) {
+      processedContent = processedContent.trim();
+    } else {
+      // Otherwise, proceed with normal LaTeX processing
+      const placeholders: {[key: string]: string} = {};
+      let counter = 0;
+      
+      processedContent = processedContent.replace(/\$.*?\$|\\\[.*?\\\]|\\\(.*?\\\)/g, (match) => {
+        const placeholder = `__LATEX_PLACEHOLDER_${counter}__`;
+        placeholders[placeholder] = match;
+        counter++;
+        return placeholder;
+      });
+      
+      const latexRegex = /\\[a-zA-Z]+{[^}]*}|\\[a-zA-Z]+\s*\{[^}]*\}|\\[a-zA-Z]+|[a-zA-Z0-9]+\^{[^}]*}|[a-zA-Z0-9]+_{[^}]*}/g;
+      const matches = processedContent.match(latexRegex);
+      
+      if (matches) {
+        matches.forEach(match => {
+          processedContent = processedContent.replace(match, `$${match}$`);
+        });
+      }
+      
+      Object.entries(placeholders).forEach(([placeholder, original]) => {
+        processedContent = processedContent.replace(placeholder, original);
+      });
+    }
+
+    return (
+      <div>
+        <ReactMarkdown
+          remarkPlugins={[
+            remarkGfm,
+            [remarkMath, { 
+              singleDollarTextMath: true,
+              doubleBackslashDisplayMath: true
+            }]
+          ]}
+          rehypePlugins={[[rehypeKatex, {
+            strict: false,
+            trust: true,
+            output: 'html',
+            throwOnError: false,
+            displayMode: true,
+            macros: {
+              "\\N": "\\mathbb{N}",
+              "\\R": "\\mathbb{R}",
+              "\\Z": "\\mathbb{Z}",
+              "\\Q": "\\mathbb{Q}",
+              "\\C": "\\mathbb{C}",
+              "\\P": "\\mathbb{P}"
+            }
+          }]]}
+          components={{
+            code({ node, inline, className, children, ...props }) {
+              const match = /language-(\w+)/.exec(className || '');
+              const language = match ? match[1] : '';
+              
+              // Special handling for LaTeX code blocks
+              if (language === 'latex') {
+                const content = String(children)
+                  .replace(/\\\\(?=[a-zA-Z])/g, '\\') // Unescape LaTeX commands
+                  .trim();
+                return (
+                  <div className="my-4">
+                    <LatexRenderer 
+                      latex={content} 
+                      displayMode={true} 
+                    />
+                  </div>
+                );
+              }
+              
+              // Check if content looks like LaTeX
+              const content = String(children);
+              const hasLatexCommands = /\\[a-zA-Z]+({[^}]*}|\s*{[^}]*})?/.test(content);
+              const hasLatexDelimiters = /\$|\\\(|\\\[/.test(content);
+              const hasLatexOperators = /[_^{}\[\]]/.test(content);
+              
+              // If it looks like LaTeX and isn't explicitly marked as a programming language,
+              // render it as math
+              if (!language && (hasLatexCommands || (hasLatexDelimiters && hasLatexOperators))) {
+                return (
+                  <LatexRenderer 
+                    latex={content} 
+                    displayMode={!inline} 
+                  />
+                );
+              }
+              
+              if (inline) {
+                return (
+                  <code 
+                    className="bg-muted px-1.5 py-0.5 rounded-lg text-sm font-mono" 
+                    {...props}
+                  >
+                    {children}
+                  </code>
+                );
+              }
+
+              return (
+                <div className="relative group my-4 bg-[#282c34] font-mono rounded-lg">
+                  <div 
+                    className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 
+                              transition-opacity"
+                  >
+                    <button
+                      onClick={() => navigator.clipboard.writeText(String(children))}
+                      className="p-1.5 hover:bg-accent/10 rounded-lg text-muted-foreground 
+                                hover:text-accent-foreground"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <SyntaxHighlighter
+                    language={language}
+                    style={materialOceanic}
+                    codeTagProps={{style: {fontFamily: '"Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace'} }}
+                    customStyle={{
+                      background: 'transparent',
+                      fontSize: '0.875rem',
+                    }}
+                    {...props}
+                  >
+                    {String(children).replace(/\n$/, '')}
+                  </SyntaxHighlighter>
+                </div>
+              );
+            },
+            math: ({ value, ...props }) => {
+              console.log('Math component received:', { value, props });
+              return (
+                <div className="my-2">
+                  <LatexRenderer latex={value} displayMode={true} />
+                </div>
+              );
+            },
+            inlineMath: ({ value, ...props }) => {
+              console.log('InlineMath component received:', { value, props });
+              return <LatexRenderer latex={value} displayMode={false} />;
+            },
+            text: ({ value, ...props }) => {
+              console.log('Text component received:', { value, props });
+              return <span>{value}</span>;
+            },
+            p: ({children}) => <p className="mb-4 text-sm first:mt-1 last:mb-0">{children}</p>,
+            ul: ({children}) => <ul className="list-disc p-6 mb-6 last:mb-0 space-y-2 text-sm">{children}</ul>,
+            ol: ({children}) => <ol className="list-decimal px-8 py-6 last:mb-0 space-y-2 text-sm">{children}</ol>,
+            li: ({children}) => <li className="mb-2 last:mb-0">{children}</li>,
+            a: ({ node, children, ...props }: {
+              node?: any;
+              children?: React.ReactNode;
+              [key: string]: any;
+            }) => {
+              // Check if this is a citation link
+              const isCitation = children?.[0]?.toString?.().match(/^\[\d+\]$/);
+              
+              return (
+                <a
+                  {...props}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(
+                    "cursor-pointer",
+                    isCitation 
+                      ? "text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 no-underline" 
+                      : "text-primary hover:underline"
+                  )}
+                />
+              );
+            },
+            strong: ({children}) => (
+              <span className="tracking-tighter font-medium underline">
+                {children}
+              </span>
+            ),
+            blockquote: ({children}) => (
+              <blockquote className="border-l-2 border-border pl-6 py-2 italic mb-6 last:mb-0 text-muted-foreground">
+                {children}
+              </blockquote>
+            ),
+            table: ({children}) => (
+              <div className="overflow-x-auto mb-6 last:mb-0">
+                <table className="border-collapse w-full">
+                  {children}
+                </table>
+              </div>
+            ),
+            th: ({children}) => (
+              <th className="border border-border px-6 py-3 bg-muted font-medium">
+                {children}
+              </th>
+            ),
+            td: ({children}) => (
+              <td className="border border-border px-6 py-3">
+                {children}
+              </td>
+            ),
+            h1: ({children}) => <h1 className="text-2xl font-bold mb-6 mt-8 first:mt-0">{children}</h1>,
+            h2: ({children}) => <h2 className="text-xl font-bold mb-4 mt-8 first:mt-0">{children}</h2>,
+            h3: ({children}) => <h3 className="text-lg font-bold mb-4 mt-6 first:mt-0">{children}</h3>,
+            h4: ({children}) => <h4 className="text-base font-bold mb-4 mt-6 first:mt-0">{children}</h4>,
+            hr: () => <hr className="border-border my-8" />,
+          }}
+        >
+          {processedContent}
+        </ReactMarkdown>
+      </div>
+    );
+  };
+
+  const handleForkToNote = (content: string) => {
+    if (!setThreads) return;
+    
+    setThreads(prev => {
+      // Create new note
+      const newNote = {
+        id: nanoid(),
+        name: 'Forked Note',
+        content: content,
+        isNote: true,
+        files: [],
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        cachedFiles: [],
+        linkedNotes: [],
+        isPinned: false,
+        parentId: null,
+        children: [],
+      };
+      
+      return [newNote, ...prev];
+    });
+
+    // Dispatch event to switch to notes tab and select the new note
     window.dispatchEvent(new CustomEvent('select-note', {
       detail: { 
-        noteId: newThread.id,
+        noteId: nanoid(),
         switchTab: true 
       }
     }));
 
-    showToast.success("Successfully forked message into a new note");
+    // Show success toast
+    showToast({
+      title: "Success",
+      description: "Successfully forked message into a new note",
+      variant: "default",
+    });
   };
 
   const renderers = {
@@ -743,12 +871,12 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     <ChatMessageContextMenu
       content={content}
       onDelete={onDelete}
-      onTextToSpeech={onTextToSpeech}
+      onTextToSpeech={handleTextToSpeech}
       onForkToNote={handleForkToNote}
       showTTS={showTTS}
     >
       <div className={cn(
-        "group relative inline-flex gap-2 pl-2 pr-2 py-2 selection:bg-palette-blue selection:text-white rounded-xl select-text max-w-full",
+        "group relative inline-flex gap-2 p-1 selection:bg-palette-blue selection:text-white rounded-lg select-text max-w-full",
         role === 'user' && 'bg-palette-blue text-white flex-row-reverse ml-auto pl-4',
         role === 'system' && 'bg-background/10 text-muted-foreground text-sm',
         role === 'assistant' && 'bg-background pb-8 border border-border text-accent-foreground'
@@ -756,7 +884,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         {role === 'assistant' && (
           <div className="absolute p-1 top-2 right-2 opacity-0 group-hover:opacity-100 bg-background border border-border rounded-lg transition-opacity flex gap-2">
             <ChatActions
-              onConvertToSpeech={onTextToSpeech}
+              onConvertToSpeech={handleTextToSpeech}
               onDelete={onDelete}
               onForkToNote={handleForkToNote}
               content={content}
@@ -861,7 +989,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
 
           {citations && <Citations citations={citations} />}
           
-          {/* ... other JSX ... */}
+          {renderAudioPlayer()}
         </div>
       </div>
     </ChatMessageContextMenu>

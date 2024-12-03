@@ -212,6 +212,8 @@ pub async fn send_message(
             }
         },
         "google" => {
+            println!("Starting Gemini API request processing");
+            
             let stored_keys = crate::config::load_stored_keys(&app_handle)?;
             let api_key = if let Some(key) = stored_keys["google"].as_str() {
                 key.to_string()
@@ -223,6 +225,8 @@ pub async fn send_message(
                 }
             };
 
+            println!("API Key present: {}", !api_key.is_empty());
+
             if api_key.is_empty() {
                 return Ok(ApiResponse {
                     content: None,
@@ -233,49 +237,193 @@ pub async fn send_message(
                 });
             }
 
+            // Basic request structure following Gemini API docs
             let request_body = serde_json::json!({
                 "contents": [{
+                    "role": "user",
                     "parts": [{
                         "text": message
                     }]
                 }],
-                "model": request.model,
-                "generation_config": {
-                    "max_output_tokens": 1024
-                }
+                "generationConfig": {
+                    "temperature": 0.7,
+                    "topP": 0.8,
+                    "topK": 40,
+                    "maxOutputTokens": 2048
+                },
+                "safetySettings": [
+                    {
+                        "category": "HARM_CATEGORY_HARASSMENT",
+                        "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+                    },
+                    {
+                        "category": "HARM_CATEGORY_HATE_SPEECH",
+                        "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+                    },
+                    {
+                        "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                        "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+                    },
+                    {
+                        "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                        "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+                    }
+                ]
             });
 
+            println!("Request model: {}", request.model);
+            println!("Request body: {}", serde_json::to_string_pretty(&request_body).unwrap());
+
+            let url = format!(
+                "https://generativelanguage.googleapis.com/v1/models/{}/generateContent?key={}",
+                request.model, api_key
+            );
+            println!("Request URL: {}", url.replace(&api_key, "API_KEY_HIDDEN"));
+
             let response = client
-                .post(format!(
-                    "https://generativelanguage.googleapis.com/v1/models/{}/generateContent?key={}",
-                    request.model, api_key
-                ))
+                .post(&url)
                 .header("Content-Type", "application/json")
                 .json(&request_body)
                 .send()
-                .await
-                .map_err(|e| e.to_string())?;
+                .await;
 
-            let status = response.status();
-            let response_text = response.text().await.map_err(|e| e.to_string())?;
+            match response {
+                Ok(mut resp) => {
+                    let status = resp.status();
+                    println!("Response status: {}", status);
+                    let response_text = resp.text().await.map_err(|e| e.to_string())?;
+                    println!("Raw response: {}", response_text);
 
-            if status.is_success() {
-                let json: serde_json::Value = serde_json::from_str(&response_text).map_err(|e| e.to_string())?;
-                Ok(ApiResponse {
-                    content: Some(json["candidates"][0]["content"]["parts"][0]["text"].as_str().unwrap_or_default().to_string()),
-                    error: None,
-                    citations: None,
-                    images: None,
-                    related_questions: None,
-                })
-            } else {
-                Ok(ApiResponse {
-                    content: None,
-                    error: Some(format!("API Error: {}", response_text)),
-                    citations: None,
-                    images: None,
-                    related_questions: None,
-                })
+                    if status.is_success() {
+                        match serde_json::from_str::<serde_json::Value>(&response_text) {
+                            Ok(json) => {
+                                println!("Successfully parsed JSON response");
+                                
+                                // Check for error field first
+                                if json.get("error").is_some() {
+                                    let error_msg = json["error"]["message"].as_str().unwrap_or("Unknown error");
+                                    println!("Found error in response: {}", error_msg);
+                                    
+                                    // Handle rate limit error specifically
+                                    if error_msg.contains("rate limit exceeded") || error_msg.contains("resource exhausted") {
+                                        return Ok(ApiResponse {
+                                            content: None,
+                                            error: Some("Rate limit exceeded for Gemini API. Please try again in about an hour.".to_string()),
+                                            citations: None,
+                                            images: None,
+                                            related_questions: None,
+                                        });
+                                    }
+                                    
+                                    return Ok(ApiResponse {
+                                        content: None,
+                                        error: Some(format!("API Error: {}", error_msg)),
+                                        citations: None,
+                                        images: None,
+                                        related_questions: None,
+                                    });
+                                }
+
+                                // Try to get the response text
+                                if let Some(candidates) = json.get("candidates") {
+                                    println!("Found candidates in response");
+                                    if let Some(first) = candidates.get(0) {
+                                        println!("Processing first candidate");
+                                        if let Some(content) = first.get("content") {
+                                            println!("Found content in candidate");
+                                            if let Some(parts) = content.get("parts") {
+                                                println!("Found parts in content");
+                                                if let Some(first_part) = parts.get(0) {
+                                                    println!("Processing first part");
+                                                    if let Some(text) = first_part.get("text") {
+                                                        if let Some(text_str) = text.as_str() {
+                                                            println!("Successfully extracted response text");
+                                                            return Ok(ApiResponse {
+                                                                content: Some(text_str.to_string()),
+                                                                error: None,
+                                                                citations: None,
+                                                                images: None,
+                                                                related_questions: None,
+                                                            });
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                println!("Could not find expected response structure");
+                                Ok(ApiResponse {
+                                    content: None,
+                                    error: Some("Could not parse Gemini response structure".to_string()),
+                                    citations: None,
+                                    images: None,
+                                    related_questions: None,
+                                })
+                            },
+                            Err(e) => {
+                                println!("Failed to parse JSON response: {}", e);
+                                Ok(ApiResponse {
+                                    content: None,
+                                    error: Some(format!("Failed to parse Gemini response: {}", e)),
+                                    citations: None,
+                                    images: None,
+                                    related_questions: None,
+                                })
+                            }
+                        }
+                    } else {
+                        println!("Request failed with status: {}", status);
+                        
+                        // Try to parse error response
+                        match serde_json::from_str::<serde_json::Value>(&response_text) {
+                            Ok(error_json) => {
+                                if let Some(error) = error_json.get("error") {
+                                    let error_msg = error["message"].as_str().unwrap_or("Unknown error");
+                                    
+                                    // Handle rate limit error specifically
+                                    if error_msg.contains("rate limit exceeded") || error_msg.contains("resource exhausted") {
+                                        return Ok(ApiResponse {
+                                            content: None,
+                                            error: Some("Rate limit exceeded for Gemini API. Please try again in about an hour.".to_string()),
+                                            citations: None,
+                                            images: None,
+                                            related_questions: None,
+                                        });
+                                    }
+                                    
+                                    return Ok(ApiResponse {
+                                        content: None,
+                                        error: Some(format!("Gemini API Error: {}", error_msg)),
+                                        citations: None,
+                                        images: None,
+                                        related_questions: None,
+                                    });
+                                }
+                            },
+                            Err(_) => {}
+                        }
+
+                        Ok(ApiResponse {
+                            content: None,
+                            error: Some(format!("Gemini API request failed with status {}: {}", status, response_text)),
+                            citations: None,
+                            images: None,
+                            related_questions: None,
+                        })
+                    }
+                },
+                Err(e) => {
+                    println!("Request failed: {}", e);
+                    Ok(ApiResponse {
+                        content: None,
+                        error: Some(format!("Failed to send request to Gemini API: {}", e)),
+                        citations: None,
+                        images: None,
+                        related_questions: None,
+                    })
+                }
             }
         },
         "xai" => {
@@ -315,29 +463,71 @@ pub async fn send_message(
                 .header("Content-Type", "application/json")
                 .json(&request_body)
                 .send()
-                .await
-                .map_err(|e| e.to_string())?;
+                .await;
 
-            let status = response.status();
-            let response_text = response.text().await.map_err(|e| e.to_string())?;
+            match response {
+                Ok(resp) => {
+                    let status = resp.status();
+                    let response_text = resp.text().await.map_err(|e| e.to_string())?;
 
-            if status.is_success() {
-                let json: serde_json::Value = serde_json::from_str(&response_text).map_err(|e| e.to_string())?;
-                Ok(ApiResponse {
-                    content: Some(json["choices"][0]["message"]["content"].as_str().unwrap_or_default().to_string()),
-                    error: None,
-                    citations: None,
-                    images: None,
-                    related_questions: None,
-                })
-            } else {
-                Ok(ApiResponse {
-                    content: None,
-                    error: Some(format!("API Error: {}", response_text)),
-                    citations: None,
-                    images: None,
-                    related_questions: None,
-                })
+                    if status.is_success() {
+                        let json: serde_json::Value = serde_json::from_str(&response_text).map_err(|e| e.to_string())?;
+                        
+                        // Check for rate limit error in success response
+                        if let Some(error) = json["error"].as_object() {
+                            if error["type"].as_str() == Some("rate_limit_exceeded") {
+                                return Ok(ApiResponse {
+                                    content: None,
+                                    error: Some("Rate limit exceeded for Grok. Please try again later.".to_string()),
+                                    citations: None,
+                                    images: None,
+                                    related_questions: None,
+                                });
+                            }
+                        }
+                        
+                        Ok(ApiResponse {
+                            content: Some(json["choices"][0]["message"]["content"].as_str().unwrap_or_default().to_string()),
+                            error: None,
+                            citations: None,
+                            images: None,
+                            related_questions: None,
+                        })
+                    } else {
+                        let error_json: Result<serde_json::Value, _> = serde_json::from_str(&response_text);
+                        
+                        if let Ok(error_value) = error_json {
+                            if let Some(error) = error_value["error"].as_object() {
+                                if error["type"].as_str() == Some("rate_limit_exceeded") {
+                                    return Ok(ApiResponse {
+                                        content: None,
+                                        error: Some("Rate limit exceeded for Grok. Please try again later.".to_string()),
+                                        citations: None,
+                                        images: None,
+                                        related_questions: None,
+                                    });
+                                }
+                            }
+                        }
+                        
+                        Ok(ApiResponse {
+                            content: None,
+                            error: Some(format!("API Error: {}", response_text)),
+                            citations: None,
+                            images: None,
+                            related_questions: None,
+                        })
+                    }
+                },
+                Err(e) => {
+                    Ok(ApiResponse {
+                        content: None,
+                        error: Some(format!("Failed to send request to Grok API: {}", e)),
+                        citations: None,
+                        images: None,
+                        related_questions: None,
+                    })
+                }
             }
         },
         "elevenlabs" => {
@@ -382,26 +572,15 @@ pub async fn send_message(
 }
 
 #[tauri::command]
-pub async fn verify_api_key(request: serde_json::Value) -> Result<serde_json::Value, String> {
+pub async fn verify_api_key(provider: &str, key: &str) -> Result<serde_json::Value, String> {
     let client = reqwest::Client::new();
-    let key = request["key"].as_str().ok_or("API key not provided")?;
-    let provider = request["provider"].as_str().ok_or("Provider not specified")?;
 
     match provider {
         "anthropic" => {
             let response = client
-                .post("https://api.anthropic.com/v1/messages")
+                .get("https://api.anthropic.com/v1/models")
                 .header("x-api-key", key)
                 .header("anthropic-version", "2023-06-01")
-                .header("content-type", "application/json")
-                .json(&serde_json::json!({
-                    "model": "claude-3-opus-20240229",
-                    "messages": [{
-                        "role": "user",
-                        "content": "Test message for API key verification"
-                    }],
-                    "max_tokens": 1
-                }))
                 .send()
                 .await
                 .map_err(|e| e.to_string())?;
@@ -483,11 +662,14 @@ pub async fn verify_api_key(request: serde_json::Value) -> Result<serde_json::Va
         },
         "google" => {
             let response = client
-                .post("https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent")
-                .query(&[("key", key)])
+                .post(format!(
+                    "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={}",
+                    key
+                ))
+                .header("Content-Type", "application/json")
                 .json(&serde_json::json!({
                     "contents": [{
-                        "parts": [{
+                        "parts":[{
                             "text": "Test message for API key verification"
                         }]
                     }]

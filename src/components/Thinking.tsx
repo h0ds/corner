@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import React from "react";
 
-export const TypingIndicator = () => {
+export const Thinking = () => {
   const [dots, setDots] = React.useState("");
 
   React.useEffect(() => {
@@ -12,7 +12,7 @@ export const TypingIndicator = () => {
         if (prev === "..") return "...";
         return "";
       });
-    }, 500);
+  }, 500);
 
     return () => clearInterval(interval);
   }, []);
@@ -35,7 +35,7 @@ export const TypingIndicator = () => {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 10 }}
       transition={{ duration: 0.2 }}
-      className="flex items-center gap-3 px-3 py-2 bg-accent-foreground dark:bg-card/80 rounded-xl shadow-none w-fit"
+      className="flex items-center gap-3 px-4 py-2 bg-accent border dark:bg-card/80 rounded-lg shadow-none w-fit"
     >
       <div className="flex items-center gap-[2px] h-2">
         {[0, 1, 2, 3].map((i) => (
@@ -44,11 +44,11 @@ export const TypingIndicator = () => {
             custom={i}
             variants={barVariants}
             animate="animate"
-            className="w-[2px] h-full bg-white rounded-full origin-bottom"
+            className="w-[2px] h-full bg-accent-foreground rounded-full origin-bottom"
           />
         ))}
       </div>
-      <span className="text-sm text-white font-normal min-w-[70px]">
+      <span className="text-sm text-accent-foreground font-normal min-w-[70px]">
         Thinking{dots}
       </span>
     </motion.div>

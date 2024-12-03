@@ -11,7 +11,7 @@ import { formatProviderName } from '@/lib/utils';
 export interface Model {
   id: string;
   name: string;
-  provider: 'anthropic' | 'perplexity' | 'openai' | 'xai' | 'google' | 'elevenlabs';
+  provider: 'anthropic' | 'perplexity' | 'openai' | 'xai' | 'google';
 }
 
 export const DEFAULT_MODEL = 'claude-3-sonnet-20240229';
@@ -47,12 +47,8 @@ export const AVAILABLE_MODELS: Model[] = [
   { id: 'grok-beta', name: 'Grok Beta', provider: 'xai' },
 
   // Google Models
-  { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', provider: 'google' },
-  { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', provider: 'google' },
-  { id: 'gemini-1.0-pro', name: 'Gemini 1.0 Pro', provider: 'google' },
-
-  // ElevenLabs Models
-  { id: 'elevenlabs-v1', name: 'ElevenLabs TTS', provider: 'elevenlabs' },
+  { id: 'gemini-pro', name: 'Gemini Pro', provider: 'google' },
+  { id: 'gemini-pro-vision', name: 'Gemini Pro Vision', provider: 'google' },
 ];
 
 interface ModelSelectorProps {
@@ -64,7 +60,6 @@ interface ModelSelectorProps {
     openai: string | null;
     xai: string | null;
     google: string | null;
-    elevenlabs: string | null;
   };
 }
 

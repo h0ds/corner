@@ -1,6 +1,6 @@
 import React from 'react';
 import { Window } from '@tauri-apps/api/window';
-import { X, Minus, Square, Maximize2 } from 'lucide-react';
+import { X, Minus, Square, Maximize2, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { type } from '@tauri-apps/plugin-os';
 import { open } from '@tauri-apps/plugin-shell';
@@ -45,7 +45,7 @@ export const TitleBar: React.FC = () => {
     return (
       <div 
         className={cn(
-          "h-10 flex items-center fixed top-0 left-0 right-0 z-50 backdrop-blur-sm",
+          "h-8 flex items-center fixed top-0 left-0 right-0 z-50 backdrop-blur-sm",
           "border-b border-border rounded-t-xl bg-background/80"
         )}
         onMouseDown={handleDrag}
@@ -59,7 +59,7 @@ export const TitleBar: React.FC = () => {
         >
           <button
             onClick={() => appWindow.close()}
-            className="h-3.5 w-3.5 rounded-full bg-accent border border-border hover:bg-red-500 hover:border-red-700 inline-flex items-center justify-center group transition-colors"
+            className="h-3.5 w-3.5 rounded-full bg-accent border bg-red-500 border-red-600 inline-flex items-center justify-center group transition-colors"
           >
             <X className={cn(
               "h-2.5 w-2.5 text-foreground group-hover:text-red-900",
@@ -68,7 +68,7 @@ export const TitleBar: React.FC = () => {
           </button>
           <button
             onClick={() => appWindow.minimize()}
-            className="h-3.5 w-3.5 rounded-full bg-accent border border-border hover:bg-yellow-500 hover:border-yellow-700 inline-flex items-center justify-center group transition-colors"
+            className="h-3.5 w-3.5 rounded-full bg-accent border bg-yellow-500 border-yellow-600 inline-flex items-center justify-center group transition-colors"
           >
             <Minus className={cn(
               "h-2.5 w-2.5 text-foreground group-hover:text-yellow-900",
@@ -77,10 +77,20 @@ export const TitleBar: React.FC = () => {
           </button>
           <button
             onClick={handleMaximize}
-            className="h-3.5 w-3.5 rounded-full bg-accent border border-border hover:bg-green-500 hover:border-green-700 inline-flex items-center justify-center group transition-colors"
+            className="h-3.5 w-3.5 rounded-full bg-accent border bg-green-500 border-green-600 inline-flex items-center justify-center group transition-colors"
           >
             <Maximize2 className={cn(
               "h-[6px] w-[6px] text-foreground group-hover:text-green-900",
+              isTrafficLightHovered ? "opacity-100" : "opacity-0"
+            )} />
+          </button>
+          <button
+            onClick={() => window.location.reload()}
+            className="h-3.5 w-3.5 rounded-full bg-accent border bg-gray-300 border-gray-400 inline-flex items-center justify-center group transition-colors"
+            title="Reload"
+          >
+            <RefreshCw className={cn(
+              "h-[6px] w-[6px] text-foreground group-hover:text-gray-700",
               isTrafficLightHovered ? "opacity-100" : "opacity-0"
             )} />
           </button>

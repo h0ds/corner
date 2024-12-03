@@ -23,7 +23,7 @@ pub async fn text_to_speech(text: String, app_handle: AppHandle) -> Result<Strin
 
     let response = client
         .post(format!(
-            "https://api.elevenlabs.io/v1/text-to-speech/{}/stream",
+            "https://api.elevenlabs.io/v1/text-to-speech/{}",
             voice_id
         ))
         .header("xi-api-key", api_key)
@@ -41,5 +41,6 @@ pub async fn text_to_speech(text: String, app_handle: AppHandle) -> Result<Strin
     }
 
     let audio_data = response.bytes().await.map_err(|e| e.to_string())?;
-    Ok(STANDARD.encode(audio_data))
+    let base64_audio = STANDARD.encode(audio_data);
+    Ok(format!("data:audio/mpeg;base64,{}", base64_audio))
 }

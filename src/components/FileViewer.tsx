@@ -34,11 +34,15 @@ export const FileViewer: React.FC<FileViewerProps> = ({
     return /\.pdf$/i.test(fileName);
   };
 
+  const isEpub = (fileName: string) => {
+    return /\.epub$/i.test(fileName);
+  };
+
   const getFileIcon = (fileName: string) => {
     if (isImage(fileName)) {
       return <Image className="h-4 w-4 text-primary" />;
     }
-    if (isPdf(fileName)) {
+    if (isPdf(fileName) || isEpub(fileName)) {
       return <FileType className="h-4 w-4 text-primary" />;
     }
     return <FileText className="h-4 w-4 text-primary" />;

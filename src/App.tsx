@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback, KeyboardEvent as ReactKeyboardEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { os } from '@tauri-apps/api';
 import { Preferences } from "./components/Preferences";
 import { AVAILABLE_MODELS } from "./components/ModelSelector";
 import { FilePreview } from "./components/FilePreview";
@@ -545,29 +544,54 @@ function App() {
       }
 
       if (activeThreadId) {
-        setThreads(prev => prev.map(thread => {
-          if (thread.id === activeThreadId) {
-            const newFile = {
-              id: nanoid(),
-              name: file.name,
-              content,
-              type: file.type,
-              timestamp: Date.now()
-            };
-            
-            toast({
-              title: "Success",
-              description: `Successfully uploaded ${file.name}`,
-            });
+        setThreads(prev => {
+          const updatedThreads = prev.map(thread => {
+            if (thread.id === activeThreadId) {
+              const newFile = {
+                id: nanoid(),
+                name: file.name,
+                content,
+                type: file.type,
+                timestamp: Date.now()
+              };
+              
+              // Initialize files array if it doesn't exist
+              const files = Array.isArray(thread.files) ? thread.files : [];
+              
+              console.log('Adding file to thread:', {
+                threadId: thread.id,
+                fileName: file.name,
+                currentFiles: files.length,
+              });
+              
+              const updatedThread = {
+                ...thread,
+                files: [...files, newFile],
+                updatedAt: Date.now()
+              };
 
-            return {
-              ...thread,
-              files: [...thread.files, newFile],
-              updatedAt: Date.now()
-            };
-          }
-          return thread;
-        }));
+              // Save the thread immediately
+              saveThread(updatedThread);
+              
+              toast({
+                title: "Success",
+                description: `Successfully uploaded ${file.name}`,
+              });
+
+              return updatedThread;
+            }
+            return thread;
+          });
+
+          // Save all threads
+          updatedThreads.forEach(thread => {
+            if (thread.id === activeThreadId) {
+              saveThread(thread);
+            }
+          });
+
+          return updatedThreads;
+        });
       }
     } catch (error) {
       console.error('File read error:', error);
@@ -1050,6 +1074,22 @@ function App() {
     setShowFileLinkMenu(false);
   };
 
+  // Add event listener for note selection
+  useEffect(() => {
+    const handleSelectNote = (event: CustomEvent<{ noteId: string, switchTab: boolean }>) => {
+      const { noteId, switchTab } = event.detail;
+      if (switchTab) {
+        setActiveTab('notes');
+      }
+      setActiveThreadId(noteId);
+    };
+
+    window.addEventListener('select-note', handleSelectNote as EventListener);
+    return () => {
+      window.removeEventListener('select-note', handleSelectNote as EventListener);
+    };
+  }, []);
+
   // Handle note navigation from wiki-links
   useEffect(() => {
     const handleSelectNote = (event: CustomEvent<{ noteId: string }>) => {
@@ -1393,11 +1433,28 @@ function App() {
     setShowPreferences(false);
   }, []);
 
+  useEffect(() => {
+    // Save thread whenever it changes
+    if (activeThreadId) {
+      const thread = threads.find(t => t.id === activeThreadId);
+      if (thread) {
+        saveThread(thread);
+      }
+    }
+  }, [threads, activeThreadId]);
+
+  useEffect(() => {
+    // Save all threads when they change
+    threads.forEach(thread => {
+      saveThread(thread);
+    });
+  }, [threads]);
+
   return (
     <>
       <div className="flex h-screen bg-background overflow-hidden rounded-xl">
         <TitleBar />
-        <div className="relative bg-background/50 flex h-[calc(100vh-2.5rem)] w-full mt-10">
+        <div className="relative bg-background/50 flex h-[calc(100vh-2.5rem)] w-full mt-8">
           {/* Sidebar with animation */}
           <motion.div
             initial={false}

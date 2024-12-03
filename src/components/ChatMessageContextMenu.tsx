@@ -37,7 +37,7 @@ export const ChatMessageContextMenu: React.FC<ChatMessageContextMenuProps> = ({
             className="flex items-center gap-2 cursor-pointer"
           >
             <Volume2 className="h-4 w-4" />
-            <span>Text to Speech</span>
+            <span>Read aloud</span>
           </ContextMenuItem>
         )}
         {onForkToNote && (

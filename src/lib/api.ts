@@ -1,12 +1,26 @@
 import { invoke } from '@tauri-apps/api/core';
+import { rateLimitManager } from './rateLimitManager';
 
-export interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  error?: string;
+export interface SendMessageRequest {
+  message: string;
+  model: string;
+  provider: string;
+  file_content?: string;
+  file_name?: string;
 }
 
-export async function getCompletion(prompt: string): Promise<ApiResponse<string>> {
+export interface ApiResponse {
+  content?: string;
+  error?: string;
+  citations?: Array<{
+    url: string;
+    title?: string;
+  }>;
+  images?: string[];
+  related_questions?: string[];
+}
+
+export async function getCompletion(prompt: string): Promise<ApiResponse> {
   try {
     const response = await invoke<string>('get_completion', { prompt });
     return { success: true, data: response };
@@ -15,7 +29,7 @@ export async function getCompletion(prompt: string): Promise<ApiResponse<string>
   }
 }
 
-export async function getChatCompletion(messages: any[]): Promise<ApiResponse<string>> {
+export async function getChatCompletion(messages: any[]): Promise<ApiResponse> {
   try {
     const response = await invoke<string>('get_chat_completion', { messages });
     return { success: true, data: response };
@@ -24,7 +38,7 @@ export async function getChatCompletion(messages: any[]): Promise<ApiResponse<st
   }
 }
 
-export async function getEmbeddings(text: string): Promise<ApiResponse<number[]>> {
+export async function getEmbeddings(text: string): Promise<ApiResponse> {
   try {
     const response = await invoke<number[]>('get_embeddings', { text });
     return { success: true, data: response };
@@ -33,7 +47,7 @@ export async function getEmbeddings(text: string): Promise<ApiResponse<number[]>
   }
 }
 
-export async function getModels(): Promise<ApiResponse<string[]>> {
+export async function getModels(): Promise<ApiResponse> {
   try {
     const response = await invoke<string[]>('get_models');
     return { success: true, data: response };
@@ -42,7 +56,7 @@ export async function getModels(): Promise<ApiResponse<string[]>> {
   }
 }
 
-export async function verifyApiKey(provider: string, key: string): Promise<ApiResponse<boolean>> {
+export async function verifyApiKey(provider: string, key: string): Promise<ApiResponse> {
   try {
     const response = await invoke<boolean>('verify_api_key', { provider, key });
     return { success: true, data: response };
@@ -51,11 +65,27 @@ export async function verifyApiKey(provider: string, key: string): Promise<ApiRe
   }
 }
 
-export async function textToSpeech(text: string): Promise<ApiResponse<string>> {
+export async function textToSpeech(text: string): Promise<ApiResponse> {
+  const rateLimitStatus = rateLimitManager.checkRateLimit('tts');
+  if (rateLimitStatus.isLimited) {
+    return {
+      success: false,
+      error: rateLimitManager.getRateLimitMessage('tts')
+    };
+  }
+
   try {
     const response = await invoke<string>('text_to_speech', { text });
     return { success: true, data: response };
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : String(error) };
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (errorMessage.toLowerCase().includes('rate limit')) {
+      rateLimitManager.setRateLimit('tts');
+      return {
+        success: false,
+        error: rateLimitManager.getRateLimitMessage('tts')
+      };
+    }
+    return { success: false, error: errorMessage };
   }
 }

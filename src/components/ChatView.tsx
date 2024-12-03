@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { Message, Thread, ApiKeys } from '@/types';
 import { ChatMessage } from './ChatMessage';
 import { FilePreview } from './FilePreview';
-import { TypingIndicator } from './TypingIndicator';
+import { Thinking } from './Thinking';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChatInput } from './ChatInput';
 import { invoke } from '@tauri-apps/api/core';
@@ -81,32 +81,10 @@ export const ChatView: React.FC<ChatViewProps> = ({
     try {
       setAudioLoading(true);
       const audioData = await invoke<string>('text_to_speech', { text });
-      
-      if (audioRef.current) {
-        audioRef.current.src = audioData;
-        audioRef.current.onended = () => {
-          setAudioPlaying(false);
-          audioRef.current!.src = '';
-        };
-        await audioRef.current.play();
-        setAudioPlaying(true);
-      } else {
-        const audio = new Audio(audioData);
-        audioRef.current = audio;
-        audio.onended = () => {
-          setAudioPlaying(false);
-          audio.src = '';
-        };
-        await audio.play();
-        setAudioPlaying(true);
-      }
-    } catch (error) {
-      console.error('TTS error:', error);
-      toast({
-        variant: "destructive",
-        description: "Failed to convert text to speech",
-        duration: 2000,
-      });
+      return audioData;
+    } catch (err) {
+      console.error('Failed to convert text to speech:', err);
+      throw err;
     } finally {
       setAudioLoading(false);
     }
@@ -290,7 +268,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   exit={{ opacity: 0 }}
                   className="flex justify-start h-[50px] items-center"
                 >
-                  <TypingIndicator />
+                  <Thinking />
                 </motion.div>
               ) : sortedMessages.length === 0 ? (
                 <motion.div
@@ -338,7 +316,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
               )}
               {loading && !isLoadingThread && (
                 <div className="flex justify-start">
-                  <TypingIndicator />
+                  <Thinking />
                 </div>
               )}
             </AnimatePresence>
