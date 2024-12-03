@@ -89,18 +89,27 @@ pub async fn send_message(
             }
         }
         "openai" => {
+            println!("Starting OpenAI API request...");
             let stored_keys = crate::config::load_stored_keys(&app_handle)?;
             let api_key = if let Some(key) = stored_keys["openai"].as_str() {
+                println!("Using stored API key");
                 key.to_string()
             } else {
                 let state_key = state.openai.lock().unwrap();
                 match state_key.clone() {
-                    Some(key) if !key.is_empty() => key,
-                    _ => env::var("OPENAI_API_KEY").unwrap_or_default(),
+                    Some(key) if !key.is_empty() => {
+                        println!("Using state API key");
+                        key
+                    },
+                    _ => {
+                        println!("Falling back to env API key");
+                        env::var("OPENAI_API_KEY").unwrap_or_default()
+                    },
                 }
             };
 
             if api_key.is_empty() {
+                println!("No OpenAI API key found");
                 return Ok(ApiResponse {
                     content: None,
                     error: Some("OpenAI API key not configured. Please add your API key in settings.".to_string()),
@@ -110,44 +119,79 @@ pub async fn send_message(
                 });
             }
 
+            println!("Preparing request with model: {}", request.model);
             let request_body = serde_json::json!({
                 "model": request.model,
                 "messages": [{
                     "role": "user",
                     "content": message
                 }],
-                "max_tokens": 1024
+                "temperature": 0.7,
+                "stream": false
             });
 
+            println!("Sending request to OpenAI API...");
             let response = client
                 .post("https://api.openai.com/v1/chat/completions")
                 .header("Authorization", format!("Bearer {}", api_key))
                 .header("Content-Type", "application/json")
+                .header("OpenAI-Beta", "assistants=v1")
                 .json(&request_body)
                 .send()
-                .await
-                .map_err(|e| e.to_string())?;
+                .await;
 
-            let status = response.status();
-            let response_text = response.text().await.map_err(|e| e.to_string())?;
+            match response {
+                Ok(resp) => {
+                    let status = resp.status();
+                    println!("Received response with status: {}", status);
+                    
+                    let response_text = resp.text().await.map_err(|e| {
+                        println!("Failed to read response text: {}", e);
+                        e.to_string()
+                    })?;
+                    println!("Response text: {}", response_text);
 
-            if status.is_success() {
-                let json: serde_json::Value = serde_json::from_str(&response_text).map_err(|e| e.to_string())?;
-                Ok(ApiResponse {
-                    content: Some(json["choices"][0]["message"]["content"].as_str().unwrap_or_default().to_string()),
-                    error: None,
-                    citations: None,
-                    images: None,
-                    related_questions: None,
-                })
-            } else {
-                Ok(ApiResponse {
-                    content: None,
-                    error: Some(format!("API Error: {}", response_text)),
-                    citations: None,
-                    images: None,
-                    related_questions: None,
-                })
+                    if status.is_success() {
+                        let json: serde_json::Value = serde_json::from_str(&response_text).map_err(|e| {
+                            println!("Failed to parse JSON response: {}", e);
+                            e.to_string()
+                        })?;
+                        println!("Successfully parsed response JSON");
+                        
+                        Ok(ApiResponse {
+                            content: Some(json["choices"][0]["message"]["content"].as_str().unwrap_or_default().to_string()),
+                            error: None,
+                            citations: None,
+                            images: None,
+                            related_questions: None,
+                        })
+                    } else {
+                        let error_json: serde_json::Value = serde_json::from_str(&response_text).unwrap_or_default();
+                        let error_message = error_json["error"]["message"]
+                            .as_str()
+                            .unwrap_or("Unknown error occurred")
+                            .to_string();
+                        
+                        println!("API error: {}", error_message);
+                        Ok(ApiResponse {
+                            content: None,
+                            error: Some(format!("OpenAI API Error: {}", error_message)),
+                            citations: None,
+                            images: None,
+                            related_questions: None,
+                        })
+                    }
+                },
+                Err(e) => {
+                    println!("Failed to send request: {}", e);
+                    Ok(ApiResponse {
+                        content: None,
+                        error: Some(format!("Failed to send request to OpenAI API: {}", e)),
+                        citations: None,
+                        images: None,
+                        related_questions: None,
+                    })
+                }
             }
         },
         "perplexity" => {
@@ -186,29 +230,41 @@ pub async fn send_message(
                 .header("Content-Type", "application/json")
                 .json(&request_body)
                 .send()
-                .await
-                .map_err(|e| e.to_string())?;
+                .await;
 
-            let status = response.status();
-            let response_text = response.text().await.map_err(|e| e.to_string())?;
+            match response {
+                Ok(mut resp) => {
+                    let status = resp.status();
+                    let response_text = resp.text().await.map_err(|e| e.to_string())?;
 
-            if status.is_success() {
-                let json: serde_json::Value = serde_json::from_str(&response_text).map_err(|e| e.to_string())?;
-                Ok(ApiResponse {
-                    content: Some(json["choices"][0]["message"]["content"].as_str().unwrap_or_default().to_string()),
-                    error: None,
-                    citations: None,
-                    images: None,
-                    related_questions: None,
-                })
-            } else {
-                Ok(ApiResponse {
-                    content: None,
-                    error: Some(format!("API Error: {}", response_text)),
-                    citations: None,
-                    images: None,
-                    related_questions: None,
-                })
+                    if status.is_success() {
+                        let json: serde_json::Value = serde_json::from_str(&response_text).map_err(|e| e.to_string())?;
+                        Ok(ApiResponse {
+                            content: Some(json["choices"][0]["message"]["content"].as_str().unwrap_or_default().to_string()),
+                            error: None,
+                            citations: None,
+                            images: None,
+                            related_questions: None,
+                        })
+                    } else {
+                        Ok(ApiResponse {
+                            content: None,
+                            error: Some(format!("API Error: {}", response_text)),
+                            citations: None,
+                            images: None,
+                            related_questions: None,
+                        })
+                    }
+                },
+                Err(e) => {
+                    Ok(ApiResponse {
+                        content: None,
+                        error: Some(format!("Failed to send request to Perplexity API: {}", e)),
+                        citations: None,
+                        images: None,
+                        related_questions: None,
+                    })
+                }
             }
         },
         "google" => {
@@ -650,14 +706,20 @@ pub async fn verify_api_key(provider: &str, key: &str) -> Result<serde_json::Val
                     "max_tokens": 1
                 }))
                 .send()
-                .await
-                .map_err(|e| e.to_string())?;
+                .await;
 
-            if response.status().is_success() {
-                Ok(serde_json::json!({}))
-            } else {
-                let error = response.text().await.map_err(|e| e.to_string())?;
-                Ok(serde_json::json!({ "error": error }))
+            match response {
+                Ok(resp) => {
+                    if resp.status().is_success() {
+                        Ok(serde_json::json!({}))
+                    } else {
+                        let error = resp.text().await.map_err(|e| e.to_string())?;
+                        Ok(serde_json::json!({ "error": error }))
+                    }
+                },
+                Err(e) => {
+                    Ok(serde_json::json!({ "error": e.to_string() }))
+                }
             }
         },
         "google" => {
@@ -675,14 +737,20 @@ pub async fn verify_api_key(provider: &str, key: &str) -> Result<serde_json::Val
                     }]
                 }))
                 .send()
-                .await
-                .map_err(|e| e.to_string())?;
+                .await;
 
-            if response.status().is_success() {
-                Ok(serde_json::json!({}))
-            } else {
-                let error = response.text().await.map_err(|e| e.to_string())?;
-                Ok(serde_json::json!({ "error": error }))
+            match response {
+                Ok(resp) => {
+                    if resp.status().is_success() {
+                        Ok(serde_json::json!({}))
+                    } else {
+                        let error = resp.text().await.map_err(|e| e.to_string())?;
+                        Ok(serde_json::json!({ "error": error }))
+                    }
+                },
+                Err(e) => {
+                    Ok(serde_json::json!({ "error": e.to_string() }))
+                }
             }
         },
         "elevenlabs" => {

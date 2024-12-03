@@ -77,95 +77,87 @@ export const ChatActions: React.FC<ChatActionsProps> = ({
   };
 
   return (
-    <div className={cn("flex flex-col gap-2", className)}>
-      <div className="flex items-center gap-1">
-        {showTTS && onConvertToSpeech && !audioUrl && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 hover:bg-accent-foreground/10"
-                  onClick={handleConvertToSpeech}
-                  disabled={isConverting}
-                >
-                  {isConverting ? (
-                    <Loader2 className="h-3.5 w-3.5 text-muted-foreground animate-spin" />
-                  ) : (
-                    <Volume2 className="h-3.5 w-3.5 text-muted-foreground" />
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="top">
-                <p className="text-xs">Read aloud</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
+    <div className={cn("flex items-center gap-1", className)}>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={() => copyToClipboard()}
+            >
+              {copied ? (
+                <Check className="h-3 w-3" />
+              ) : (
+                <Copy className="h-3 w-3" />
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            <p className="text-xs">Copy message</p>
+          </TooltipContent>
+        </Tooltip>
 
-        <TooltipProvider>
+        {showTTS && (
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-6 w-6 hover:bg-accent-foreground/10"
-                onClick={copyToClipboard}
+                className="h-6 w-6"
+                onClick={() => onConvertToSpeech?.(content)}
+                disabled={isConverting}
               >
-                {copied ? (
-                  <Check className="h-3.5 w-3.5 text-muted-foreground" />
+                {isConverting ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
                 ) : (
-                  <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                  <Volume2 className="h-3 w-3" />
                 )}
               </Button>
             </TooltipTrigger>
             <TooltipContent side="top">
-              <p className="text-xs">Copy message</p>
+              <p className="text-xs">Read aloud</p>
             </TooltipContent>
           </Tooltip>
-        </TooltipProvider>
+        )}
 
         {onForkToNote && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 hover:bg-accent-foreground/10"
-                  onClick={() => onForkToNote(content)}
-                >
-                  <GitForkIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="top">
-                <p className="text-xs">Fork to note</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={() => onForkToNote(content)}
+              >
+                <GitForkIcon className="h-3 w-3" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              <p className="text-xs">Fork to note</p>
+            </TooltipContent>
+          </Tooltip>
         )}
 
         {onDelete && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 hover:bg-accent-foreground/10"
-                  onClick={onDelete}
-                >
-                  <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="top">
-                <p className="text-xs">Delete message</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={onDelete}
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              <p className="text-xs">Delete message</p>
+            </TooltipContent>
+          </Tooltip>
         )}
-      </div>
+      </TooltipProvider>
 
       {audioUrl && (
         <AudioPlayer

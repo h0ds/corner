@@ -12,22 +12,10 @@ export const Thinking = () => {
         if (prev === "..") return "...";
         return "";
       });
-  }, 500);
+    }, 500);
 
     return () => clearInterval(interval);
   }, []);
-
-  const barVariants = {
-    animate: (i: number) => ({
-      scaleY: [0.4, 1, 0.4],
-      transition: {
-        duration: 1,
-        repeat: Infinity,
-        delay: i * 0.2,
-        ease: "easeInOut"
-      }
-    })
-  };
 
   return (
     <motion.div
@@ -35,19 +23,19 @@ export const Thinking = () => {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 10 }}
       transition={{ duration: 0.2 }}
-      className="flex items-center gap-3 px-4 py-2 bg-accent border dark:bg-card/80 rounded-lg shadow-none w-fit"
+      className="flex items-center gap-2 px-0.5 py-0.5 bg-accent border dark:bg-card/80 rounded-lg shadow-none w-fit"
     >
-      <div className="flex items-center gap-[2px] h-2">
-        {[0, 1, 2, 3].map((i) => (
-          <motion.div
-            key={i}
-            custom={i}
-            variants={barVariants}
-            animate="animate"
-            className="w-[2px] h-full bg-accent-foreground rounded-full origin-bottom"
-          />
-        ))}
-      </div>
+      <motion.img 
+        src="/icon.png" 
+        alt="Corner" 
+        className="h-8 w-8"
+        animate={{ opacity: [0.5, 1, 0.5] }}
+        transition={{
+          duration: 1.5,
+          repeat: Infinity,
+          ease: "easeInOut"
+        }}
+      />
       <span className="text-sm text-accent-foreground font-normal min-w-[70px]">
         Thinking{dots}
       </span>

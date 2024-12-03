@@ -2,15 +2,15 @@ import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { Message, PluginModification, Thread } from '@/types';
 import { ModelIcon } from './ModelIcon';
-import { User, XCircle, Copy, ImageIcon } from 'lucide-react';
+import { User, XCircle, Copy, ImageIcon, Bot, Sparkles } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { AVAILABLE_MODELS } from './ModelSelector';
-import ReactMarkdown from 'react-markdown';
+import { AVAILABLE_MODELS } from '@/lib/models';
+import ReactMarkdown, { Components } from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { materialOceanic } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import remarkGfm from 'remark-gfm';
@@ -23,8 +23,6 @@ import katex from 'katex';
 import { ChatMessageContextMenu } from './ChatMessageContextMenu';
 import { nanoid } from 'nanoid';
 import { showToast } from '@/lib/toast';
-import { textToSpeech } from '@/lib/api';
-import { AudioPlayer } from './AudioPlayer';
 
 interface ChatMessageProps {
   role: Message['role'];
@@ -39,8 +37,8 @@ interface ChatMessageProps {
   onSendMessage?: (message: string) => void;
   onTextToSpeech?: (text: string) => Promise<void>;
   showTTS?: boolean;
-  isAudioResponse?: boolean;
   onDelete?: () => void;
+  onForkToNote?: (content: string) => void;
   setThreads?: React.Dispatch<React.SetStateAction<Thread[]>>;
 }
 
@@ -126,6 +124,105 @@ const LatexRenderer: React.FC<{ latex: string, displayMode?: boolean }> = ({ lat
   );
 };
 
+// Add type for code component props
+interface CodeProps {
+  node?: any;
+  inline?: boolean;
+  className?: string;
+  children: React.ReactNode;
+}
+
+// Add type for math component props
+interface MathProps {
+  value: string;
+}
+
+interface LinkProps {
+  node?: any;
+  children?: React.ReactNode;
+  href?: string;
+  [key: string]: any;
+}
+
+const components: Components = {
+  code({ node, inline, className, children, ...props }: CodeProps) {
+    const match = /language-(\w+)/.exec(className || '');
+    const language = match ? match[1] : '';
+    
+    if (inline) {
+      return (
+        <code 
+          className="bg-muted px-1.5 py-0.5 rounded-lg text-sm font-mono" 
+          {...props}
+        >
+          {children}
+        </code>
+      );
+    }
+
+    return (
+      <div className="relative group my-4 bg-[#282c34] font-mono rounded-lg">
+        <div 
+          className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 
+                    transition-opacity"
+        >
+          <button
+            onClick={() => navigator.clipboard.writeText(String(children))}
+            className="p-1.5 hover:bg-accent/10 rounded-lg text-muted-foreground 
+                      hover:text-accent-foreground"
+          >
+            <Copy className="h-4 w-4" />
+          </button>
+        </div>
+        <SyntaxHighlighter
+          language={language || 'text'}
+          style={materialOceanic as any}
+          codeTagProps={{style: {fontFamily: '"Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace'} }}
+          customStyle={{
+            background: 'transparent',
+            fontSize: '0.875rem',
+          }}
+          {...props}
+        >
+          {String(children).replace(/\n$/, '')}
+        </SyntaxHighlighter>
+      </div>
+    );
+  },
+  math({ value }: MathProps) {
+    return (
+      <div className="my-2">
+        <LatexRenderer latex={value} displayMode={true} />
+      </div>
+    );
+  },
+  inlineMath({ value }: MathProps) {
+    return <LatexRenderer latex={value} displayMode={false} />;
+  },
+  a({ node, children, ...props }: LinkProps) {
+    // Check if this is a citation link
+    const firstChild = Array.isArray(children) ? children[0] : children;
+    const isCitation = typeof firstChild === 'string' && firstChild.match(/^\[\d+\]$/);
+    
+    return (
+      <a
+        {...props}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={cn(
+          "cursor-pointer",
+          isCitation 
+            ? "text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 no-underline" 
+            : "text-primary hover:underline"
+        )}
+      >
+        {children}
+      </a>
+    );
+  },
+  // ... other components ...
+};
+
 export const ChatMessage: React.FC<ChatMessageProps> = ({
   role,
   content,
@@ -139,125 +236,22 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   onSendMessage,
   onTextToSpeech,
   showTTS = false,
-  isAudioResponse = false,
   onDelete,
+  onForkToNote,
   setThreads,
 }) => {
-  const [isConverting, setIsConverting] = useState(false);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  console.log('ChatMessage received modelId:', modelId);
 
-  const setupAudioListeners = (audio: HTMLAudioElement) => {
-    const handlePlay = () => setIsPlaying(true);
-    const handlePause = () => setIsPlaying(false);
-    const handleEnded = () => setIsPlaying(false);
-
-    audio.addEventListener('play', handlePlay);
-    audio.addEventListener('pause', handlePause);
-    audio.addEventListener('ended', handleEnded);
-
-    return () => {
-      audio.removeEventListener('play', handlePlay);
-      audio.removeEventListener('pause', handlePause);
-      audio.removeEventListener('ended', handleEnded);
-    };
-  };
-
-  const handlePlay = async () => {
-    if (audioRef.current) {
-      try {
-        await audioRef.current.play();
-      } catch (error) {
-        console.error('Failed to play audio:', error);
-      }
+  const handleTextToSpeech = async () => {
+    if (onTextToSpeech) {
+      await onTextToSpeech(content);
     }
   };
 
-  const handlePause = () => {
-    if (audioRef.current) {
-      audioRef.current.pause();
+  const handleForkToNote = () => {
+    if (onForkToNote) {
+      onForkToNote(content);
     }
-  };
-
-  const handleTextToSpeech = async (text: string) => {
-    try {
-      setIsConverting(true);
-      const response = await textToSpeech(text);
-      
-      if (response.success && response.data) {
-        setAudioUrl(response.data);
-        
-        // Create and set up new audio element
-        if (audioRef.current) {
-          audioRef.current.src = response.data;
-        } else {
-          audioRef.current = new Audio(response.data);
-          const cleanup = setupAudioListeners(audioRef.current);
-          // Cleanup previous listeners when component unmounts
-          return () => cleanup();
-        }
-        
-        // Start playback
-        await handlePlay();
-      } else {
-        const errorMessage = response.error || 'Failed to convert text to speech';
-        showToast({
-          title: response.error?.toLowerCase().includes('rate limit') ? 'Rate Limit' : 'Error',
-          description: errorMessage,
-          variant: "destructive",
-          duration: 5000,
-        });
-      }
-    } catch (err) {
-      console.error('Failed to convert to speech:', err);
-      showToast({
-        title: "Error",
-        description: err instanceof Error ? err.message : "Failed to convert text to speech",
-        variant: "destructive",
-      });
-    } finally {
-      setIsConverting(false);
-    }
-  };
-
-  // Cleanup on unmount
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (audio) {
-      const cleanup = setupAudioListeners(audio);
-      return () => {
-        cleanup();
-        audio.pause();
-      };
-    }
-  }, []);
-
-  const renderAudioPlayer = () => {
-    if (isConverting) {
-      return (
-        <div className="absolute bottom-2 left-2 right-2 z-10 flex items-center gap-2 bg-background/80 backdrop-blur-sm p-2 rounded-lg border border-border">
-          <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          <span className="text-xs text-muted-foreground">Converting to audio...</span>
-        </div>
-      );
-    }
-
-    if (audioUrl || (content.startsWith('data:audio/') || isAudioResponse)) {
-      return (
-        <div className="absolute bottom-2 left-2 right-2 z-10">
-          <AudioPlayer 
-            audioRef={audioRef}
-            className="w-full"
-            isPlaying={isPlaying}
-            onPlay={handlePlay}
-            onPause={handlePause}
-          />
-        </div>
-      );
-    }
-
-    return null;
   };
 
   if (role === 'error') {
@@ -268,8 +262,17 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
       >
         <XCircle className="h-5 w-5 mt-0.5 shrink-0" />
         <div className="text-sm">
-          <span className="font-medium">Error: </span>
-          {content}
+          {content.includes('rate limit') ? (
+            <>
+              <span className="font-medium">Rate Limit Error: </span>
+              The model is currently at capacity. Please wait a moment and try again.
+            </>
+          ) : (
+            <>
+              <span className="font-medium">Error: </span>
+              {content}
+            </>
+          )}
           <div className="text-xs text-muted-foreground group-hover:underline">
             Click to configure API keys
           </div>
@@ -308,122 +311,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                   throwOnError: false,
                   displayMode: true
                 }]]}
-                components={{
-                  code({ node, inline, className, children, ...props }) {
-                    const match = /language-(\w+)/.exec(className || '');
-                    const language = match ? match[1] : '';
-                    
-                    if (inline) {
-                      return (
-                        <code 
-                          className="bg-muted px-1.5 py-0.5 rounded-lg text-sm font-mono" 
-                          {...props}
-                        >
-                          {children}
-                        </code>
-                      );
-                    }
-
-                    return (
-                      <div className="relative group my-4 bg-[#282c34] font-mono rounded-lg">
-                        <div 
-                          className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 
-                                    transition-opacity"
-                        >
-                          <button
-                            onClick={() => navigator.clipboard.writeText(String(children))}
-                            className="p-1.5 hover:bg-accent/10 rounded-lg text-muted-foreground 
-                                      hover:text-accent-foreground"
-                          >
-                            <Copy className="h-4 w-4" />
-                          </button>
-                        </div>
-                        <SyntaxHighlighter
-                          language={language}
-                          style={materialOceanic}
-                          codeTagProps={{style: {fontFamily: '"Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace'} }}
-                          customStyle={{
-                            background: 'transparent',
-                            fontSize: '0.875rem',
-                          }}
-                          {...props}
-                        >
-                          {String(children).replace(/\n$/, '')}
-                        </SyntaxHighlighter>
-                      </div>
-                    );
-                  },
-                  math: ({ value, ...props }) => {
-                    console.log('Display Math Node:', { value });
-                    return (
-                      <div className="my-2">
-                        <LatexRenderer latex={value} displayMode={true} />
-                      </div>
-                    );
-                  },
-                  inlineMath: ({ value, ...props }) => {
-                    console.log('Inline Math Node:', { value });
-                    return <LatexRenderer latex={value} displayMode={false} />;
-                  },
-                  p: ({children}) => <p className="mb-4 text-sm first:mt-1 last:mb-0">{children}</p>,
-                  ul: ({children}) => <ul className="list-disc p-6 mb-6 last:mb-0 space-y-2 text-sm">{children}</ul>,
-                  ol: ({children}) => <ol className="list-decimal px-8 py-6 last:mb-0 space-y-2 text-sm">{children}</ol>,
-                  li: ({children}) => <li className="mb-2 last:mb-0">{children}</li>,
-                  a: ({ node, children, ...props }: {
-                    node?: any;
-                    children?: React.ReactNode;
-                    [key: string]: any;
-                  }) => {
-                    // Check if this is a citation link
-                    const isCitation = children?.[0]?.toString?.().match(/^\[\d+\]$/);
-                    
-                    return (
-                      <a
-                        {...props}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={cn(
-                          "cursor-pointer",
-                          isCitation 
-                            ? "text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 no-underline" 
-                            : "text-primary hover:underline"
-                        )}
-                      />
-                    );
-                  },
-                  strong: ({children}) => (
-                    <span className="tracking-tighter font-medium underline">
-                      {children}
-                    </span>
-                  ),
-                  blockquote: ({children}) => (
-                    <blockquote className="border-l-2 border-border pl-6 py-2 italic mb-6 last:mb-0 text-muted-foreground">
-                      {children}
-                    </blockquote>
-                  ),
-                  table: ({children}) => (
-                    <div className="overflow-x-auto mb-6 last:mb-0">
-                      <table className="border-collapse w-full">
-                        {children}
-                      </table>
-                    </div>
-                  ),
-                  th: ({children}) => (
-                    <th className="border border-border px-6 py-3 bg-muted font-medium">
-                      {children}
-                    </th>
-                  ),
-                  td: ({children}) => (
-                    <td className="border border-border px-6 py-3">
-                      {children}
-                    </td>
-                  ),
-                  h1: ({children}) => <h1 className="text-2xl font-bold mb-6 mt-8 first:mt-0">{children}</h1>,
-                  h2: ({children}) => <h2 className="text-xl font-bold mb-4 mt-8 first:mt-0">{children}</h2>,
-                  h3: ({children}) => <h3 className="text-lg font-bold mb-4 mt-6 first:mt-0">{children}</h3>,
-                  h4: ({children}) => <h4 className="text-base font-bold mb-4 mt-6 first:mt-0">{children}</h4>,
-                  hr: () => <hr className="border-border my-8" />,
-                }}
+                components={components}
               >
                 {comparison.model1.response}
               </ReactMarkdown>
@@ -452,122 +340,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                   throwOnError: false,
                   displayMode: true
                 }]]}
-                components={{
-                  code({ node, inline, className, children, ...props }) {
-                    const match = /language-(\w+)/.exec(className || '');
-                    const language = match ? match[1] : '';
-                    
-                    if (inline) {
-                      return (
-                        <code 
-                          className="bg-muted px-1.5 py-0.5 rounded-lg text-sm font-mono" 
-                          {...props}
-                        >
-                          {children}
-                        </code>
-                      );
-                    }
-
-                    return (
-                      <div className="relative group my-4 bg-[#282c34] font-mono rounded-lg">
-                        <div 
-                          className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 
-                                    transition-opacity"
-                        >
-                          <button
-                            onClick={() => navigator.clipboard.writeText(String(children))}
-                            className="p-1.5 hover:bg-accent/10 rounded-lg text-muted-foreground 
-                                      hover:text-accent-foreground"
-                          >
-                            <Copy className="h-4 w-4" />
-                          </button>
-                        </div>
-                        <SyntaxHighlighter
-                          language={language}
-                          style={materialOceanic}
-                          codeTagProps={{style: {fontFamily: '"Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace'} }}
-                          customStyle={{
-                            background: 'transparent',
-                            fontSize: '0.875rem',
-                          }}
-                          {...props}
-                        >
-                          {String(children).replace(/\n$/, '')}
-                        </SyntaxHighlighter>
-                      </div>
-                    );
-                  },
-                  math: ({ value, ...props }) => {
-                    console.log('Display Math Node:', { value });
-                    return (
-                      <div className="my-2">
-                        <LatexRenderer latex={value} displayMode={true} />
-                      </div>
-                    );
-                  },
-                  inlineMath: ({ value, ...props }) => {
-                    console.log('Inline Math Node:', { value });
-                    return <LatexRenderer latex={value} displayMode={false} />;
-                  },
-                  p: ({children}) => <p className="mb-4 text-sm first:mt-1 last:mb-0">{children}</p>,
-                  ul: ({children}) => <ul className="list-disc p-6 mb-6 last:mb-0 space-y-2 text-sm">{children}</ul>,
-                  ol: ({children}) => <ol className="list-decimal px-8 py-6 last:mb-0 space-y-2 text-sm">{children}</ol>,
-                  li: ({children}) => <li className="mb-2 last:mb-0">{children}</li>,
-                  a: ({ node, children, ...props }: {
-                    node?: any;
-                    children?: React.ReactNode;
-                    [key: string]: any;
-                  }) => {
-                    // Check if this is a citation link
-                    const isCitation = children?.[0]?.toString?.().match(/^\[\d+\]$/);
-                    
-                    return (
-                      <a
-                        {...props}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={cn(
-                          "cursor-pointer",
-                          isCitation 
-                            ? "text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 no-underline" 
-                            : "text-primary hover:underline"
-                        )}
-                      />
-                    );
-                  },
-                  strong: ({children}) => (
-                    <span className="tracking-tighter font-medium underline">
-                      {children}
-                    </span>
-                  ),
-                  blockquote: ({children}) => (
-                    <blockquote className="border-l-2 border-border pl-6 py-2 italic mb-6 last:mb-0 text-muted-foreground">
-                      {children}
-                    </blockquote>
-                  ),
-                  table: ({children}) => (
-                    <div className="overflow-x-auto mb-6 last:mb-0">
-                      <table className="border-collapse w-full">
-                        {children}
-                      </table>
-                    </div>
-                  ),
-                  th: ({children}) => (
-                    <th className="border border-border px-6 py-3 bg-muted font-medium">
-                      {children}
-                    </th>
-                  ),
-                  td: ({children}) => (
-                    <td className="border border-border px-6 py-3">
-                      {children}
-                    </td>
-                  ),
-                  h1: ({children}) => <h1 className="text-2xl font-bold mb-6 mt-8 first:mt-0">{children}</h1>,
-                  h2: ({children}) => <h2 className="text-xl font-bold mb-4 mt-8 first:mt-0">{children}</h2>,
-                  h3: ({children}) => <h3 className="text-lg font-bold mb-4 mt-6 first:mt-0">{children}</h3>,
-                  h4: ({children}) => <h4 className="text-base font-bold mb-4 mt-6 first:mt-0">{children}</h4>,
-                  hr: () => <hr className="border-border my-8" />,
-                }}
+                components={components}
               >
                 {comparison.model2.response}
               </ReactMarkdown>
@@ -580,18 +353,6 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
 
   const renderContent = () => {
     console.log('Raw content:', content);
-    if (content.startsWith('data:audio/') || isAudioResponse) {
-      return (
-        <div className="flex flex-col gap-2">
-          <AudioPlayer 
-            src={content} 
-            className="w-full max-w-[500px]"
-            preload="metadata"
-          />
-        </div>
-      );
-    }
-
     // Process content to wrap LaTeX in delimiters if needed
     let processedContent = content;
     
@@ -658,158 +419,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
               "\\P": "\\mathbb{P}"
             }
           }]]}
-          components={{
-            code({ node, inline, className, children, ...props }) {
-              const match = /language-(\w+)/.exec(className || '');
-              const language = match ? match[1] : '';
-              
-              // Special handling for LaTeX code blocks
-              if (language === 'latex') {
-                const content = String(children)
-                  .replace(/\\\\(?=[a-zA-Z])/g, '\\') // Unescape LaTeX commands
-                  .trim();
-                return (
-                  <div className="my-4">
-                    <LatexRenderer 
-                      latex={content} 
-                      displayMode={true} 
-                    />
-                  </div>
-                );
-              }
-              
-              // Check if content looks like LaTeX
-              const content = String(children);
-              const hasLatexCommands = /\\[a-zA-Z]+({[^}]*}|\s*{[^}]*})?/.test(content);
-              const hasLatexDelimiters = /\$|\\\(|\\\[/.test(content);
-              const hasLatexOperators = /[_^{}\[\]]/.test(content);
-              
-              // If it looks like LaTeX and isn't explicitly marked as a programming language,
-              // render it as math
-              if (!language && (hasLatexCommands || (hasLatexDelimiters && hasLatexOperators))) {
-                return (
-                  <LatexRenderer 
-                    latex={content} 
-                    displayMode={!inline} 
-                  />
-                );
-              }
-              
-              if (inline) {
-                return (
-                  <code 
-                    className="bg-muted px-1.5 py-0.5 rounded-lg text-sm font-mono" 
-                    {...props}
-                  >
-                    {children}
-                  </code>
-                );
-              }
-
-              return (
-                <div className="relative group my-4 bg-[#282c34] font-mono rounded-lg">
-                  <div 
-                    className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 
-                              transition-opacity"
-                  >
-                    <button
-                      onClick={() => navigator.clipboard.writeText(String(children))}
-                      className="p-1.5 hover:bg-accent/10 rounded-lg text-muted-foreground 
-                                hover:text-accent-foreground"
-                    >
-                      <Copy className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <SyntaxHighlighter
-                    language={language}
-                    style={materialOceanic}
-                    codeTagProps={{style: {fontFamily: '"Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace'} }}
-                    customStyle={{
-                      background: 'transparent',
-                      fontSize: '0.875rem',
-                    }}
-                    {...props}
-                  >
-                    {String(children).replace(/\n$/, '')}
-                  </SyntaxHighlighter>
-                </div>
-              );
-            },
-            math: ({ value, ...props }) => {
-              console.log('Math component received:', { value, props });
-              return (
-                <div className="my-2">
-                  <LatexRenderer latex={value} displayMode={true} />
-                </div>
-              );
-            },
-            inlineMath: ({ value, ...props }) => {
-              console.log('InlineMath component received:', { value, props });
-              return <LatexRenderer latex={value} displayMode={false} />;
-            },
-            text: ({ value, ...props }) => {
-              console.log('Text component received:', { value, props });
-              return <span>{value}</span>;
-            },
-            p: ({children}) => <p className="mb-4 text-sm first:mt-1 last:mb-0">{children}</p>,
-            ul: ({children}) => <ul className="list-disc p-6 mb-6 last:mb-0 space-y-2 text-sm">{children}</ul>,
-            ol: ({children}) => <ol className="list-decimal px-8 py-6 last:mb-0 space-y-2 text-sm">{children}</ol>,
-            li: ({children}) => <li className="mb-2 last:mb-0">{children}</li>,
-            a: ({ node, children, ...props }: {
-              node?: any;
-              children?: React.ReactNode;
-              [key: string]: any;
-            }) => {
-              // Check if this is a citation link
-              const isCitation = children?.[0]?.toString?.().match(/^\[\d+\]$/);
-              
-              return (
-                <a
-                  {...props}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={cn(
-                    "cursor-pointer",
-                    isCitation 
-                      ? "text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 no-underline" 
-                      : "text-primary hover:underline"
-                  )}
-                />
-              );
-            },
-            strong: ({children}) => (
-              <span className="tracking-tighter font-medium underline">
-                {children}
-              </span>
-            ),
-            blockquote: ({children}) => (
-              <blockquote className="border-l-2 border-border pl-6 py-2 italic mb-6 last:mb-0 text-muted-foreground">
-                {children}
-              </blockquote>
-            ),
-            table: ({children}) => (
-              <div className="overflow-x-auto mb-6 last:mb-0">
-                <table className="border-collapse w-full">
-                  {children}
-                </table>
-              </div>
-            ),
-            th: ({children}) => (
-              <th className="border border-border px-6 py-3 bg-muted font-medium">
-                {children}
-              </th>
-            ),
-            td: ({children}) => (
-              <td className="border border-border px-6 py-3">
-                {children}
-              </td>
-            ),
-            h1: ({children}) => <h1 className="text-2xl font-bold mb-6 mt-8 first:mt-0">{children}</h1>,
-            h2: ({children}) => <h2 className="text-xl font-bold mb-4 mt-8 first:mt-0">{children}</h2>,
-            h3: ({children}) => <h3 className="text-lg font-bold mb-4 mt-6 first:mt-0">{children}</h3>,
-            h4: ({children}) => <h4 className="text-base font-bold mb-4 mt-6 first:mt-0">{children}</h4>,
-            hr: () => <hr className="border-border my-8" />,
-          }}
+          components={components}
         >
           {processedContent}
         </ReactMarkdown>
@@ -817,55 +427,17 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     );
   };
 
-  const handleForkToNote = (content: string) => {
-    if (!setThreads) return;
-    
-    setThreads(prev => {
-      // Create new note
-      const newNote = {
-        id: nanoid(),
-        name: 'Forked Note',
-        content: content,
-        isNote: true,
-        files: [],
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        cachedFiles: [],
-        linkedNotes: [],
-        isPinned: false,
-        parentId: null,
-        children: [],
-      };
-      
-      return [newNote, ...prev];
-    });
+  const isAssistant = role === 'assistant';
+  const isUser = role === 'user';
+  const isSystem = role === 'system';
 
-    // Dispatch event to switch to notes tab and select the new note
-    window.dispatchEvent(new CustomEvent('select-note', {
-      detail: { 
-        noteId: nanoid(),
-        switchTab: true 
-      }
-    }));
-
-    // Show success toast
-    showToast({
-      title: "Success",
-      description: "Successfully forked message into a new note",
-      variant: "default",
-    });
-  };
-
-  const renderers = {
-    // Handle inline math (enclosed in single $)
-    inlineMath: ({ value }: { value: string }) => (
-      <LatexRenderer latex={value} displayMode={false} />
-    ),
-    // Handle display math (enclosed in double $$)
-    math: ({ value }: { value: string }) => (
-      <LatexRenderer latex={value} displayMode={true} />
-    ),
-  };
+  // Debug model information
+  console.log('ChatMessage rendering:', {
+    role,
+    modelId,
+    isAssistant,
+    availableModels: AVAILABLE_MODELS.map(m => m.id)
+  });
 
   return (
     <ChatMessageContextMenu
@@ -876,12 +448,12 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
       showTTS={showTTS}
     >
       <div className={cn(
-        "group relative inline-flex gap-2 p-1 selection:bg-palette-blue selection:text-white rounded-lg select-text max-w-full",
-        role === 'user' && 'bg-palette-blue text-white flex-row-reverse ml-auto pl-4',
-        role === 'system' && 'bg-background/10 text-muted-foreground text-sm',
-        role === 'assistant' && 'bg-background pb-8 border border-border text-accent-foreground'
+        "group relative inline-flex gap-2 px-2 py-2 selection:bg-palette-blue selection:text-white rounded-lg select-text max-w-[80%]",
+        isUser && 'bg-palette-blue text-white ml-auto',
+        isSystem && 'bg-background/10 text-muted-foreground text-sm',
+        isAssistant && 'bg-background border border-border text-accent-foreground'
       )}>
-        {role === 'assistant' && (
+        {isAssistant && (
           <div className="absolute p-1 top-2 right-2 opacity-0 group-hover:opacity-100 bg-background border border-border rounded-lg transition-opacity flex gap-2">
             <ChatActions
               onConvertToSpeech={handleTextToSpeech}
@@ -892,105 +464,83 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             />
           </div>
         )}
-
-        <div className="flex flex-col items-center gap-2">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className={cn(
-                  "w-8 h-8 flex items-center justify-center rounded-md shrink-0",
-                  role === 'assistant' ? "bg-accent text-accent-foreground" : "bg-background/10 text-white"
-                )}>
-                  {role === 'assistant' && modelId && (
-                    <ModelIcon modelId={modelId} className="h-4 w-4" />
-                  )}
-                  {role === 'user' && (
-                    <User className="h-4 w-4" />
-                  )}
-                </div>
-              </TooltipTrigger>
-              {role === 'assistant' && modelId && (
-                <TooltipContent side="top" className="text-xs">
-                  {(() => {
-                    const model = AVAILABLE_MODELS.find(m => m.id === modelId);
-                    return model ? (
-                      <div className="flex flex-col gap-0.5">
-                        <span className="font-medium">{model.name}</span>
-                        <span className="text-muted-foreground">
-                          {model.provider === 'anthropic' ? 'Anthropic' : 
-                           model.provider === 'openai' ? 'OpenAI' : 'Perplexity'}
-                        </span>
+        
+        {!isUser && (
+          <div className="flex flex-col items-center gap-2">
+            <div className={cn(
+              "flex h-7 w-7 shrink-0 select-none items-center justify-center rounded-md border shadow-sm",
+              "bg-background border-border"
+            )}>
+              {isSystem ? (
+                <Sparkles className="h-4 w-4" />
+              ) : isAssistant && modelId ? (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center justify-center">
+                        <ModelIcon modelId={modelId} className="h-4 w-4" />
                       </div>
-                    ) : modelId;
-                  })()}
-                </TooltipContent>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="text-xs">
+                      {(() => {
+                        const model = AVAILABLE_MODELS.find(m => m.id === modelId);
+                        return model ? (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="font-medium">{model.name}</span>
+                            <span className="text-muted-foreground">{model.provider}</span>
+                          </div>
+                        ) : modelId;
+                      })()}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ) : (
+                <Bot className="h-4 w-4" />
               )}
-            </Tooltip>
-          </TooltipProvider>
-        </div>
+            </div>
+          </div>
+        )}
 
         <div className={cn(
-          "space-y-2 overflow-hidden min-w-0 font-sans",
-          role === 'user' && 'text-right',
-          role === 'system' && 'text-left',
-          role === 'assistant' && 'text-left'
+          "space-y-2 overflow-hidden min-w-0 font-sans text-sm",
+          isUser && 'text-right',
+          isSystem && 'text-left',
+          isAssistant && 'text-left'
         )}>
           <div className={cn(
             "prose prose-sm dark:prose-invert max-w-none",
-            "break-words",
-            role === 'user' && 'text-white'
+            isUser && 'text-white'
           )}>
             {renderContent()}
           </div>
-
-          {/* Display images if present */}
-          {images && images.length > 0 && (
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              {images.map((url, index) => (
-                <div key={index} className="relative aspect-video group">
-                  <img
-                    src={url}
-                    alt={`Generated image ${index + 1}`}
-                    className="rounded-lg w-full h-full object-cover"
-                  />
-                  <a
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="absolute inset-0 flex items-center justify-center bg-black/50 
-                           opacity-0 group-hover:opacity-100 transition-opacity rounded-lg"
-                  >
-                    <ImageIcon className="h-6 w-6 text-white" />
-                  </a>
-                </div>
+          {citations && citations.length > 0 && (
+            <Citations citations={citations} />
+          )}
+          {relatedQuestions && relatedQuestions.length > 0 && (
+            <div className="flex flex-wrap gap-2 pt-2">
+              {relatedQuestions.map((question, index) => (
+                <button
+                  key={index}
+                  className="text-xs px-2 py-1 rounded-md bg-accent hover:bg-accent/80 transition-colors"
+                  onClick={() => onSendMessage?.(question)}
+                >
+                  {question}
+                </button>
               ))}
             </div>
           )}
-
-          {/* Display related questions if present */}
-          {relatedQuestions && relatedQuestions.length > 0 && (
-            <div className="mt-4 space-y-2">
-              <h4 className="text-xs font-medium text-muted-foreground">Related Questions:</h4>
-              <div className="flex flex-wrap gap-2">
-                {relatedQuestions.map((question, index) => (
-                  <button
-                    key={index}
-                    onClick={() => onSendMessage?.(question)}
-                    className="text-sm text-blue-500 hover:text-blue-600 dark:text-blue-400 
-                           dark:hover:text-blue-300 bg-accent/30 hover:bg-accent/50 
-                           px-3 py-1.5 rounded-lg transition-colors"
-                  >
-                    {question}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {citations && <Citations citations={citations} />}
-          
-          {renderAudioPlayer()}
         </div>
+
+        {isUser && (
+          <div className="flex flex-col items-center gap-2">
+            <div className={cn(
+              "flex h-7 w-7 shrink-0 select-none items-center justify-center rounded-md border shadow-sm",
+              "bg-white/10 border-white/20"
+            )}>
+              <User className="h-4 w-4" />
+            </div>
+          </div>
+        )}
       </div>
     </ChatMessageContextMenu>
   );

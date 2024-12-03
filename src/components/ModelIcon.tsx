@@ -1,10 +1,9 @@
-import { AVAILABLE_MODELS } from './ModelSelector';
+import React from 'react';
 import { OpenAIIcon } from './icons/OpenAIIcon';
 import { ClaudeIcon } from './icons/ClaudeIcon';
 import { PerplexityIcon } from './icons/PerplexityIcon';
 import { XAIIcon } from './icons/XAIIcon';
 import { GoogleIcon } from './icons/GoogleIcon';
-import { ElevenLabsIcon } from './icons/ElevenLabsIcon';
 import { Bot } from 'lucide-react';
 
 interface ModelIconProps {
@@ -13,26 +12,57 @@ interface ModelIconProps {
 }
 
 export const ModelIcon: React.FC<ModelIconProps> = ({ modelId, className }) => {
-  const model = AVAILABLE_MODELS.find(m => m.id === modelId);
-  
-  if (!model) {
-    return <Bot className={className} />;
-  }
-  
-  switch (model.provider) {
-    case 'anthropic':
-      return <ClaudeIcon className={className} />;
-    case 'openai':
+  // Log the exact modelId being passed
+  console.log('ModelIcon received modelId:', modelId);
+
+  // Function to match model providers more flexibly
+  const getProviderIcon = (id: string) => {
+    const lowerId = id.toLowerCase();
+    
+    // OpenAI matching
+    if (lowerId.includes('gpt')) {
+      console.log('Matched OpenAI model:', id);
       return <OpenAIIcon className={className} />;
-    case 'perplexity':
+    }
+    
+    // Anthropic matching
+    if (lowerId.includes('claude')) {
+      console.log('Matched Anthropic model:', id);
+      return <ClaudeIcon className={className} />;
+    }
+    
+    // Perplexity matching
+    if (lowerId.includes('llama') || lowerId.includes('sonar') || lowerId.includes('mixtral')) {
+      console.log('Matched Perplexity model:', id);
       return <PerplexityIcon className={className} />;
-    case 'xai':
-      return <XAIIcon className={className} />;
-    case 'google':
+    }
+    
+    // Google matching
+    if (lowerId.includes('gemini')) {
+      console.log('Matched Google model:', id);
       return <GoogleIcon className={className} />;
-    case 'elevenlabs':
-      return <ElevenLabsIcon className={className} />;
-    default:
-      return <Bot className={className} />;
-  }
-}; 
+    }
+    
+    // XAI matching
+    if (lowerId.includes('grok')) {
+      console.log('Matched XAI model:', id);
+      return <XAIIcon className={className} />;
+    }
+    
+    // Fallback
+    console.warn('No provider matched for modelId:', id);
+    return <Bot className={className} style={{ color: 'grey' }} />;
+  };
+
+  return (
+    <div style={{ 
+      width: className?.includes('w-') ? undefined : '100%', 
+      height: className?.includes('h-') ? undefined : '100%',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+    }}>
+      {getProviderIcon(modelId)}
+    </div>
+  );
+};

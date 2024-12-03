@@ -3,12 +3,22 @@ export interface Message {
   content: string;
   timestamp?: number;
   modelId?: string;
-  citations?: any[];
+  citations?: Array<{
+    url: string;
+    title?: string;
+  }>;
+  plugins?: any[];
+  images?: string[];
+  relatedQuestions?: string[];
   isAudioResponse?: boolean;
   comparison?: {
     message: string;
     model1: { id: string; response: string };
     model2: { id: string; response: string };
+  };
+  file?: {
+    name: string;
+    content: string;
   };
 }
 

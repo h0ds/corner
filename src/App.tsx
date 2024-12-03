@@ -302,10 +302,19 @@ function App() {
   };
 
   useEffect(() => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    if (chatContainerRef.current && activeThreadId) {
+      const thread = threads.find(t => t.id === activeThreadId);
+      if (thread && !thread.isNote) {
+        const chatThread = thread as ChatThread;
+        // Use requestAnimationFrame to ensure DOM has updated
+        requestAnimationFrame(() => {
+          if (chatContainerRef.current) {
+            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+          }
+        });
+      }
     }
-  }, [messages]);
+  }, [threads, activeThreadId]);
 
   // Update the keyboard shortcut effect
   useEffect(() => {
@@ -393,26 +402,27 @@ function App() {
   ]);
 
   const handleSendMessage = async (message: string, overrideModel?: string) => {
+    console.log('Sending message:', { message, overrideModel, selectedModel });
     setLoading(true);
     
     if (message && activeThreadId) {
       const modelToUse = overrideModel || selectedModel;
+      const model = AVAILABLE_MODELS.find(m => m.id === modelToUse);
       
-      // Create user message with timestamp
+      console.log('Selected model:', { modelToUse, provider: model?.provider });
+      
+      // Create user message with timestamp and modelId
       const userMessage: Message = { 
         role: 'user', 
         content: message,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        modelId: modelToUse
       };
 
       // Update thread with user message
       setThreads(prev => prev.map(thread => {
         if (thread.id === activeThreadId && !thread.isNote) {
           const chatThread = thread as ChatThread;
-          console.log('Adding message to thread:', {
-            threadId: thread.id,
-            messageContent: message.slice(0, 50)
-          });
           return {
             ...chatThread,
             messages: [...chatThread.messages, userMessage],
@@ -422,7 +432,87 @@ function App() {
         }
         return thread;
       }));
+
+      try {
+        console.log('Invoking send_message:', {
+          message,
+          model: modelToUse,
+          provider: model?.provider
+        });
+
+        const response = await invoke<ApiResponse>('send_message', {
+          request: {
+            message,
+            model: modelToUse,
+            provider: model?.provider
+          }
+        });
+
+        console.log('Received response:', response);
+
+        if (response.error) {
+          console.error('API Error:', response.error);
+          // Add error message to thread
+          setThreads(prev => prev.map(thread => {
+            if (thread.id === activeThreadId && !thread.isNote) {
+              const chatThread = thread as ChatThread;
+              return {
+                ...chatThread,
+                messages: [...chatThread.messages, {
+                  role: 'error',
+                  content: response.error,
+                  timestamp: Date.now(),
+                  modelId: modelToUse
+                }],
+                updatedAt: Date.now()
+              };
+            }
+            return thread;
+          }));
+          
+          // Show toast notification
+          toast({
+            title: "Error",
+            description: response.error,
+            variant: "destructive",
+            duration: 5000,
+          });
+        } else if (response.content) {
+          // Add assistant's response to the thread
+          setThreads(prev => prev.map(thread => {
+            if (thread.id === activeThreadId && !thread.isNote) {
+              const chatThread = thread as ChatThread;
+              return {
+                ...chatThread,
+                messages: [...chatThread.messages, {
+                  role: 'assistant',
+                  content: response.content,
+                  timestamp: Date.now(),
+                  modelId: modelToUse
+                }],
+                updatedAt: Date.now()
+              };
+            }
+            return thread;
+          }));
+        }
+      } catch (error) {
+        console.error('Failed to send message:', error);
+        toast({
+          title: "Error",
+          description: error instanceof Error ? error.message : "Failed to send message",
+          variant: "destructive",
+        });
+      }
     }
+    
+    setLoading(false);
+    // Scroll to bottom after loading is complete
+    requestAnimationFrame(() => {
+      if (chatContainerRef.current) {
+        chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+      }
+    });
   };
 
   const handleRenameThread = (threadId: string, newName: string) => {
@@ -696,7 +786,9 @@ function App() {
     // Add user message
     const userMessage: Message = { 
       role: 'user', 
-      content: message
+      content: message,
+      timestamp: Date.now(),
+      modelId: model1Id  // Use model1Id as the primary model for the user message
     };
 
     setThreads(prev => prev.map(thread => {
@@ -782,6 +874,12 @@ function App() {
     }
 
     setLoading(false);
+    // Scroll to bottom after loading is complete
+    requestAnimationFrame(() => {
+      if (chatContainerRef.current) {
+        chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+      }
+    });
   };
 
   const handleStartDiscussion = async (message: string, model1Id: string, model2Id: string) => {
@@ -872,15 +970,18 @@ function App() {
         if (response1.error) break;
 
         // Add Model 1's response
+        const model1Response: Message = {
+          role: 'assistant',
+          content: response1.content,
+          timestamp: Date.now(),
+          modelId: model1Id
+        };
+        
         setThreads(prev => prev.map(thread => {
           if (thread.id === activeThreadId) {
             return {
               ...thread,
-              messages: [...thread.messages, {
-                role: 'assistant',
-                content: response1.content!,
-                modelId: model1Id
-              }],
+              messages: [...thread.messages, model1Response],
               updatedAt: Date.now(),
             };
           }
@@ -912,15 +1013,18 @@ function App() {
         if (response2.error) break;
 
         // Add Model 2's response
+        const model2Response: Message = {
+          role: 'assistant',
+          content: response2.content,
+          timestamp: Date.now(),
+          modelId: model2Id
+        };
+        
         setThreads(prev => prev.map(thread => {
           if (thread.id === activeThreadId) {
             return {
               ...thread,
-              messages: [...thread.messages, {
-                role: 'assistant',
-                content: response2.content!,
-                modelId: model2Id
-              }],
+              messages: [...thread.messages, model2Response],
               updatedAt: Date.now(),
             };
           }
@@ -947,6 +1051,12 @@ function App() {
       setShouldStopDiscussion(false);
       stopDiscussionRef.current = false;
       setLoading(false);
+      // Scroll to bottom after loading is complete
+      requestAnimationFrame(() => {
+        if (chatContainerRef.current) {
+          chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+        }
+      });
     }
   };
 
@@ -1450,6 +1560,40 @@ function App() {
     });
   }, [threads]);
 
+  // Fork a chat message to a new note
+  const handleForkToNote = useCallback((content: string) => {
+    // Create a new note thread
+    const noteId = handleNewThread(true);
+    
+    // Update the note's content with the message
+    setThreads(prev => prev.map(thread => {
+      if (thread.id === noteId && thread.isNote) {
+        const noteThread = thread as NoteThread;
+        return {
+          ...noteThread,
+          name: 'New Note',
+          content,
+          updatedAt: Date.now()
+        };
+      }
+      return thread;
+    }));
+
+    // Switch to notes tab and select the new note
+    setActiveTab('notes');
+    setActiveThreadId(noteId);
+
+    // Show success toast
+    toast({
+      title: "Note Created",
+      description: "Message has been converted to a new note",
+      variant: "default",
+      duration: 2000,
+    });
+
+    return noteId;
+  }, [handleNewThread]);
+
   return (
     <>
       <div className="flex h-screen bg-background overflow-hidden rounded-xl">
@@ -1553,6 +1697,7 @@ function App() {
                       selectedModel={selectedModel}
                       showTTS={!!apiKeys.elevenlabs}
                       onSplitToNote={handleSplitToNote}
+                      onForkToNote={handleForkToNote}
                     />
                   ) : (
                     <ChatView
@@ -1576,6 +1721,7 @@ function App() {
                       onClearThread={clearCurrentThread}
                       onShowPreferences={handleShowPreferences}
                       allThreads={threads}
+                      onForkToNote={handleForkToNote}
                     />
                   )
                 ) : (

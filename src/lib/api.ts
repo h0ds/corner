@@ -10,7 +10,8 @@ export interface SendMessageRequest {
 }
 
 export interface ApiResponse {
-  content?: string;
+  success: boolean;
+  data?: string;
   error?: string;
   citations?: Array<{
     url: string;

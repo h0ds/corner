@@ -1,27 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { Play, Pause, Volume2, RotateCw } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Play, Pause, RotateCw } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 
 interface AudioPlayerProps {
-  audioRef: React.RefObject<HTMLAudioElement>;
+  audioUrl: string;
   className?: string;
-  isPlaying: boolean;
-  onPlay: () => void;
-  onPause: () => void;
 }
 
 export const AudioPlayer: React.FC<AudioPlayerProps> = ({
-  audioRef,
-  className,
-  isPlaying,
-  onPlay,
-  onPause
+  audioUrl,
+  className
 }) => {
+  const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -40,6 +36,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
 
     const handleEnded = () => {
       setProgress(0);
+      setIsPlaying(false);
     };
 
     audio.addEventListener('timeupdate', updateProgress);
@@ -51,7 +48,20 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
       audio.removeEventListener('ended', handleEnded);
     };
-  }, [audioRef, isDragging]);
+  }, [isDragging]);
+
+  const handlePlayPause = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (isPlaying) {
+      audio.pause();
+      setIsPlaying(false);
+    } else {
+      audio.play();
+      setIsPlaying(true);
+    }
+  };
 
   const handleSeek = (value: number[]) => {
     const audio = audioRef.current;
@@ -75,60 +85,64 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
     audio.currentTime = 0;
     setProgress(0);
     if (!isPlaying) {
-      onPlay();
+      audio.play();
+      setIsPlaying(true);
     }
   };
 
   return (
-    <div className={cn(
-      "flex items-center gap-2 p-2 rounded-md transition-colors",
-      isPlaying ? "bg-primary/10" : "bg-secondary/50",
-      className
-    )}>
-      <Button
-        variant="ghost"
-        size="icon"
-        className={cn(
-          "h-8 w-8 shrink-0 transition-colors",
-          isPlaying && "text-primary hover:text-primary/80"
-        )}
-        onClick={isPlaying ? onPause : onPlay}
-      >
-        {isPlaying ? (
-          <Pause className="h-4 w-4" />
-        ) : (
-          <Play className="h-4 w-4" />
-        )}
-      </Button>
+    <>
+      <audio ref={audioRef} src={audioUrl} />
+      <div className={cn(
+        "flex items-center gap-2 p-2 rounded-md transition-colors",
+        isPlaying ? "bg-primary/10" : "bg-secondary/50",
+        className
+      )}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn(
+            "h-8 w-8 shrink-0 transition-colors",
+            isPlaying && "text-primary hover:text-primary/80"
+          )}
+          onClick={handlePlayPause}
+        >
+          {isPlaying ? (
+            <Pause className="h-4 w-4" />
+          ) : (
+            <Play className="h-4 w-4" />
+          )}
+        </Button>
 
-      <div className="flex-1 flex items-center gap-2 min-w-0">
-        <span className="text-xs text-muted-foreground shrink-0 w-[40px] text-right">
-          {formatTime(progress)}
-        </span>
-        
-        <Slider
-          value={[progress]}
-          max={duration}
-          step={0.1}
-          className="flex-1"
-          onValueChange={handleSeek}
-          onValueCommit={() => setIsDragging(false)}
-          onPointerDown={() => setIsDragging(true)}
-        />
+        <div className="flex-1 flex items-center gap-2 min-w-0">
+          <span className="text-xs text-muted-foreground shrink-0 w-[40px] text-right">
+            {formatTime(progress)}
+          </span>
+          
+          <Slider
+            value={[progress]}
+            max={duration}
+            step={0.1}
+            className="flex-1"
+            onValueChange={handleSeek}
+            onValueCommit={() => setIsDragging(false)}
+            onPointerDown={() => setIsDragging(true)}
+          />
 
-        <span className="text-xs text-muted-foreground shrink-0 w-[40px]">
-          {formatTime(duration)}
-        </span>
+          <span className="text-xs text-muted-foreground shrink-0 w-[40px]">
+            {formatTime(duration)}
+          </span>
+        </div>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 shrink-0"
+          onClick={restart}
+        >
+          <RotateCw className="h-4 w-4" />
+        </Button>
       </div>
-
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8 shrink-0"
-        onClick={restart}
-      >
-        <RotateCw className="h-4 w-4" />
-      </Button>
-    </div>
+    </>
   );
 };
