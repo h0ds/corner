@@ -16,7 +16,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Sparkles, MessageSquare, Keyboard, Play, Square, RotateCcw, Loader2 } from 'lucide-react';
+import { Sparkles, MessageSquare, Keyboard } from 'lucide-react';
 
 interface ChatViewProps {
   messages: Message[];
@@ -72,6 +72,28 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
   const { toast } = useToast();
 
+  const handleError = (error: Error) => {
+    console.error('Chat error:', error);
+    let errorMessage = 'An error occurred while processing your message.';
+    
+    if (error.message.includes('Unable to reach Gemini API')) {
+      errorMessage = 'Unable to reach Gemini API. Please check your API key and try again.';
+    } else if (error.message.includes('Rate limit exceeded')) {
+      errorMessage = 'Rate limit exceeded. Please wait a moment before trying again.';
+    } else if (error.message.includes('Gemini API key is not configured')) {
+      errorMessage = 'Gemini API key is not properly configured. Please check your environment variables.';
+    } else if (error.message.includes('Invalid response format')) {
+      errorMessage = 'Received an invalid response from Gemini API. Please try again.';
+    }
+
+    toast({
+      title: "Error",
+      description: errorMessage,
+      variant: "destructive",
+      duration: 3000,
+    });
+  };
+
   useEffect(() => {
     if (activeThreadId) {
       setIsLoadingThread(true);
@@ -93,8 +115,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
         setIsAudioPlaying(true);
       }
     } catch (err) {
-      console.error('Failed to convert text to speech:', err);
-      throw err;
+      handleError(err);
     } finally {
       setIsAudioLoading(false);
     }
@@ -291,222 +312,179 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
   return (
     <div className="flex flex-col h-full">
-      {showEmptyState ? (
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center space-y-6 max-w-lg mx-auto px-4">
-            <div className="flex justify-center">
-              <div>
-                <div className="flex-1 flex items-center justify-end h-full">
-                  <img 
-                    src="/icon.png" 
-                    alt="Corner" 
-                    className="h-[80px] w-[80px] cursor-pointer hover:opacity-80 transition-opacity"
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <h2 className="text-lg font-semibold tracking-tight">Welcome to Corner</h2>
-              <p className="text-sm text-muted-foreground">
-                Start a conversation with any of our supported AI models. Ask questions, compare responses, or start an interactive discussion.
-              </p>
-            </div>
-            
-            <div className="grid gap-4 pt-4 text-left">
-              <div className="bg-card rounded-lg p-4 space-y-3">
-                <div className="flex items-start gap-3">
-                  <div className="p-2 bg-primary/10 rounded-md shrink-0">
-                    <MessageSquare className="w-4 h-4 text-primary" />
-                  </div>
-                  <div className="space-y-1">
-                    <h3 className="text-sm font-medium leading-none">Chat with AI</h3>
-                    <p className="text-xs text-muted-foreground">
-                      Send messages and get instant responses from your selected AI model
-                    </p>
+      <div className="flex-1 rounded-xl bg-accent overflow-y-auto" ref={containerRef}>
+        {showEmptyState ? (
+          <div className="h-full flex items-center justify-center">
+            <div className="text-center space-y-6 max-w-lg mx-auto px-4">
+              <div className="flex justify-center">
+                <div>
+                  <div className="flex-1 flex items-center justify-end h-full">
+                    <img 
+                      src="/icon.png" 
+                      alt="Corner" 
+                      className="h-[80px] w-[80px] cursor-pointer hover:opacity-80 transition-opacity"
+                    />
                   </div>
                 </div>
               </div>
+              <div className="space-y-2">
+                <h2 className="text-lg font-semibold tracking-tight">Welcome to Corner</h2>
+                <p className="text-sm text-muted-foreground">
+                  Start a conversation with any of our supported AI models. Ask questions, compare responses, or start an interactive discussion.
+                </p>
+              </div>
+              
+              <div className="grid gap-4 pt-4 text-left">
+                <div className="bg-card rounded-lg p-4 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-primary/10 rounded-md shrink-0">
+                      <MessageSquare className="w-4 h-4 text-primary" />
+                    </div>
+                    <div className="space-y-1">
+                      <h3 className="text-sm font-medium leading-none">Chat with AI</h3>
+                      <p className="text-xs text-muted-foreground">
+                        Send messages and get instant responses from your selected AI model
+                      </p>
+                    </div>
+                  </div>
+                </div>
 
-              <div className="bg-card rounded-lg p-4 space-y-3">
-                <div className="flex items-start gap-3">
-                  <div className="p-2 bg-primary/10 rounded-md shrink-0">
-                    <Sparkles className="w-4 h-4 text-primary" />
-                  </div>
-                  <div className="space-y-1">
-                    <h3 className="text-sm font-medium leading-none">Compare Models</h3>
-                    <p className="text-xs text-muted-foreground">
-                      Use @model to compare responses from different AI models
-                    </p>
+                <div className="bg-card rounded-lg p-4 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-primary/10 rounded-md shrink-0">
+                      <Sparkles className="w-4 h-4 text-primary" />
+                    </div>
+                    <div className="space-y-1">
+                      <h3 className="text-sm font-medium leading-none">Compare Models</h3>
+                      <p className="text-xs text-muted-foreground">
+                        Use @model to compare responses from different AI models
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="bg-card rounded-lg p-4 space-y-3">
-                <div className="flex items-start gap-3">
-                  <div className="p-2 bg-primary/10 rounded-md shrink-0">
-                    <Keyboard className="w-4 h-4 text-primary" />
-                  </div>
-                  <div className="space-y-1">
-                    <h3 className="text-sm font-medium leading-none">Keyboard Shortcuts</h3>
-                    <p className="text-xs text-muted-foreground">
-                      Press {clearHistoryShortcut} to clear chat, ESC to stop generation
-                    </p>
+                <div className="bg-card rounded-lg p-4 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-primary/10 rounded-md shrink-0">
+                      <Keyboard className="w-4 h-4 text-primary" />
+                    </div>
+                    <div className="space-y-1">
+                      <h3 className="text-sm font-medium leading-none">Keyboard Shortcuts</h3>
+                      <p className="text-xs text-muted-foreground">
+                        Press {clearHistoryShortcut} to clear chat, ESC to stop generation
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      ) : (
-        <div className="relative flex-1 flex flex-col">
-          <div 
-            ref={containerRef}
-            className="flex-1 p-2 bg-accent-light rounded-xl border border-border overflow-y-auto min-h-0"
-          >
-            <div className="flex flex-col space-y-2">
-              <AnimatePresence mode="wait">
-                {isLoadingThread ? (
-                  <motion.div 
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="flex justify-start h-[50px] items-center"
-                  >
-                    <Thinking />
-                  </motion.div>
-                ) : sortedMessages.length === 0 ? (
+        ) : (
+          <div className="flex-1 p-4 space-y-2">
+            <AnimatePresence mode="popLayout">
+              {isLoadingThread ? (
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="flex justify-start h-[50px] items-center"
+                >
+                  <Thinking />
+                </motion.div>
+              ) : sortedMessages.length === 0 ? (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="text-center text-muted-foreground/40 mt-1 text-sm tracking-tighter h-[50px] flex items-center justify-center"
+                >
+                  &nbsp;
+                </motion.div>
+              ) : (
+                sortedMessages.map((message, index) => (
                   <motion.div
+                    key={`${message.timestamp}-${index}`}
+                    layout
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="text-center text-muted-foreground/40 mt-1 text-sm tracking-tighter h-[50px] flex items-center justify-center"
+                    transition={{ 
+                      duration: 0.2,
+                      layout: { duration: 0.2 }
+                    }}
                   >
-                    &nbsp;
-                  </motion.div>
-                ) : (
-                  sortedMessages.map((message, index) => (
-                    <motion.div
-                      key={`${message.timestamp}-${index}`}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.8 }}
-                      transition={{ duration: 0.15 }}
-                    >
-                      <ChatMessage
-                        role={message.role}
-                        content={message.content}
-                        modelId={message.modelId}
-                        plugins={message.plugins}
-                        comparison={message.comparison}
-                        citations={message.citations}
-                        images={message.images}
-                        relatedQuestions={message.relatedQuestions}
-                        onSendMessage={onSendMessage}
-                        onTextToSpeech={handleTextToSpeech}
-                        showTTS={!!apiKeys.elevenlabs}
-                        isAudioResponse={message.isAudioResponse}
-                        onDelete={() => handleDeleteMessage(message.timestamp, message.content)}
-                        setThreads={setThreads}
-                        onErrorClick={handleErrorClick}
-                        onForkToNote={onForkToNote}
-                      />
-                      {message.file && (
-                        <FilePreview
-                          fileName={message.file.name}
-                          content={message.file.content}
-                        />
-                      )}
-                    </motion.div>
-                  ))
-                )}
-                {loading && !isLoadingThread && (
-                  <div className="flex justify-start">
-                    <Thinking />
-                  </div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            <audio ref={audioRef} className="hidden" />
-
-            {audioUrl && (
-              <div className="absolute bottom-4 right-4 z-50">
-                <div className="bg-white/90 backdrop-blur-sm rounded-lg shadow-md px-3 py-2 border border-border flex items-center gap-3">
-                  {isAudioLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                  ) : isAudioPlaying ? (
-                    <button
-                      onClick={handleStopAudio}
-                      className="text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      <Square className="h-4 w-4" />
-                    </button>
-                  ) : (
-                    <button
-                      onClick={handlePlayAudio}
-                      className="text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      <Play className="h-4 w-4" />
-                    </button>
-                  )}
-                  <div className="flex items-center gap-2 min-w-[200px]">
-                    <span className="text-xs text-muted-foreground w-10">
-                      {formatTime(currentTime)}
-                    </span>
-                    <input
-                      type="range"
-                      min={0}
-                      max={duration || 100}
-                      value={currentTime}
-                      onChange={(e) => handleSliderChange(Number(e.target.value))}
-                      className="w-full h-1 bg-accent rounded-lg appearance-none cursor-pointer accent-primary"
+                    <ChatMessage
+                      role={message.role}
+                      content={message.content}
+                      modelId={message.modelId}
+                      plugins={message.plugins}
+                      comparison={message.comparison}
+                      citations={message.citations}
+                      images={message.images}
+                      relatedQuestions={message.relatedQuestions}
+                      onSendMessage={onSendMessage}
+                      onTextToSpeech={handleTextToSpeech}
+                      showTTS={!!apiKeys.elevenlabs}
+                      isAudioResponse={message.isAudioResponse}
+                      onDelete={() => handleDeleteMessage(message.timestamp, message.content)}
+                      setThreads={setThreads}
+                      onErrorClick={handleErrorClick}
+                      onForkToNote={onForkToNote}
                     />
-                    <span className="text-xs text-muted-foreground w-10">
-                      {formatTime(duration)}
-                    </span>
-                  </div>
-                  <button
-                    onClick={handleRestartAudio}
-                    className="text-muted-foreground hover:text-foreground transition-colors"
-                    disabled={isAudioLoading}
-                  >
-                    <RotateCcw className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
+                    {message.file && (
+                      <FilePreview
+                        fileName={message.file.name}
+                        content={message.file.content}
+                      />
+                    )}
+                  </motion.div>
+                ))
+              )}
+              {loading && !isLoadingThread && (
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="flex justify-start"
+                >
+                  <Thinking />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
+      </div>
+
+      <div className="flex-shrink-0 mb-2 mt-2">
+        <div className="relative">
+          <div className="absolute right-4 flex items-center gap-2">
+            {(isAudioPlaying || isAudioLoading) && audioRef.current?.src && (
+              <AudioControls
+                isPlaying={isAudioPlaying}
+                isLoading={isAudioLoading}
+                onPlay={handlePlayAudio}
+                onStop={handleStopAudio}
+                onRestart={handleRestartAudio}
+              />
             )}
           </div>
-        </div>
-      )}
-
-      <div className="relative mt-2">
-        <div className="absolute right-4 flex items-center gap-2">
-          {(isAudioPlaying || isAudioLoading) && audioRef.current?.src && (
-            <AudioControls
-              isPlaying={isAudioPlaying}
-              isLoading={isAudioLoading}
-              onPlay={handlePlayAudio}
-              onStop={handleStopAudio}
-              onRestart={handleRestartAudio}
+          <div className="p-1 bg-accent-light border border-border rounded-xl">
+            <ChatInput
+              onSendMessage={onSendMessage}
+              onCompareModels={onCompareModels}
+              onStartDiscussion={onStartDiscussion}
+              onStopDiscussion={onStopDiscussion}
+              onClearThread={onClearThread}
+              disabled={loading}
+              selectedModel={selectedModel}
+              isDiscussing={isDiscussing}
+              isPaused={isDiscussionPaused}
+              allThreads={allThreads}
+              currentThreadId={activeThreadId}
+              onUpdateThreads={setThreads}
+              onShowLinkedItems={handleShowLinkedItems}
             />
-          )}
-        </div>
-        <div className="p-1 bg-accent-light border border-border rounded-xl">
-          <ChatInput
-            onSendMessage={onSendMessage}
-            onCompareModels={onCompareModels}
-            onStartDiscussion={onStartDiscussion}
-            onStopDiscussion={onStopDiscussion}
-            onClearThread={onClearThread}
-            disabled={loading}
-            selectedModel={selectedModel}
-            isDiscussing={isDiscussing}
-            isPaused={isDiscussionPaused}
-            allThreads={allThreads}
-            currentThreadId={activeThreadId}
-            onUpdateThreads={setThreads}
-            onShowLinkedItems={handleShowLinkedItems}
-          />
+          </div>
         </div>
       </div>
 

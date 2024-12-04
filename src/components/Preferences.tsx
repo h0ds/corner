@@ -207,56 +207,39 @@ export const Preferences: React.FC<PreferencesProps> = ({
   };
 
   const handleSave = async () => {
-    showToast.promise(
-      (async () => {
-        setSaving(true);
-        setError(null);
-        
-        try {
-          console.log('Saving API keys:', keys);
-          await invoke('set_api_keys', { 
-            request: {
-              anthropic: keys.anthropic || "",
-              perplexity: keys.perplexity || "",
-              openai: keys.openai || "",
-              xai: keys.xai || "",
-              google: keys.google || "",
-              elevenlabs: keys.elevenlabs || ""
-            }
-          }).catch(err => {
-            console.error('Failed to save API keys:', err);
-            throw new Error(`Failed to save API keys: ${err}`);
-          });
-
-          const verifyPromises = Object.entries(keys)
-            .filter(([type, value]) => value && verificationStatus[type as keyof typeof verificationStatus] === 'idle')
-            .map(([type, value]) => verifyKey(type as keyof ApiKeys, value));
-
-          console.log('Verifying keys:', verifyPromises.length);
-          await Promise.all(verifyPromises);
-          
-          const hasErrors = Object.values(verificationStatus).some(status => status === 'error');
-          console.log('Verification status:', verificationStatus, 'Has errors:', hasErrors);
-          
-          if (!hasErrors) {
-            onClose();
-            return true;
-          }
-          throw new Error('Some API keys failed verification');
-        } catch (err) {
-          console.error('Error in handleSave:', err);
-          setError(err instanceof Error ? err.message : String(err));
-          throw err;
-        } finally {
-          setSaving(false);
+    setSaving(true);
+    setError(null);
+    
+    try {
+      console.log('Saving API keys:', keys);
+      await invoke('set_api_keys', { 
+        request: {
+          anthropic: keys.anthropic || "",
+          perplexity: keys.perplexity || "",
+          openai: keys.openai || "",
+          xai: keys.xai || "",
+          google: keys.google || "",
+          elevenlabs: keys.elevenlabs || "",
         }
-      })(),
-      {
-        loading: 'Saving API keys...',
-        success: 'API keys saved successfully',
-        error: (err) => `Failed to save API keys: ${err instanceof Error ? err.message : String(err)}`
-      }
-    );
+      });
+      
+      showToast({
+        title: "Success",
+        description: "API keys saved successfully",
+      });
+      
+      onClose();
+    } catch (err) {
+      console.error('Error saving API keys:', err);
+      setError(err instanceof Error ? err.message : 'Failed to save API keys');
+      showToast({
+        title: "Error",
+        description: "Failed to save API keys",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const tabs: { id: PreferenceTab; label: string; icon: React.ReactNode }[] = [

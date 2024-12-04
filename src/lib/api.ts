@@ -1,60 +1,15 @@
 import { invoke } from '@tauri-apps/api/core';
 import { rateLimitManager } from './rateLimitManager';
 
-export interface SendMessageRequest {
-  message: string;
-  model: string;
-  provider: string;
-  file_content?: string;
-  file_name?: string;
+export interface Message {
+  role: string;
+  content: string;
 }
 
 export interface ApiResponse {
   success: boolean;
-  data?: string;
+  data?: any;
   error?: string;
-  citations?: Array<{
-    url: string;
-    title?: string;
-  }>;
-  images?: string[];
-  related_questions?: string[];
-}
-
-export async function getCompletion(prompt: string): Promise<ApiResponse> {
-  try {
-    const response = await invoke<string>('get_completion', { prompt });
-    return { success: true, data: response };
-  } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : String(error) };
-  }
-}
-
-export async function getChatCompletion(messages: any[]): Promise<ApiResponse> {
-  try {
-    const response = await invoke<string>('get_chat_completion', { messages });
-    return { success: true, data: response };
-  } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : String(error) };
-  }
-}
-
-export async function getEmbeddings(text: string): Promise<ApiResponse> {
-  try {
-    const response = await invoke<number[]>('get_embeddings', { text });
-    return { success: true, data: response };
-  } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : String(error) };
-  }
-}
-
-export async function getModels(): Promise<ApiResponse> {
-  try {
-    const response = await invoke<string[]>('get_models');
-    return { success: true, data: response };
-  } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : String(error) };
-  }
 }
 
 export async function verifyApiKey(provider: string, key: string): Promise<ApiResponse> {
@@ -88,5 +43,30 @@ export async function textToSpeech(text: string): Promise<ApiResponse> {
       };
     }
     return { success: false, error: errorMessage };
+  }
+}
+
+export async function generateCompletion(provider: string, messages: Message[]): Promise<string> {
+  try {
+    return await invoke<string>('generate_completion', {
+      provider,
+      messages
+    });
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.name === 'AbortError') throw error;
+      
+      // Map common error cases
+      if (error.message.includes('API key not configured')) {
+        throw new Error(`${provider} API key is not configured. Please check your settings.`);
+      }
+      if (error.message.includes('quota exceeded') || error.message.includes('rate limit')) {
+        throw new Error('API rate limit exceeded. Please try again later.');
+      }
+      if (error.message.includes('model not found')) {
+        throw new Error(`Selected ${provider} model is not available. Please try again.`);
+      }
+    }
+    throw error;
   }
 }

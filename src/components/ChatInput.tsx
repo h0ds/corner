@@ -336,33 +336,36 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
   const handleReferenceSelect = (thread: Thread) => {
     if (thread.isNote && allThreads && onUpdateThreads) {
-      showToast.promise(
-        new Promise((resolve) => {
-          const updatedThreads = allThreads.map(t => {
-            if (t.id === thread.id) {
-              const existingLinks = t.linkedNotes || [];
-              if (!existingLinks.includes(currentThreadId)) {
-                return {
-                  ...t,
-                  linkedNotes: [...existingLinks, currentThreadId],
-                  updatedAt: Date.now(),
-                };
-              }
+      try {
+        const updatedThreads = allThreads.map(t => {
+          if (t.id === thread.id) {
+            const existingLinks = t.linkedNotes || [];
+            if (!existingLinks.includes(currentThreadId)) {
+              return {
+                ...t,
+                linkedNotes: [...existingLinks, currentThreadId],
+                updatedAt: Date.now(),
+              };
             }
-            return t;
-          });
-          
-          onUpdateThreads(updatedThreads);
-          onShowLinkedItems?.(thread.id);
-          resolve(true);
-        }),
-        {
-          loading: 'Linking note...',
-          success: `Linked to note: ${thread.name}`,
-          error: 'Failed to link note'
-        }
-      );
+          }
+          return t;
+        });
+
+        onUpdateThreads(updatedThreads);
+        showToast({
+          title: "Success",
+          description: "Note linked successfully",
+        });
+      } catch (err) {
+        console.error('Error linking note:', err);
+        showToast({
+          title: "Error",
+          description: "Failed to link note",
+          variant: "destructive",
+        });
+      }
     }
+    setSelectedCommand(null);
   };
 
   return (

@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useEffect, useCallback, useMemo } from 'react';
 import { ThreadNoteList } from './ThreadNoteList';
 import { SidebarTabs } from './SidebarTabs';
-import { Thread, NoteThread, ChatThread } from '@/types';
+import { Thread } from '@/types';
 import { Plus, StickyNote } from 'lucide-react';
 import { loadThreadOrder, saveThreadOrder } from '../lib/storage';
 

@@ -331,7 +331,7 @@ pub async fn send_message(
             println!("Request body: {}", serde_json::to_string_pretty(&request_body).unwrap());
 
             let url = format!(
-                "https://generativelanguage.googleapis.com/v1/models/{}/generateContent?key={}",
+                "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent?key={}",
                 request.model, api_key
             );
             println!("Request URL: {}", url.replace(&api_key, "API_KEY_HIDDEN"));
@@ -347,6 +347,7 @@ pub async fn send_message(
                 Ok(mut resp) => {
                     let status = resp.status();
                     println!("Response status: {}", status);
+                    
                     let response_text = resp.text().await.map_err(|e| e.to_string())?;
                     println!("Raw response: {}", response_text);
 
@@ -632,6 +633,69 @@ pub async fn verify_api_key(provider: &str, key: &str) -> Result<serde_json::Val
     let client = reqwest::Client::new();
 
     match provider {
+        "gemini" => {
+            let request_body = serde_json::json!({
+                "contents": [{
+                    "role": "user",
+                    "parts": [{
+                        "text": "test"
+                    }]
+                }],
+                "generationConfig": {
+                    "temperature": 0.7,
+                    "topP": 0.8,
+                    "topK": 40,
+                    "maxOutputTokens": 2048
+                },
+                "safetySettings": [
+                    {
+                        "category": "HARM_CATEGORY_HARASSMENT",
+                        "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+                    },
+                    {
+                        "category": "HARM_CATEGORY_HATE_SPEECH",
+                        "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+                    },
+                    {
+                        "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                        "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+                    },
+                    {
+                        "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                        "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+                    }
+                ]
+            });
+
+            let url = format!(
+                "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={}",
+                key
+            );
+
+            println!("Verifying Gemini API key...");
+            println!("Request URL: {}", url.replace(key, "API_KEY_HIDDEN"));
+            println!("Request body: {}", serde_json::to_string_pretty(&request_body).unwrap());
+
+            let response = client
+                .post(&url)
+                .header("Content-Type", "application/json")
+                .json(&request_body)
+                .send()
+                .await
+                .map_err(|e| e.to_string())?;
+
+            let status = response.status();
+            println!("Response status: {}", status);
+
+            if status.is_success() {
+                println!("Gemini API key is valid");
+                Ok(serde_json::json!({}))
+            } else {
+                let error = response.text().await.map_err(|e| e.to_string())?;
+                println!("Gemini API key verification failed: {}", error);
+                Ok(serde_json::json!({ "error": error }))
+            }
+        },
         "anthropic" => {
             let response = client
                 .get("https://api.anthropic.com/v1/models")

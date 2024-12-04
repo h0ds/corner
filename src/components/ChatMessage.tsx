@@ -63,33 +63,11 @@ const LatexRenderer: React.FC<{ latex: string, displayMode?: boolean }> = ({ lat
   React.useEffect(() => {
     if (containerRef.current) {
       try {
-        // Log the input
-        console.log('LaTeX Input:', { latex, displayMode });
-        
-        // Step 1: Remove delimiters but respect display mode
-        let processed = latex;
-        if (latex.startsWith('\\[') && latex.endsWith('\\]')) {
-          processed = latex.slice(2, -2).trim();
-          displayMode = true;
-        } else if (latex.startsWith('$$') && latex.endsWith('$$')) {
-          processed = latex.slice(2, -2).trim();
-          displayMode = true;
-        } else if (latex.startsWith('$') && latex.endsWith('$')) {
-          processed = latex.slice(1, -1).trim();
-          displayMode = false;
-        } else if (!latex.includes('\\[') && !latex.includes('\\]') && !latex.includes('$$')) {
-          // If no delimiters are present, treat it as inline math
-          processed = latex.trim();
-          displayMode = false;
-        }
-        console.log('After delimiter removal:', processed);
-
-        katex.render(processed, containerRef.current, {
+        katex.render(latex, containerRef.current, {
           displayMode: displayMode,
           throwOnError: false,
           strict: false,
           trust: true,
-          output: 'html',
           macros: {
             "\\N": "\\mathbb{N}",
             "\\R": "\\mathbb{R}",
@@ -97,17 +75,10 @@ const LatexRenderer: React.FC<{ latex: string, displayMode?: boolean }> = ({ lat
             "\\Q": "\\mathbb{Q}",
             "\\C": "\\mathbb{C}",
             "\\P": "\\mathbb{P}",
-            "\\GM": "\\text{GM}",
-            "\\AM": "\\text{AM}",
-            "\\HM": "\\text{HM}"
           }
         });
       } catch (error) {
-        console.error('LaTeX rendering error:', { error, latex });
-        // Fallback to showing the raw LaTeX
-        if (containerRef.current) {
-          containerRef.current.textContent = latex;
-        }
+        console.error('KaTeX rendering error:', error);
       }
     }
   }, [latex, displayMode]);
@@ -191,13 +162,13 @@ const components: Components = {
   },
   math({ value }: MathProps) {
     return (
-      <div className="my-2">
-        <LatexRenderer latex={value} displayMode={true} />
-      </div>
+      <LatexRenderer latex={value} displayMode={true} />
     );
   },
   inlineMath({ value }: MathProps) {
-    return <LatexRenderer latex={value} displayMode={false} />;
+    return (
+      <LatexRenderer latex={value} displayMode={false} />
+    );
   },
   a({ node, children, ...props }: LinkProps) {
     // Check if this is a citation link
@@ -300,16 +271,21 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                 remarkPlugins={[
                   remarkGfm,
                   [remarkMath, { 
-                    singleDollarTextMath: true,
-                    doubleBackslashDisplayMath: true
+                    singleDollarTextMath: true
                   }]
                 ]}
                 rehypePlugins={[[rehypeKatex, {
                   strict: false,
                   trust: true,
-                  output: 'html',
                   throwOnError: false,
-                  displayMode: true
+                  macros: {
+                    "\\N": "\\mathbb{N}",
+                    "\\R": "\\mathbb{R}",
+                    "\\Z": "\\mathbb{Z}",
+                    "\\Q": "\\mathbb{Q}",
+                    "\\C": "\\mathbb{C}",
+                    "\\P": "\\mathbb{P}"
+                  }
                 }]]}
                 components={components}
               >
@@ -329,16 +305,21 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                 remarkPlugins={[
                   remarkGfm,
                   [remarkMath, { 
-                    singleDollarTextMath: true,
-                    doubleBackslashDisplayMath: true
+                    singleDollarTextMath: true
                   }]
                 ]}
                 rehypePlugins={[[rehypeKatex, {
                   strict: false,
                   trust: true,
-                  output: 'html',
                   throwOnError: false,
-                  displayMode: true
+                  macros: {
+                    "\\N": "\\mathbb{N}",
+                    "\\R": "\\mathbb{R}",
+                    "\\Z": "\\mathbb{Z}",
+                    "\\Q": "\\mathbb{Q}",
+                    "\\C": "\\mathbb{C}",
+                    "\\P": "\\mathbb{P}"
+                  }
                 }]]}
                 components={components}
               >
@@ -351,65 +332,23 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     );
   }
 
-  const renderContent = () => {
-    console.log('Raw content:', content);
-    // Process content to wrap LaTeX in delimiters if needed
-    let processedContent = content;
-    
-    // First, normalize the expression by combining it into a single LaTeX expression
-    processedContent = processedContent
-      // Remove nested dollar signs
-      .replace(/\$\$([^$]+)\$\$/g, '$1')
-      // Handle function arguments
-      .replace(/\$([^$]+)\$\(([^)]+)\)/g, '$1($2)')
-      // Combine the entire expression
-      .replace(/\$([^$]+)\$\s*=\s*\$([^$]+)\$\s*\(([^)]+)\)\s*\+\s*i\$([^$]+)\$\s*\(([^)]+)\)/g, '$$1 = $2($3) + i$4($5)$');
-    
-    // If the content matches Euler's formula pattern, wrap it in display math
-    if (/e\^{i.*?}\s*=\s*\\cos\(.*?\)\s*\+\s*i\\sin\(.*?\)/.test(processedContent)) {
-      processedContent = processedContent.trim();
-    } else {
-      // Otherwise, proceed with normal LaTeX processing
-      const placeholders: {[key: string]: string} = {};
-      let counter = 0;
-      
-      processedContent = processedContent.replace(/\$.*?\$|\\\[.*?\\\]|\\\(.*?\\\)/g, (match) => {
-        const placeholder = `__LATEX_PLACEHOLDER_${counter}__`;
-        placeholders[placeholder] = match;
-        counter++;
-        return placeholder;
-      });
-      
-      const latexRegex = /\\[a-zA-Z]+{[^}]*}|\\[a-zA-Z]+\s*\{[^}]*\}|\\[a-zA-Z]+|[a-zA-Z0-9]+\^{[^}]*}|[a-zA-Z0-9]+_{[^}]*}/g;
-      const matches = processedContent.match(latexRegex);
-      
-      if (matches) {
-        matches.forEach(match => {
-          processedContent = processedContent.replace(match, `$${match}$`);
-        });
-      }
-      
-      Object.entries(placeholders).forEach(([placeholder, original]) => {
-        processedContent = processedContent.replace(placeholder, original);
-      });
-    }
+  const renderContent = (content: string) => {
+    // Preserve line breaks by converting single newlines to <br/> tags
+    const processedContent = content.replace(/(?<!\n)\n(?!\n)/g, '  \n');
 
     return (
-      <div>
+      <div className="prose dark:prose-invert max-w-none break-words">
         <ReactMarkdown
           remarkPlugins={[
             remarkGfm,
             [remarkMath, { 
-              singleDollarTextMath: true,
-              doubleBackslashDisplayMath: true
+              singleDollarTextMath: true
             }]
           ]}
           rehypePlugins={[[rehypeKatex, {
             strict: false,
             trust: true,
-            output: 'html',
             throwOnError: false,
-            displayMode: true,
             macros: {
               "\\N": "\\mathbb{N}",
               "\\R": "\\mathbb{R}",
@@ -419,7 +358,12 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
               "\\P": "\\mathbb{P}"
             }
           }]]}
-          components={components}
+          components={{
+            ...components,
+            p: ({ children }) => <p className="mb-4 last:mb-0">{children}</p>,
+            // Handle line breaks within paragraphs
+            br: () => <br className="mb-4" />,
+          }}
         >
           {processedContent}
         </ReactMarkdown>
@@ -511,7 +455,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             "prose prose-sm dark:prose-invert max-w-none",
             isUser && 'text-white'
           )}>
-            {renderContent()}
+            {renderContent(content)}
           </div>
           {citations && citations.length > 0 && (
             <Citations citations={citations} />

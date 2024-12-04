@@ -38,7 +38,7 @@ export const Footer: React.FC<FooterProps> = ({
   return (
     <>
       <div className="absolute bottom-0 left-0 right-0 flex justify-center z-50">
-        <div className="bg-accent-light m-4 rounded-xl flex items-center border border-border">
+        <div className="bg-accent-light m-2 rounded-xl flex items-center border border-border">
           <div className="flex items-center justify-center gap-1 p-1">
             <TooltipProvider>
               <Tooltip>
@@ -47,7 +47,7 @@ export const Footer: React.FC<FooterProps> = ({
                     onClick={() => setShowFileMenu(true)}
                     className="p-2 bg-background hover:bg-accent rounded-lg transition-colors border border-border"
                   >
-                    <FileText className="h-4 w-4" />
+                    <FileText className="h-5 w-5" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="top" className="text-xs">
@@ -64,7 +64,7 @@ export const Footer: React.FC<FooterProps> = ({
                 <button
                   className="p-2 bg-background hover:bg-accent rounded-lg transition-colors border border-border"
                 >
-                  <Network className="h-4 w-4" />
+                  <Network className="h-5 w-4" />
                 </button>
               }
             />
@@ -76,7 +76,7 @@ export const Footer: React.FC<FooterProps> = ({
                     onClick={onShowSearch}
                     className="p-2 bg-background hover:bg-accent rounded-lg transition-colors border border-border"
                   >
-                    <Search className="h-4 w-4" />
+                    <Search className="h-5 w-4" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="top" className="text-xs">
@@ -93,7 +93,7 @@ export const Footer: React.FC<FooterProps> = ({
                     onClick={onShowPreferences}
                     className="p-2 bg-background hover:bg-accent rounded-lg transition-colors border border-border"
                   >
-                    <Settings className="h-4 w-4" />
+                    <Settings className="h-5 w-4" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="top" className="text-xs">

@@ -1598,7 +1598,7 @@ function App() {
     <>
       <div className="flex h-screen bg-background overflow-hidden rounded-xl">
         <TitleBar />
-        <div className="relative bg-background/50 flex h-[calc(100vh-2.5rem)] w-full mt-8">
+        <div className="relative bg-background/50 flex h-[calc(100vh-2rem)] w-full mt-8">
           {/* Sidebar with animation */}
           <motion.div
             initial={false}
@@ -1663,7 +1663,7 @@ function App() {
                 className={cn(
                   "flex-1 overflow-y-auto min-w-0",
                   "transition-spacing duration-200", 
-                  !activeThread?.isNote && "flex flex-col h-full mb-4 mt-12 mx-3 rounded-xl"
+                  !activeThread?.isNote && "flex flex-col h-full mt-12 mx-3 rounded-xl"
                 )}
                 onClick={(e) => e.stopPropagation()}
               >
