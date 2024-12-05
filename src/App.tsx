@@ -154,7 +154,7 @@ function App() {
       chats: validThreads.filter(t => !t.isNote).length,
       activeTab
     });
-
+    
     return filtered;
   }, [validThreads, activeTab]);
 
@@ -236,6 +236,109 @@ function App() {
     return newThread.id;
   }, [selectedModel, activeTab]);
 
+  const handleNewFolder = useCallback(async () => {
+    const newFolder: Thread = {
+      id: nanoid(),
+      name: "New Folder",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      isFolder: true,
+      parentId: null,
+      children: [],
+      files: [],
+      cachedFiles: [],
+      linkedNotes: [],
+      isPinned: false,
+      isNote: false,
+    };
+    
+    // Add the new folder at the beginning of the list
+    setThreads(prev => [newFolder, ...prev]);
+    
+    // Start renaming the folder immediately
+    // setEditingThreadId(newFolder.id);
+    // setEditingName("New Folder");
+    
+    return newFolder.id;
+  }, []);
+
+  const handleReorderThreads = useCallback((newThreads: Thread[]) => {
+    // Create a Set of thread IDs from the reordered threads for quick lookup
+    const reorderedIds = new Set(newThreads.map(t => t.id));
+    
+    // Get threads from the current tab that weren't reordered
+    const currentTabThreads = threads.filter(
+      t => (activeTab === 'notes' ? t.isNote : !t.isNote) && !reorderedIds.has(t.id)
+    );
+    
+    // Combine all threads in the correct order:
+    // 1. Reordered threads (maintaining their new order)
+    // 2. Any remaining threads from current tab
+    // 3. All threads from other tab
+    const updatedThreads = [
+      ...newThreads,
+      ...currentTabThreads,
+      ...threads.filter(
+        t => (activeTab === 'notes' ? !t.isNote : t.isNote)
+      )
+    ];
+
+    console.log('Reordering threads:', {
+      total: threads.length,
+      reordered: newThreads.length,
+      currentTab: activeTab,
+      currentTabRemaining: currentTabThreads.length,
+      otherTab: threads.filter(
+        t => (activeTab === 'notes' ? !t.isNote : t.isNote)
+      ).length,
+      reorderedIds: Array.from(reorderedIds)
+    });
+    
+    setThreads(updatedThreads);
+    saveThreadOrder(updatedThreads.map(t => t.id));
+  }, [threads, activeTab]);
+
+  // Helper function to get all descendant thread IDs
+  const getDescendantIds = useCallback((threadId: string): string[] => {
+    const descendants: string[] = [];
+    const thread = threads.find(t => t.id === threadId);
+    
+    if (!thread) return descendants;
+    
+    // Get immediate children
+    const children = threads.filter(t => t.parentId === threadId);
+    
+    children.forEach(child => {
+      descendants.push(child.id);
+      // Recursively get descendants of each child
+      descendants.push(...getDescendantIds(child.id));
+    });
+    
+    return descendants;
+  }, [threads]);
+
+  const handleDeleteThread = useCallback((threadId: string) => {
+    // Get all descendant thread IDs
+    const descendantIds = getDescendantIds(threadId);
+    
+    // Delete the thread and all its descendants
+    setThreads(prev => prev.filter(t => t.id !== threadId && !descendantIds.includes(t.id)));
+    
+    // If the deleted thread was active, clear the active thread
+    if (activeThreadId === threadId || descendantIds.includes(activeThreadId || '')) {
+      setActiveThreadId(null);
+    }
+    
+    // Delete the thread and its descendants from storage
+    deleteThread(threadId);
+    descendantIds.forEach(id => deleteThread(id));
+  }, [activeThreadId, getDescendantIds]);
+
+  // Get active thread
+  const activeThread = useMemo(() => {
+    return threads.find(t => t.id === activeThreadId);
+  }, [threads, activeThreadId]);
+
   // Initialize cache on mount
   useEffect(() => {
     initializeCache().catch(console.error);
@@ -287,119 +390,6 @@ function App() {
   const handleNewNote = useCallback(() => {
     return handleNewThread(true);
   }, [handleNewThread]);
-
-  const handleDeleteThread = (threadId: string) => {
-    setThreads(prev => {
-      const remaining = prev.filter(t => t.id !== threadId);
-      deleteThread(threadId);
-      return remaining;
-    });
-    
-    if (activeThreadId === threadId) {
-      const remainingThreads = threads.filter(t => t.id !== threadId);
-      setActiveThreadId(remainingThreads[0]?.id || null);
-    }
-  };
-
-  useEffect(() => {
-    if (chatContainerRef.current && activeThreadId) {
-      const thread = threads.find(t => t.id === activeThreadId);
-      if (thread && !thread.isNote) {
-        const chatThread = thread as ChatThread;
-        // Use requestAnimationFrame to ensure DOM has updated
-        requestAnimationFrame(() => {
-          if (chatContainerRef.current) {
-            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-          }
-        });
-      }
-    }
-  }, [threads, activeThreadId]);
-
-  // Update the keyboard shortcut effect
-  useEffect(() => {
-    const handleKeyDown = (e: ReactKeyboardEvent<HTMLElement>) => {
-      // Check for delete shortcut (Cmd/Ctrl + Backspace)
-      if ((e.metaKey || e.ctrlKey) && e.key === 'Backspace') {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        if (activeThreadId) {
-          const thread = threads.find(t => t.id === activeThreadId);
-          if (thread) {
-            setThreadToDelete(activeThreadId);
-            setShowDeleteConfirm(true);
-          }
-        }
-        return;
-      }
-
-      // Handle other shortcuts
-      loadShortcuts().then(currentShortcuts => {
-        const clearHistoryShortcut = currentShortcuts.find(s => s.id === 'clear-history');
-        const toggleSidebarShortcut = currentShortcuts.find(s => s.id === 'toggle-sidebar');
-        const searchShortcut = currentShortcuts.find(s => s.id === 'search');
-        const newNoteShortcut = currentShortcuts.find(s => s.id === 'new-note');
-        const newThreadShortcut = currentShortcuts.find(s => s.id === 'new-thread');
-
-        if (clearHistoryShortcut && matchesShortcut(e, clearHistoryShortcut)) {
-          e.preventDefault();
-          if (activeThreadId) {
-            clearCurrentThread();
-          }
-        }
-
-        if (toggleSidebarShortcut && matchesShortcut(e, toggleSidebarShortcut)) {
-          e.preventDefault();
-          setSidebarVisible(!sidebarVisible);
-        }
-
-        if (searchShortcut && matchesShortcut(e, searchShortcut)) {
-          e.preventDefault();
-          setShowSearch(true);
-        }
-
-        // Add handler for new note shortcut
-        if (newNoteShortcut && matchesShortcut(e, newNoteShortcut)) {
-          e.preventDefault();
-          handleNewNote();
-          // Switch to notes tab
-          window.dispatchEvent(new CustomEvent('switch-tab', {
-            detail: { tab: 'notes' }
-          }));
-        }
-
-        // Add handler for new thread shortcut
-        if (newThreadShortcut && matchesShortcut(e, newThreadShortcut)) {
-          e.preventDefault();
-          e.stopPropagation();
-          
-          // Create new thread and get its ID
-          const newThreadId = handleNewThread(false);
-          
-          // Switch to threads tab
-          window.dispatchEvent(new CustomEvent('switch-tab', {
-            detail: { tab: 'threads' }
-          }));
-          
-          setActiveThreadId(newThreadId);
-        }
-      });
-    };
-
-    // Add the event listener to the window
-    const handler = (e: KeyboardEvent) => handleKeyDown(e as unknown as ReactKeyboardEvent<HTMLElement>);
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [
-    activeThreadId,
-    threads,
-    handleNewThread,
-    handleNewNote,
-    setActiveThreadId,
-    setThreadToDelete,
-    setShowDeleteConfirm
-  ]);
 
   const handleSendMessage = async (message: string, overrideModel?: string) => {
     console.log('Sending message:', { message, overrideModel, selectedModel });
@@ -528,49 +518,6 @@ function App() {
     }));
   };
 
-  const handleReorderThreads = useCallback((newThreads: Thread[]) => {
-    // Create a Set of thread IDs from the reordered threads for quick lookup
-    const reorderedIds = new Set(newThreads.map(t => t.id));
-    
-    // Get threads from the current tab that weren't reordered
-    const currentTabThreads = threads.filter(
-      t => (activeTab === 'notes' ? t.isNote : !t.isNote) && !reorderedIds.has(t.id)
-    );
-    
-    // Get threads from the other tab
-    const otherTabThreads = threads.filter(
-      t => (activeTab === 'notes' ? !t.isNote : t.isNote)
-    );
-
-    // Combine all threads in the correct order:
-    // 1. Reordered threads (maintaining their new order)
-    // 2. Any remaining threads from current tab
-    // 3. All threads from other tab
-    const updatedThreads = [
-      ...newThreads,
-      ...currentTabThreads,
-      ...otherTabThreads
-    ];
-
-    console.log('Reordering threads:', {
-      total: threads.length,
-      reordered: newThreads.length,
-      currentTab: activeTab,
-      currentTabRemaining: currentTabThreads.length,
-      otherTab: otherTabThreads.length,
-      reorderedIds: Array.from(reorderedIds)
-    });
-    
-    setThreads(updatedThreads);
-    saveThreadOrder(updatedThreads.map(t => t.id));
-  }, [threads, activeTab]);
-
-  // Get active thread
-  const activeThread = useMemo(() => {
-    return threads.find(t => t.id === activeThreadId);
-  }, [threads, activeThreadId]);
-
-  // Improved file upload handling with size limits and better error handling
   const handleFileUpload = async (file: File) => {
     try {
       toast({
@@ -1534,10 +1481,12 @@ function App() {
     };
   }, []);
 
-  const handleShowPreferences = useCallback((tab: PreferenceTab = 'api-keys') => {
+  const [preferencesTab, setPreferencesTab] = useState<string>('profile');
+
+  const handleShowPreferences = (tab?: string) => {
+    setPreferencesTab(tab || 'profile');
     setShowPreferences(true);
-    setPreferenceTab(tab);
-  }, []);
+  };
 
   const handleHidePreferences = useCallback(() => {
     setShowPreferences(false);
@@ -1627,8 +1576,9 @@ function App() {
                     threads={validThreads}
                     activeThreadId={activeThreadId}
                     onThreadSelect={handleThreadSelect}
-                    onNewThread={handleNewThread}
-                    onNewNote={handleNewNote}
+                    onNewThread={() => handleNewThread(false)}
+                    onNewNote={() => handleNewThread(true)}
+                    onNewFolder={handleNewFolder}
                     onDeleteThread={handleDeleteThread}
                     onRenameThread={handleRenameThread}
                     onReorderThreads={handleReorderThreads}
@@ -1738,7 +1688,7 @@ function App() {
             onClose={() => setShowPreferences(false)}
             selectedModel={selectedModel}
             onModelChange={setSelectedModel}
-            initialTab={preferenceTab}
+            initialTab={preferencesTab}
             plugins={plugins}
             onPluginChange={setPlugins}
             apiKeys={apiKeys}

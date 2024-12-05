@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { KeyRound, Palette, Bot, Keyboard, Network, Code, Zap, Volume2 } from "lucide-react";
+import { KeyRound, Palette, Bot, Keyboard, Network, Code, Zap, Volume2, Database, UserCircle } from "lucide-react";
 import { cn } from '@/lib/utils';
 import { KeyboardShortcut, loadShortcuts, saveShortcuts, resetShortcuts } from '@/lib/shortcuts';
 import { Plugin } from '@/lib/plugins';
@@ -21,8 +21,8 @@ import { Connections } from './preferences/Connections';
 import { Plugins } from './preferences/Plugins';
 import { Actions, Action } from './preferences/Actions';
 import { Storage } from './preferences/Storage';
-import { Database } from 'lucide-react';
 import { VoiceSettings } from './preferences/VoiceSettings';
+import { Profile } from './preferences/Profile';
 import { showToast } from '@/lib/toast';
 
 interface PreferencesProps {
@@ -48,14 +48,14 @@ interface ApiKeys {
   elevenlabs: string;
 }
 
-type PreferenceTab = 'api-keys' | 'appearance' | 'models' | 'shortcuts' | 'plugins' | 'connections' | 'actions' | 'storage' | 'voice';
+type PreferenceTab = 'profile' | 'api-keys' | 'appearance' | 'models' | 'shortcuts' | 'plugins' | 'connections' | 'actions' | 'storage' | 'voice';
 
 export const Preferences: React.FC<PreferencesProps> = ({ 
   isOpen, 
   onClose,
   selectedModel,
   onModelChange,
-  initialTab = 'api-keys',
+  initialTab = 'profile',
   plugins = [],
   onPluginChange,
   actions = [],
@@ -71,7 +71,7 @@ export const Preferences: React.FC<PreferencesProps> = ({
   });
   const [isSaving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<PreferenceTab>(initialTab);
+  const [activeTab, setActiveTab] = useState<PreferenceTab>(initialTab || 'profile');
   const [verificationStatus, setVerificationStatus] = useState<{
     anthropic: VerificationStatus;
     perplexity: VerificationStatus;
@@ -91,8 +91,8 @@ export const Preferences: React.FC<PreferencesProps> = ({
   const [editingShortcutId, setEditingShortcutId] = useState<string | null>(null);
 
   useEffect(() => {
-    setActiveTab(initialTab);
-  }, [initialTab]);
+    setActiveTab(initialTab || 'profile');
+  }, [initialTab, isOpen]);
 
   useEffect(() => {
     if (isOpen) {
@@ -243,6 +243,7 @@ export const Preferences: React.FC<PreferencesProps> = ({
   };
 
   const tabs: { id: PreferenceTab; label: string; icon: React.ReactNode }[] = [
+    { id: 'profile', label: 'Profile', icon: <UserCircle className="h-4 w-4" /> },
     { id: 'api-keys', label: 'APIs', icon: <KeyRound className="h-4 w-4" /> },
     { id: 'connections', label: 'Connections', icon: <Network className="h-4 w-4" /> },
     { id: 'appearance', label: 'Appearance', icon: <Palette className="h-4 w-4" /> },
@@ -256,6 +257,10 @@ export const Preferences: React.FC<PreferencesProps> = ({
 
   const renderContent = () => {
     switch (activeTab) {
+      case 'profile':
+        return (
+          <Profile />
+        );
       case 'api-keys':
         return (
           <ApiKeys

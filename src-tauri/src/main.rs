@@ -1,5 +1,6 @@
 mod models;
 mod ai;
+mod profile;
 
 use models::CompletionRequest;
 use tauri::State;
@@ -23,6 +24,9 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             generate_completion,
             verify_api_key,
+            profile::load_profile_settings,
+            profile::save_profile_settings,
+            profile::select_image,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

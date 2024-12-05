@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { Message, PluginModification, Thread } from '@/types';
 import { ModelIcon } from './ModelIcon';
@@ -40,6 +40,7 @@ interface ChatMessageProps {
   onDelete?: () => void;
   onForkToNote?: (content: string) => void;
   setThreads?: React.Dispatch<React.SetStateAction<Thread[]>>;
+  onAskAgain?: (content: string) => void;
 }
 
 // Add this component to render plugin content
@@ -210,8 +211,26 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   onDelete,
   onForkToNote,
   setThreads,
+  onAskAgain,
 }) => {
-  console.log('ChatMessage received modelId:', modelId);
+  const isUser = role === 'user';
+  const isError = role === 'error';
+  const isAssistant = role === 'assistant';
+  const [copied, setCopied] = useState(false);
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+
+  const handleAskAgain = useCallback(() => {
+    if (onAskAgain && content) {
+      onAskAgain(content);
+    }
+  }, [onAskAgain, content]);
+
+  useEffect(() => {
+    if (modelId) {
+      console.log('ChatMessage received modelId:', modelId);
+    }
+  });
 
   const handleTextToSpeech = async () => {
     if (onTextToSpeech) {
@@ -227,28 +246,45 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
 
   if (role === 'error') {
     return (
-      <div
-        className="flex items-start gap-2 text-destructive cursor-pointer group"
-        onClick={onErrorClick}
-      >
-        <XCircle className="h-5 w-5 mt-0.5 shrink-0" />
-        <div className="text-sm">
-          {content.includes('rate limit') ? (
-            <>
-              <span className="font-medium">Rate Limit Error: </span>
-              The model is currently at capacity. Please wait a moment and try again.
-            </>
-          ) : (
-            <>
-              <span className="font-medium">Error: </span>
-              {content}
-            </>
-          )}
-          <div className="text-xs text-muted-foreground group-hover:underline">
-            Click to configure API keys
+      <ChatMessageContextMenu content={content}>
+        <div className={cn(
+          "group relative flex gap-3 px-4 py-3",
+          "border border-destructive/20 bg-destructive/5",
+          "rounded-xl text-destructive"
+        )}>
+          <div className="h-6 w-6 mt-1 shrink-0">
+            <XCircle className="h-5 w-5" />
           </div>
+          <div className="flex-1 space-y-2 overflow-hidden">
+            <div className="text-sm">
+              {content.includes('rate limit') ? (
+                <>
+                  <span className="font-medium">Rate Limit Error: </span>
+                  The model is currently at capacity. Please wait a moment and try again.
+                </>
+              ) : (
+                <>
+                  <span className="font-medium">Error: </span>
+                  {content}
+                </>
+              )}
+              {onErrorClick && (
+                <div 
+                  onClick={onErrorClick}
+                  className="text-xs text-destructive/70 hover:text-destructive cursor-pointer mt-1"
+                >
+                  Click to configure API keys
+                </div>
+              )}
+            </div>
+          </div>
+          <ChatActions
+            content={content}
+            onDelete={onDelete}
+            className="text-destructive/70"
+          />
         </div>
-      </div>
+      </ChatMessageContextMenu>
     );
   }
 
@@ -371,10 +407,6 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     );
   };
 
-  const isAssistant = role === 'assistant';
-  const isUser = role === 'user';
-  const isSystem = role === 'system';
-
   // Debug model information
   console.log('ChatMessage rendering:', {
     role,
@@ -384,108 +416,113 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   });
 
   return (
-    <ChatMessageContextMenu
-      content={content}
-      onDelete={onDelete}
-      onTextToSpeech={handleTextToSpeech}
-      onForkToNote={handleForkToNote}
-      showTTS={showTTS}
-    >
-      <div className={cn(
-        "group relative inline-flex gap-2 px-2 py-2 selection:bg-palette-blue selection:text-white rounded-lg select-text max-w-[80%]",
-        isUser && 'bg-palette-blue text-white ml-auto',
-        isSystem && 'bg-background/10 text-muted-foreground text-sm',
-        isAssistant && 'bg-background border border-border text-accent-foreground'
-      )}>
-        {isAssistant && (
-          <div className="absolute p-1 top-2 right-2 opacity-0 group-hover:opacity-100 bg-background border border-border rounded-lg transition-opacity flex gap-2">
+    <div className={cn(
+      "flex w-full",
+      isUser && "justify-end"
+    )}>
+      <ChatMessageContextMenu
+        content={content}
+        onDelete={onDelete}
+        onTextToSpeech={onTextToSpeech}
+        onForkToNote={onForkToNote}
+        onAskAgain={isUser ? handleAskAgain : undefined}
+        showTTS={showTTS}
+        isUserMessage={isUser}
+      >
+        <div className={cn(
+          "group relative inline-flex gap-3 px-3 py-2.5 selection:bg-palette-blue selection:text-white rounded-lg select-text max-w-[80%]",
+          isUser && 'bg-palette-blue text-white',
+          isAssistant && 'bg-background border border-border text-accent-foreground'
+        )}>
+          {isAssistant && (
+            <div className="absolute p-1 top-2 right-2 opacity-0 group-hover:opacity-100 bg-background border border-border rounded-lg transition-opacity flex gap-2">
             <ChatActions
               onConvertToSpeech={handleTextToSpeech}
               onDelete={onDelete}
-              onForkToNote={handleForkToNote}
+              onForkToNote={onForkToNote}
               content={content}
               showTTS={showTTS}
             />
           </div>
-        )}
-        
-        {!isUser && (
-          <div className="flex flex-col items-center gap-2">
-            <div className={cn(
-              "flex h-7 w-7 shrink-0 select-none items-center justify-center rounded-md border shadow-sm",
-              "bg-background border-border"
-            )}>
-              {isSystem ? (
-                <Sparkles className="h-4 w-4" />
-              ) : isAssistant && modelId ? (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="flex items-center justify-center">
-                        <ModelIcon modelId={modelId} className="h-4 w-4" />
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="text-xs">
-                      {(() => {
-                        const model = AVAILABLE_MODELS.find(m => m.id === modelId);
-                        return model ? (
-                          <div className="flex flex-col gap-0.5">
-                            <span className="font-medium">{model.name}</span>
-                            <span className="text-muted-foreground">{model.provider}</span>
-                          </div>
-                        ) : modelId;
-                      })()}
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              ) : (
-                <Bot className="h-4 w-4" />
-              )}
-            </div>
-          </div>
-        )}
-
-        <div className={cn(
-          "space-y-2 overflow-hidden min-w-0 font-sans text-sm",
-          isUser && 'text-right',
-          isSystem && 'text-left',
-          isAssistant && 'text-left'
-        )}>
-          <div className={cn(
-            "prose prose-sm dark:prose-invert max-w-none",
-            isUser && 'text-white'
-          )}>
-            {renderContent(content)}
-          </div>
-          {citations && citations.length > 0 && (
-            <Citations citations={citations} />
           )}
-          {relatedQuestions && relatedQuestions.length > 0 && (
-            <div className="flex flex-wrap gap-2 pt-2">
-              {relatedQuestions.map((question, index) => (
-                <button
-                  key={index}
-                  className="text-xs px-2 py-1 rounded-md bg-accent hover:bg-accent/80 transition-colors"
-                  onClick={() => onSendMessage?.(question)}
-                >
-                  {question}
-                </button>
-              ))}
+          
+          {!isUser && (
+            <div className="flex flex-col items-center gap-2">
+              <div className={cn(
+                "flex h-6 w-6 shrink-0 select-none items-center justify-center rounded-md border shadow-sm",
+                "bg-background border-border"
+              )}>
+                {role === 'system' ? (
+                  <Sparkles className="h-3 w-3" />
+                ) : isAssistant && modelId ? (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center justify-center">
+                          <ModelIcon modelId={modelId} className="h-3 w-3" />
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="text-xs">
+                        {(() => {
+                          const model = AVAILABLE_MODELS.find(m => m.id === modelId);
+                          return model ? (
+                            <div className="flex flex-col gap-0.5">
+                              <span className="font-medium">{model.name}</span>
+                              <span className="text-muted-foreground">{model.provider}</span>
+                            </div>
+                          ) : modelId;
+                        })()}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                ) : (
+                  <Bot className="h-3 w-3" />
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className={cn(
+            "space-y-2 overflow-hidden min-w-0 font-sans text-sm",
+            isUser && 'text-right',
+            isAssistant && 'text-left'
+          )}>
+            <div className={cn(
+              "prose prose-sm dark:prose-invert max-w-none",
+              isUser && 'text-white'
+            )}>
+              {renderContent(content)}
+            </div>
+            {citations && citations.length > 0 && (
+              <Citations citations={citations} />
+            )}
+            {relatedQuestions && relatedQuestions.length > 0 && (
+              <div className="flex flex-wrap gap-2 pt-2">
+                {relatedQuestions.map((question, index) => (
+                  <button
+                    key={index}
+                    className="text-xs px-2 py-1 rounded-md bg-accent hover:bg-accent/80 transition-colors"
+                    onClick={() => onSendMessage?.(question)}
+                  >
+                    {question}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {isUser && (
+            <div className="flex flex-col items-center gap-2">
+              <div className={cn(
+                "flex h-6 w-6 shrink-0 select-none items-center justify-center rounded-md border shadow-sm",
+                "bg-white/10 border-white/20"
+              )}>
+                <User className="h-3 w-3" />
+              </div>
             </div>
           )}
         </div>
-
-        {isUser && (
-          <div className="flex flex-col items-center gap-2">
-            <div className={cn(
-              "flex h-7 w-7 shrink-0 select-none items-center justify-center rounded-md border shadow-sm",
-              "bg-white/10 border-white/20"
-            )}>
-              <User className="h-4 w-4" />
-            </div>
-          </div>
-        )}
-      </div>
-    </ChatMessageContextMenu>
+      </ChatMessageContextMenu>
+    </div>
   );
 };

@@ -59,7 +59,23 @@ export interface NoteThread extends BaseThread {
   children: string[];
 }
 
-export type Thread = ChatThread | NoteThread;
+export interface Thread {
+  id: string;
+  name: string;
+  createdAt: number;
+  updatedAt: number;
+  isNote?: boolean;
+  isPinned?: boolean;
+  color?: string;
+  icon?: string;
+  textColor?: string;
+  showLinkedItems?: boolean;
+  isFolder?: boolean;
+  parentId?: string;
+  children?: string[];
+}
+
+export type ThreadType = ChatThread | NoteThread | Thread;
 
 export interface FileInfo {
   name: string;
@@ -100,7 +116,7 @@ export interface Plugin {
   components?: Record<string, React.ComponentType<any>>;
   hooks: {
     onMessage?: (message: Message) => Promise<Message | void>;
-    onThreadCreate?: (thread: Thread) => Promise<Thread | void>;
+    onThreadCreate?: (thread: ThreadType) => Promise<ThreadType | void>;
     onThreadDelete?: (threadId: string) => Promise<void>;
     onFileUpload?: (file: File) => Promise<File | void>;
   };
@@ -129,7 +145,7 @@ export const THREAD_ICONS = [
 ] as const;
 
 export interface KnowledgeGraphProps {
-  threads: Thread[];
+  threads: ThreadType[];
   onNodeClick?: (nodeId: string) => void;
 }
 
@@ -146,27 +162,4 @@ export interface GraphEdge {
   id: string;
   source: string;
   target: string;
-}
-
-export interface Thread {
-  id: string;
-  name: string;
-  messages: Message[];
-  files: FileAttachment[];
-  createdAt: number;
-  updatedAt: number;
-  isPinned?: boolean;
-  color?: string;
-  icon?: string;
-  textColor?: string;
-  isNote?: boolean;
-  lastUsedModel?: string;
-  cachedFiles: string[];
-  linkedNotes: string[];
-}
-
-export interface NoteThread extends Omit<Thread, 'messages'> {
-  isNote: true;
-  content: string;
-  linkedNotes: string[];
 }

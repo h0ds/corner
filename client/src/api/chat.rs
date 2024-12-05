@@ -618,6 +618,86 @@ pub async fn send_message(
                 related_questions: None,
             })
         },
+        "grok" => {
+            let stored_keys = crate::config::load_stored_keys(&app_handle)?;
+            let api_key = if let Some(key) = stored_keys["xai"].as_str() {
+                key.to_string()
+            } else {
+                let state_key = state.xai.lock().unwrap();
+                match state_key.clone() {
+                    Some(key) if !key.is_empty() => key,
+                    _ => env::var("GROK_API_KEY").unwrap_or_default(),
+                }
+            };
+
+            if api_key.is_empty() {
+                return Ok(ApiResponse {
+                    content: None,
+                    error: Some("Grok API key not configured. Please add your API key in settings.".to_string()),
+                    citations: None,
+                    images: None,
+                    related_questions: None,
+                });
+            }
+
+            let request_body = serde_json::json!({
+                "messages": [{
+                    "role": "user",
+                    "content": message
+                }],
+                "model": request.model,
+                "temperature": 0.7,
+                "max_tokens": 1024,
+                "stream": false
+            });
+
+            println!("Request body: {}", serde_json::to_string_pretty(&request_body).unwrap());
+
+            let response = client
+                .post("https://api.grok.x.ai/v1/chat/completions")
+                .header("Authorization", format!("Bearer {}", api_key))
+                .header("Content-Type", "application/json")
+                .json(&request_body)
+                .send()
+                .await;
+
+            match response {
+                Ok(mut resp) => {
+                    let status = resp.status();
+                    println!("Response status: {}", status);
+                    let response_text = resp.text().await.map_err(|e| e.to_string())?;
+                    println!("Raw response: {}", response_text);
+
+                    if status.is_success() {
+                        let json: serde_json::Value = serde_json::from_str(&response_text).map_err(|e| e.to_string())?;
+                        Ok(ApiResponse {
+                            content: Some(json["choices"][0]["message"]["content"].as_str().unwrap_or_default().to_string()),
+                            error: None,
+                            citations: None,
+                            images: None,
+                            related_questions: None,
+                        })
+                    } else {
+                        Ok(ApiResponse {
+                            content: None,
+                            error: Some(format!("API Error: {}", response_text)),
+                            citations: None,
+                            images: None,
+                            related_questions: None,
+                        })
+                    }
+                },
+                Err(e) => {
+                    Ok(ApiResponse {
+                        content: None,
+                        error: Some(format!("Failed to send request to Grok API: {}", e)),
+                        citations: None,
+                        images: None,
+                        related_questions: None,
+                    })
+                }
+            }
+        },
         _ => Ok(ApiResponse {
             content: None,
             error: Some(format!("Unsupported provider: {}", request.provider)),
@@ -829,6 +909,40 @@ pub async fn verify_api_key(provider: &str, key: &str) -> Result<serde_json::Val
                 Ok(serde_json::json!({}))
             } else {
                 let error = response.text().await.map_err(|e| e.to_string())?;
+                Ok(serde_json::json!({ "error": error }))
+            }
+        },
+        "grok" => {
+            let request_body = serde_json::json!({
+                "messages": [{
+                    "role": "user",
+                    "content": "test"
+                }],
+                "model": "grok-1",
+                "temperature": 0.7,
+                "max_tokens": 1024,
+                "stream": false
+            });
+
+            println!("Verifying Grok API key...");
+            let response = client
+                .post("https://api.grok.x.ai/v1/chat/completions")
+                .header("Authorization", format!("Bearer {}", key))
+                .header("Content-Type", "application/json")
+                .json(&request_body)
+                .send()
+                .await
+                .map_err(|e| e.to_string())?;
+
+            let status = response.status();
+            println!("Response status: {}", status);
+
+            if status.is_success() {
+                println!("Grok API key is valid");
+                Ok(serde_json::json!({}))
+            } else {
+                let error = response.text().await.map_err(|e| e.to_string())?;
+                println!("Grok API key verification failed: {}", error);
                 Ok(serde_json::json!({ "error": error }))
             }
         },

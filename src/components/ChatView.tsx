@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { Message, Thread, ApiKeys } from '@/types';
 import { ChatMessage } from './ChatMessage';
 import { FilePreview } from './FilePreview';
@@ -34,7 +34,7 @@ interface ChatViewProps {
   onCompareModels: (message: string, model1: string, model2: string) => void;
   onStartDiscussion: (message: string, model1: string, model2: string) => void;
   onClearThread: () => void;
-  onShowPreferences: () => void;
+  onShowPreferences: (tab?: string) => void;
   onForkToNote: (content: string) => void;
   allThreads: Thread[];
 }
@@ -69,6 +69,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const [isLoadingThread, setIsLoadingThread] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
+  const [isListening, setIsListening] = useState(false);
 
   const { toast } = useToast();
 
@@ -236,8 +238,16 @@ export const ChatView: React.FC<ChatViewProps> = ({
   };
 
   const handleErrorClick = () => {
-    onShowPreferences();
+    onShowPreferences('api-keys');
   };
+
+  const handleAskAgain = useCallback((messageId: string) => {
+    const message = messages.find(m => m.id === messageId);
+    if (message && message.content) {
+      onSendMessage(message.content);
+      setSelectedMessageId(null);
+    }
+  }, [messages, onSendMessage]);
 
   // Get sorted messages
   const sortedMessages = useMemo(() => {
@@ -309,6 +319,10 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
     return () => observer.disconnect();
   }, []);
+
+  const handleStartVoiceDictation = () => {
+    setIsListening(!isListening);
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -413,6 +427,15 @@ export const ChatView: React.FC<ChatViewProps> = ({
                       layout: { duration: 0.2 }
                     }}
                   >
+                    {message.error && (
+                      <div className="flex w-full items-start gap-x-8 py-4 pl-8">
+                        <div className="flex-1 space-y-2 overflow-hidden break-words">
+                          <div className="rounded-lg bg-red-50 p-4 text-sm text-red-500">
+                            {message.error}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     <ChatMessage
                       role={message.role}
                       content={message.content}
@@ -430,6 +453,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                       setThreads={setThreads}
                       onErrorClick={handleErrorClick}
                       onForkToNote={onForkToNote}
+                      onAskAgain={handleAskAgain}
                     />
                     {message.file && (
                       <FilePreview
@@ -437,6 +461,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                         content={message.file.content}
                       />
                     )}
+                    
                   </motion.div>
                 ))
               )}
@@ -455,7 +480,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
         )}
       </div>
 
-      <div className="flex-shrink-0 mb-2 mt-2">
+      <div className="flex-shrink-0 mt-2 mb-2">
         <div className="relative">
           <div className="absolute right-4 flex items-center gap-2">
             {(isAudioPlaying || isAudioLoading) && audioRef.current?.src && (
@@ -483,6 +508,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
               currentThreadId={activeThreadId}
               onUpdateThreads={setThreads}
               onShowLinkedItems={handleShowLinkedItems}
+              onStartVoiceDictation={handleStartVoiceDictation}
+              isListening={isListening}
             />
           </div>
         </div>

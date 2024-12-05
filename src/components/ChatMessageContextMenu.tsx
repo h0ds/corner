@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -6,59 +6,88 @@ import {
   ContextMenuTrigger,
   ContextMenuSeparator,
 } from "@/components/ui/context-menu";
-import { GitForkIcon, Trash2, Volume2 } from 'lucide-react';
+import { 
+  GitForkIcon, 
+  Trash2, 
+  Volume2, 
+  RotateCcw, 
+  Check, 
+  Copy, 
+  MessageSquare, 
+  FileText 
+} from 'lucide-react';
 
 interface ChatMessageContextMenuProps {
   children: React.ReactNode;
   content: string;
   onDelete?: () => void;
-  onTextToSpeech?: (text: string) => Promise<void>;
-  onForkToNote?: (text: string) => void;
+  onTextToSpeech?: () => void;
+  onForkToNote?: () => void;
+  onAskAgain?: () => void;
   showTTS?: boolean;
+  isUserMessage?: boolean;
 }
 
-export const ChatMessageContextMenu: React.FC<ChatMessageContextMenuProps> = ({
+export function ChatMessageContextMenu({
   children,
   content,
   onDelete,
   onTextToSpeech,
   onForkToNote,
+  onAskAgain,
   showTTS = false,
-}) => {
+  isUserMessage = false,
+}: ChatMessageContextMenuProps) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(async () => {
+    await navigator.clipboard.writeText(content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, [content]);
+
   return (
     <ContextMenu>
-      <ContextMenuTrigger className="w-full flex">
+      <ContextMenuTrigger asChild>
         {children}
       </ContextMenuTrigger>
-      <ContextMenuContent>
+      <ContextMenuContent className="w-64">
+        <ContextMenuItem onClick={handleCopy}>
+          {copied ? (
+            <Check className="mr-2 h-4 w-4" />
+          ) : (
+            <Copy className="mr-2 h-4 w-4" />
+          )}
+          {copied ? "Copied!" : "Copy message"}
+        </ContextMenuItem>
         {showTTS && onTextToSpeech && (
-          <ContextMenuItem 
-            onClick={() => onTextToSpeech(content)}
-            className="flex items-center gap-2 cursor-pointer"
-          >
-            <Volume2 className="h-4 w-4" />
-            <span>Read aloud</span>
+          <ContextMenuItem onClick={onTextToSpeech}>
+            <Volume2 className="mr-2 h-4 w-4" />
+            Convert to speech
           </ContextMenuItem>
         )}
         {onForkToNote && (
-          <ContextMenuItem
-            onClick={() => onForkToNote(content)}
-            className="flex items-center gap-2 cursor-pointer"
-          >
-            <GitForkIcon className="h-4 w-4" />
-            <span>Fork into note</span>
+          <ContextMenuItem onClick={onForkToNote}>
+            <GitForkIcon className="mr-2 h-4 w-4" />
+            Fork to note
+          </ContextMenuItem>
+        )}
+        {isUserMessage && onAskAgain && (
+          <ContextMenuItem onClick={onAskAgain}>
+            <MessageSquare className="mr-2 h-4 w-4" />
+            Ask again
           </ContextMenuItem>
         )}
         {onDelete && (
           <ContextMenuItem
             onClick={onDelete}
-            className="flex items-center gap-2 cursor-pointer text-destructive focus:text-destructive"
+            className="text-red-600 dark:text-red-400"
           >
-            <Trash2 className="h-4 w-4" />
-            <span>Delete</span>
+            <Trash2 className="mr-2 h-4 w-4" />
+            Delete message
           </ContextMenuItem>
         )}
       </ContextMenuContent>
     </ContextMenu>
   );
-};
+}
