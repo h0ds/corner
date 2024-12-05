@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { Message, PluginModification, Thread } from '@/types';
 import { ModelIcon } from './ModelIcon';
-import { User, XCircle, Copy, ImageIcon, Bot, Sparkles } from 'lucide-react';
+import { User, XCircle, Copy, ImageIcon, Bot, Sparkles, Settings } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -23,6 +23,7 @@ import katex from 'katex';
 import { ChatMessageContextMenu } from './ChatMessageContextMenu';
 import { nanoid } from 'nanoid';
 import { showToast } from '@/lib/toast';
+import { Button } from "@/components/ui/button";
 
 interface ChatMessageProps {
   role: Message['role'];
@@ -268,21 +269,34 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                   {content}
                 </>
               )}
-              {onErrorClick && (
-                <div 
-                  onClick={onErrorClick}
-                  className="text-xs text-destructive/70 hover:text-destructive cursor-pointer mt-1"
-                >
-                  Click to configure API keys
-                </div>
-              )}
             </div>
           </div>
-          <ChatActions
-            content={content}
-            onDelete={onDelete}
-            className="text-destructive/70"
-          />
+          <div className="flex items-center gap-1">
+            <TooltipProvider>
+              {onErrorClick && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 text-destructive/70 hover:text-destructive hover:bg-destructive/10"
+                      onClick={onErrorClick}
+                    >
+                      <Settings className="h-3 w-3" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    <p className="text-xs">Configure API keys</p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+              <ChatActions
+                content={content}
+                onDelete={onDelete}
+                className="text-destructive/70"
+              />
+            </TooltipProvider>
+          </div>
         </div>
       </ChatMessageContextMenu>
     );

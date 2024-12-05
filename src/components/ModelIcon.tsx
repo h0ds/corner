@@ -4,6 +4,7 @@ import { ClaudeIcon } from './icons/ClaudeIcon';
 import { PerplexityIcon } from './icons/PerplexityIcon';
 import { XAIIcon } from './icons/XAIIcon';
 import { GoogleIcon } from './icons/GoogleIcon';
+import { ElevenLabsIcon } from './icons/ElevenLabsIcon';
 import { Bot } from 'lucide-react';
 
 interface ModelIconProps {
@@ -48,21 +49,17 @@ export const ModelIcon: React.FC<ModelIconProps> = ({ modelId, className }) => {
       console.log('Matched XAI model:', id);
       return <XAIIcon className={className} />;
     }
+
+    // ElevenLabs matching - check for voice_id which is the format used in VoiceSettings
+    if (lowerId.includes('elevenlabs') || lowerId.includes('voice_id')) {
+      console.log('Matched ElevenLabs model:', id);
+      return <ElevenLabsIcon className={className} />;
+    }
     
-    // Fallback
-    console.warn('No provider matched for modelId:', id);
-    return <Bot className={className} style={{ color: 'grey' }} />;
+    // Default fallback
+    console.log('No specific icon match for:', id);
+    return <Bot className={className} />;
   };
 
-  return (
-    <div style={{ 
-      width: className?.includes('w-') ? undefined : '100%', 
-      height: className?.includes('h-') ? undefined : '100%',
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-    }}>
-      {getProviderIcon(modelId)}
-    </div>
-  );
+  return getProviderIcon(modelId);
 };

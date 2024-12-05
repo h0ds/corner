@@ -13,6 +13,7 @@ interface ModelsProps {
 
 export const Models = ({ selectedModel, onModelChange, availableProviders, apiKeys }: ModelsProps) => {
   const availableModels = AVAILABLE_MODELS.filter(model => {
+    // Check if the key exists and is not empty
     const hasKey = apiKeys[model.provider] && apiKeys[model.provider].length > 0;
     return hasKey;
   });
@@ -22,7 +23,7 @@ export const Models = ({ selectedModel, onModelChange, availableProviders, apiKe
       <div>
         <h3 className="text-lg font-medium">Models</h3>
         <p className="text-sm text-muted-foreground">
-          Select which model to use for chat. Only models from providers with valid API keys are shown.
+          Select which model to use for chat. Models are shown for providers with configured API keys.
         </p>
       </div>
 
@@ -34,7 +35,7 @@ export const Models = ({ selectedModel, onModelChange, availableProviders, apiKe
           >
             <SelectTrigger className="w-full">
               <div className="flex items-center gap-2">
-                {/* <ModelIcon modelId={selectedModel} className="h-4 w-4" /> */}
+                <ModelIcon modelId={selectedModel} className="h-4 w-4" />
                 <SelectValue placeholder="Select a model" />
               </div>
             </SelectTrigger>
@@ -54,7 +55,7 @@ export const Models = ({ selectedModel, onModelChange, availableProviders, apiKe
           </Select>
         ) : (
           <div className="text-sm text-muted-foreground">
-            No models available. Please add API keys in the APIs tab.
+            No models available. Please configure API keys in the APIs section.
           </div>
         )}
       </div>
