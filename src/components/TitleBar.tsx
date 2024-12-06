@@ -1,9 +1,10 @@
 import React from 'react';
 import { Window } from '@tauri-apps/api/window';
-import { X, Minus, Square, Maximize2, RefreshCw, Plus } from 'lucide-react';
+import { X, Minus, Square, Maximize2, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { type } from '@tauri-apps/plugin-os';
 import { InfoModal } from './InfoModal';
+import { useLoadingStore } from '@/store/loadingStore';
 
 export const TitleBar: React.FC = () => {
   const [isMaximized, setIsMaximized] = React.useState(false);
@@ -11,12 +12,16 @@ export const TitleBar: React.FC = () => {
   const [isTrafficLightHovered, setIsTrafficLightHovered] = React.useState(false);
   const [showInfoModal, setShowInfoModal] = React.useState(false);
   const appWindow = Window.getCurrent();
+  const { isLoading, progress } = useLoadingStore();
 
   React.useEffect(() => {
     const checkPlatform = async () => {
       try {
         const osType = await type();
         setIsMacOS(osType === 'macos');
+        // Sync initial maximize state
+        const maximized = await appWindow.isMaximized();
+        setIsMaximized(maximized);
       } catch (error) {
         console.error('Failed to detect platform:', error);
       }
@@ -25,13 +30,16 @@ export const TitleBar: React.FC = () => {
   }, []);
 
   const handleMaximize = async () => {
-    const maximized = await appWindow.isMaximized();
-    if (maximized) {
-      await appWindow.unmaximize();
-    } else {
-      await appWindow.maximize();
+    try {
+      if (isMaximized) {
+        await appWindow.unmaximize();
+      } else {
+        await appWindow.maximize();
+      }
+      setIsMaximized(!isMaximized);
+    } catch (error) {
+      console.error('Failed to toggle maximize state:', error);
     }
-    setIsMaximized(!maximized);
   };
 
   const handleDrag = async () => {
@@ -87,14 +95,20 @@ export const TitleBar: React.FC = () => {
               )} />
             </button>
             <button
-              onClick={() => window.location.reload()}
-              className="h-3.5 w-3.5 rounded-full bg-accent border bg-gray-300 border-gray-400 inline-flex items-center justify-center group transition-colors"
-              title="Reload"
+              className={cn(
+                "h-3.5 rounded-full bg-background border border-gray-400 relative overflow-hidden transition-all duration-300",
+                isLoading ? "w-20 opacity-100" : "w-0 opacity-0",
+                isLoading ? "cursor-wait" : "cursor-default"
+              )}
+              title={isLoading ? `Loading ${progress}%` : "Status"}
             >
-              <RefreshCw className={cn(
-                "h-[6px] w-[6px] text-foreground group-hover:text-gray-700",
-                isTrafficLightHovered ? "opacity-100" : "opacity-0"
-              )} />
+              <div
+                className={cn(
+                  "absolute left-0 top-0 h-full bg-blue-500/20 transition-all duration-300",
+                  isLoading ? "opacity-100" : "opacity-0"
+                )}
+                style={{ width: `${progress}%` }}
+              />
             </button>
           </div>
           {/* Center section - App name */}

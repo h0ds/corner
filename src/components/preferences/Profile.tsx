@@ -53,18 +53,15 @@ export const Profile = () => {
     }
   };
 
-  const handleImageUpload = async () => {
+  const handleAvatarClick = async () => {
     try {
-      const base64Image = await invoke<string>('select_image');
-      if (base64Image) {
-        setSettings(prev => ({ ...prev, avatar: base64Image }));
-        await handleSave();
-      }
+      const avatar = await invoke<string>('select_image');
+      setSettings(prev => ({ ...prev, avatar }));
     } catch (error) {
-      console.error('Failed to upload image:', error);
+      console.error('Failed to select image:', error);
       showToast({
         title: "Error",
-        description: "Failed to upload image",
+        description: "Failed to select profile picture",
         variant: "destructive",
       });
     }
@@ -73,44 +70,48 @@ export const Profile = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-6">
-        <div className="relative group cursor-pointer" onClick={handleImageUpload}>
-          <Avatar className="h-24 w-24 ring-2 ring-transparent transition-all group-hover:ring-primary/20">
+        <div 
+          onClick={handleAvatarClick}
+          className="cursor-pointer hover:opacity-80 transition-opacity"
+          title="Click to change profile picture"
+        >
+          <Avatar className="h-20 w-20">
             <AvatarImage src={settings.avatar} />
-            <AvatarFallback className="bg-muted">
-              {settings.name ? settings.name[0].toUpperCase() : 'U'}
-            </AvatarFallback>
+            <AvatarFallback>{settings.name.charAt(0)}</AvatarFallback>
           </Avatar>
-          <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity rounded-full">
-            Change Photo
-          </div>
         </div>
-        <div className="space-y-4 flex-1">
-          <div className="grid w-full max-w-sm items-center gap-1.5">
-            <Label htmlFor="name">Name</Label>
-            <Input
-              type="text"
-              id="name"
-              value={settings.name}
-              onChange={(e) => setSettings(prev => ({ ...prev, name: e.target.value }))}
-              placeholder="Your name"
-            />
-          </div>
-          <div className="grid w-full max-w-sm items-center gap-1.5">
-            <Label htmlFor="username">Username</Label>
-            <Input
-              type="text"
-              id="username"
-              value={settings.username}
-              onChange={(e) => setSettings(prev => ({ ...prev, username: e.target.value }))}
-              placeholder="Your username"
-            />
-          </div>
+        <div className="space-y-1">
+          <h4 className="text-sm font-medium leading-none">Profile Picture</h4>
+          <p className="text-sm text-muted-foreground">
+            Click the avatar to upload a new profile picture
+          </p>
         </div>
       </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="name">Name</Label>
+        <Input
+          id="name"
+          value={settings.name}
+          onChange={(e) => setSettings(prev => ({ ...prev, name: e.target.value }))}
+          placeholder="Enter your name"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="username">Username</Label>
+        <Input
+          id="username"
+          value={settings.username}
+          onChange={(e) => setSettings(prev => ({ ...prev, username: e.target.value }))}
+          placeholder="Enter your username"
+        />
+      </div>
+
       <Button 
         onClick={handleSave} 
         disabled={isSaving}
-        className="w-full max-w-sm"
+        className="w-full"
       >
         {isSaving ? "Saving..." : "Save Changes"}
       </Button>

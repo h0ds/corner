@@ -383,8 +383,11 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   }
 
   const renderContent = (content: string) => {
-    // Preserve line breaks by converting single newlines to <br/> tags
-    const processedContent = content.replace(/(?<!\n)\n(?!\n)/g, '  \n');
+    // Convert \[...\] to $$ ... $$ for display math
+    const processedContent = content
+      .replace(/\\\[(.*?)\\\]/gs, (_, group) => `$$${group}$$`)
+      // Preserve line breaks by converting single newlines to <br/> tags
+      .replace(/(?<!\n)\n(?!\n)/g, '  \n');
 
     return (
       <div className="prose dark:prose-invert max-w-none break-words">
