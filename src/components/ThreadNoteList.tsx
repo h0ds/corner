@@ -362,7 +362,7 @@ export const ThreadNoteList: React.FC<ThreadNoteListProps> = ({
       onDragCancel={handleDragCancel}
     >
       <SortableContext items={uniqueItems.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-        <div className="flex flex-col gap-1 px-4">
+        <div className="flex flex-col gap-1 px-2 pb-20">
           {uniqueItems.map((item) => (
             <React.Fragment key={item.id}>
               {dropTarget?.id === item.id && dropTarget.position === "before" && (

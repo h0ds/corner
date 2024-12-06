@@ -5,7 +5,6 @@ import { Thread } from '@/types';
 import { Plus, StickyNote, Search, X } from 'lucide-react';
 import { loadThreadOrder, saveThreadOrder } from '../lib/storage';
 import { Input } from './ui/input';
-import { cn } from '@/lib/utils';
 
 interface SidebarProps {
   threads: Thread[];
@@ -164,12 +163,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <div className="absolute inset-0 border-r border-border flex flex-col">
       <div className="flex flex-col gap-2 p-2">
-        <div className="relative px-2">
+        <div className="relative">
           <Input
             placeholder={`Search ${activeTab === 'notes' ? 'notes' : 'threads'}...`}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-8"
+            className="w-full pl-10"
           />
           <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           {searchQuery && (
@@ -182,7 +181,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
         </div>
 
-        <div className="px-2">
+        <div>
           <SidebarTabs
             threadCount={threadCount}
             noteCount={noteCount}
@@ -191,7 +190,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           />
         </div>
         
-        <div className="px-2">
+        <div>
           <button
             onClick={() => {
               if (activeTab === 'threads') {
@@ -200,8 +199,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 onNewNote();
               }
             }}
-            className="w-full flex items-center gap-2 p-3 text-sm rounded-xl 
-                     bg-accent hover:bg-accent/90 text-accent-foreground transition-colors"
+            className="w-full flex items-center gap-2 p-2 text-sm rounded-xl 
+                     bg-foreground hover:bg-accent/90 text-background transition-colors border border-border"
           >
             {activeTab === 'threads' ? (
               <>

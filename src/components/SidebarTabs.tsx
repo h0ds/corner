@@ -20,10 +20,10 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
       <button
         onClick={() => onTabChange('threads')}
         className={cn(
-          "flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm rounded-l-xl transition-colors",
+          "flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm rounded-l-xl transition-colors border",
           activeTab === 'threads'
-            ? "bg-accent text-accent-foreground"
-            : "hover:bg-accent/50"
+            ? "bg-accent text-accent-foreground border-border"
+            : "hover:bg-accent/50 border-transparent"
         )}
       >
         <MessageSquare className="h-4 w-4" />
@@ -35,10 +35,10 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
       <button
         onClick={() => onTabChange('notes')}
         className={cn(
-          "flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm rounded-r-xl transition-colors",
+          "flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm rounded-r-xl transition-colors border",
           activeTab === 'notes'
-            ? "bg-accent text-accent-foreground"
-            : "hover:bg-accent/50"
+            ? "bg-accent text-accent-foreground border-border"
+            : "hover:bg-accent/50 border-transparent"
         )}
       >
         <StickyNote className="h-4 w-4" />
