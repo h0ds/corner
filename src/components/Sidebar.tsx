@@ -1,9 +1,11 @@
-import React, { useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { ThreadNoteList } from './ThreadNoteList';
 import { SidebarTabs } from './SidebarTabs';
 import { Thread } from '@/types';
-import { Plus, StickyNote } from 'lucide-react';
+import { Plus, StickyNote, Search, X } from 'lucide-react';
 import { loadThreadOrder, saveThreadOrder } from '../lib/storage';
+import { Input } from './ui/input';
+import { cn } from '@/lib/utils';
 
 interface SidebarProps {
   threads: Thread[];
@@ -48,8 +50,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   threads,
   activeThreadId,
   onThreadSelect,
-  onNewNote,
   onNewThread,
+  onNewNote,
   onDeleteThread,
   onRenameThread,
   onReorderThreads,
@@ -60,6 +62,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   activeTab,
   onTabChange,
 }) => {
+  const [searchQuery, setSearchQuery] = useState('');
+
   // Memoize thread and note counts
   const { filteredThreads, threadCount, noteCount } = useMemo(() => {
     // Ensure threads is an array and all items are valid
@@ -73,8 +77,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const notes = validThreads.filter(thread => thread.isNote === true);
     const chats = validThreads.filter(thread => thread.isNote === false);
     
+    // Filter based on search query
+    const filterThreads = (items: Thread[]) => {
+      if (!searchQuery) return items;
+      return items.filter(item => 
+        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (item.content && typeof item.content === 'string' && item.content.toLowerCase().includes(searchQuery.toLowerCase()))
+      );
+    };
+    
     // Get the list to display based on active tab
-    const filtered = (activeTab === 'notes' ? notes : chats)
+    const filtered = filterThreads(activeTab === 'notes' ? notes : chats)
       .sort((a, b) => {
         // Sort by pinned status first
         if (a.isPinned && !b.isPinned) return -1;
@@ -95,25 +108,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
         return 0;
       });
 
-    console.log('Thread filtering:', {
-      total: validThreads.length,
-      validThreads: validThreads.map(t => ({ id: t.id, isNote: t.isNote })),
-      filtered: filtered.length,
-      notes: notes.length,
-      chats: chats.length,
-      pinnedItems: filtered.filter(t => t.isPinned).length,
-      activeTab
-    });
-
     return {
       filteredThreads: filtered,
       threadCount: chats.length,
       noteCount: notes.length
     };
-  }, [threads, activeTab]);
+  }, [threads, activeTab, searchQuery]);
 
   // Add debug logging for active thread
-  useEffect(() => {
+  React.useEffect(() => {
     const activeThread = threads.find(t => t.id === activeThreadId);
     console.log('Active thread:', {
       id: activeThreadId,
@@ -124,7 +127,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }, [activeThreadId, threads]);
 
   // Auto-select top thread/note when switching tabs
-  useEffect(() => {
+  React.useEffect(() => {
     // Skip if no items to select from
     if (filteredThreads.length === 0) return;
 
@@ -160,15 +163,35 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <div className="absolute inset-0 border-r border-border flex flex-col">
-      <div className="mt-1">
-        <SidebarTabs
-          activeTab={activeTab}
-          onTabChange={onTabChange}
-          threadCount={threadCount}
-          noteCount={noteCount}
-        />
+      <div className="flex flex-col gap-2 p-2">
+        <div className="relative px-2">
+          <Input
+            placeholder={`Search ${activeTab === 'notes' ? 'notes' : 'threads'}...`}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-8"
+          />
+          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-4 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
+        <div className="px-2">
+          <SidebarTabs
+            threadCount={threadCount}
+            noteCount={noteCount}
+            activeTab={activeTab}
+            onTabChange={onTabChange}
+          />
+        </div>
         
-        <div className="px-2 py-1">
+        <div className="px-2">
           <button
             onClick={() => {
               if (activeTab === 'threads') {
@@ -178,18 +201,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
               }
             }}
             className="w-full flex items-center gap-2 p-3 text-sm rounded-xl 
-                     bg-accent text-foreground hover:bg-accent-light transition-colors
-                     justify-start pl-3"
+                     bg-accent hover:bg-accent/90 text-accent-foreground transition-colors"
           >
             {activeTab === 'threads' ? (
               <>
-                <Plus className="h-4 w-4 shrink-0" />
-                <span className="flex items-center">Start a new chat</span>
+                <Plus className="h-4 w-4 shrink-0 ml-0.5" />
+                <span>Start a new chat</span>
               </>
             ) : (
               <>
-                <StickyNote className="h-4 w-4 shrink-0" />
-                <span className="flex items-center">Create a new note</span>
+                <StickyNote className="h-4 w-4 shrink-0 ml-0.5" />
+                <span>Create a new note</span>
               </>
             )}
           </button>
