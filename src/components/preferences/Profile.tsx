@@ -1,70 +1,46 @@
-import { useState, useEffect } from 'react';
-import { invoke } from '@tauri-apps/api/core';
-import { Button } from "@/components/ui/button";
+import { useState } from 'react';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { showToast } from '@/lib/toast';
+import { Button } from "@/components/ui/button";
+import { User } from "lucide-react";
 
-interface ProfileSettings {
+interface ProfileProps {
   name: string;
-  username: string;
-  avatar: string;
+  profilePicture: string | null;
+  onNameChange: (value: string) => void;
+  onImageUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  isSaving?: boolean;
+  error?: string | null;
 }
 
-export const Profile = () => {
-  const [settings, setSettings] = useState<ProfileSettings>({
-    name: '',
-    username: '',
-    avatar: ''
-  });
-  const [isSaving, setIsSaving] = useState(false);
+export const Profile = ({
+  name,
+  profilePicture,
+  onNameChange,
+  onImageUpload,
+  isSaving = false,
+  error = null
+}: ProfileProps) => {
+  const [inputValue, setInputValue] = useState(name);
+  const hasUnsavedChanges = inputValue !== name;
 
-  useEffect(() => {
-    loadProfile();
-  }, []);
-
-  const loadProfile = async () => {
-    try {
-      const profile = await invoke<ProfileSettings>('load_profile_settings');
-      setSettings(profile);
-    } catch (error) {
-      console.error('Failed to load profile:', error);
-    }
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    setInputValue(newValue);
   };
 
-  const handleSave = async () => {
-    setIsSaving(true);
-    try {
-      await invoke('save_profile_settings', { settings });
-      showToast({
-        title: "Success",
-        description: "Profile settings saved successfully",
-      });
-    } catch (error) {
-      console.error('Failed to save profile:', error);
-      showToast({
-        title: "Error",
-        description: "Failed to save profile settings",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSaving(false);
-    }
+  const handleSave = () => {
+    if (!hasUnsavedChanges) return;
+    onNameChange(inputValue);
   };
 
-  const handleAvatarClick = async () => {
-    try {
-      const avatar = await invoke<string>('select_image');
-      setSettings(prev => ({ ...prev, avatar }));
-    } catch (error) {
-      console.error('Failed to select image:', error);
-      showToast({
-        title: "Error",
-        description: "Failed to select profile picture",
-        variant: "destructive",
-      });
-    }
+  const handleAvatarClick = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = onImageUpload;
+    input.click();
   };
 
   return (
@@ -76,8 +52,10 @@ export const Profile = () => {
           title="Click to change profile picture"
         >
           <Avatar className="h-20 w-20">
-            <AvatarImage src={settings.avatar} />
-            <AvatarFallback>{settings.name.charAt(0)}</AvatarFallback>
+            <AvatarImage src={profilePicture || undefined} />
+            <AvatarFallback>
+              <User className="h-10 w-10" />
+            </AvatarFallback>
           </Avatar>
         </div>
         <div className="space-y-1">
@@ -90,31 +68,33 @@ export const Profile = () => {
 
       <div className="space-y-2">
         <Label htmlFor="name">Name</Label>
-        <Input
-          id="name"
-          value={settings.name}
-          onChange={(e) => setSettings(prev => ({ ...prev, name: e.target.value }))}
-          placeholder="Enter your name"
-        />
+        <div className="flex gap-2 items-center">
+          <Input
+            id="name"
+            value={inputValue}
+            onChange={handleNameChange}
+            placeholder="Enter your name"
+            disabled={isSaving}
+            className="flex-1"
+            maxLength={50}
+            onBlur={handleSave}
+          />
+          <Button
+            onClick={handleSave}
+            disabled={!hasUnsavedChanges || isSaving}
+            variant={hasUnsavedChanges ? "default" : "secondary"}
+            size="sm"
+          >
+            {isSaving ? "Saving..." : "Save Changes"}
+          </Button>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          This name will be displayed when you hover over your profile picture
+        </p>
+        {error && (
+          <p className="text-sm text-destructive mt-1">{error}</p>
+        )}
       </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="username">Username</Label>
-        <Input
-          id="username"
-          value={settings.username}
-          onChange={(e) => setSettings(prev => ({ ...prev, username: e.target.value }))}
-          placeholder="Enter your username"
-        />
-      </div>
-
-      <Button 
-        onClick={handleSave} 
-        disabled={isSaving}
-        className="w-full"
-      >
-        {isSaving ? "Saving..." : "Save Changes"}
-      </Button>
     </div>
   );
 };

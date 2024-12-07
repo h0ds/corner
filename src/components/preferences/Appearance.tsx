@@ -32,7 +32,7 @@ export const defaultColors = {
   border: '#e2e8f0',
 };
 
-export const Appearance: React.FC = () => {
+export const Appearance = () => {
   const { theme, setTheme } = useTheme();
   const [customThemes, setCustomThemes] = useState<CustomTheme[]>(() => {
     try {

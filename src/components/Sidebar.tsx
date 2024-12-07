@@ -200,7 +200,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               }
             }}
             className="w-full flex items-center gap-2 p-2 text-sm rounded-xl 
-                     bg-foreground hover:bg-accent/90 text-background transition-colors border border-border"
+                     bg-foreground hover:bg-foreground/80 text-background transition-colors border border-foreground/80 hover:border-foreground/50"
           >
             {activeTab === 'threads' ? (
               <>

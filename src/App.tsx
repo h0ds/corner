@@ -1546,7 +1546,7 @@ function App() {
   return (
     <>
       <div className="flex h-screen bg-background overflow-hidden rounded-xl">
-        <TitleBar />
+        <TitleBar onPreferencesClick={handleShowPreferences} />
         <div className="relative bg-background/50 flex h-[calc(100vh-2rem)] w-full mt-8">
           {/* Sidebar with animation */}
           <motion.div
@@ -1688,7 +1688,7 @@ function App() {
             onClose={() => setShowPreferences(false)}
             selectedModel={selectedModel}
             onModelChange={setSelectedModel}
-            initialTab={preferencesTab}
+            initialTab={preferenceTab}
             plugins={plugins}
             onPluginChange={setPlugins}
             apiKeys={apiKeys}

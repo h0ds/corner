@@ -92,13 +92,13 @@ const StatusIcon = ({
   }
 };
 
-export const ApiKeys: React.FC<ApiKeysProps> = ({
+export const ApiKeys = ({
   keys,
   verificationStatus,
   error,
   onKeyChange,
   onRetryVerification
-}) => {
+}: ApiKeysProps) => {
   // Track visibility state for each key
   const [visibility, setVisibility] = useState({
     anthropic: false,
@@ -404,4 +404,4 @@ export const ApiKeys: React.FC<ApiKeysProps> = ({
       </p>
     </div>
   );
-}; 
+};
