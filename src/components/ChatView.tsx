@@ -486,13 +486,18 @@ export const ChatView: React.FC<ChatViewProps> = ({
             </AnimatePresence>
           </div>
         )}
+        <div ref={messagesEndRef} />
       </div>
 
-      <div ref={messagesEndRef} />
-      <div className="py-4 space-y-1">
+      <div className="pb-4 pt-2 space-y-2">
         <ChatTaskbar
           onTranscriptionResult={handleTranscriptionResult}
           isListening={isListening}
+          onClearThread={onClearThread}
+          onCompareModels={() => {}} // TODO: Implement compare models
+          onStartDiscussion={() => {}} // TODO: Implement start discussion
+          onStopDiscussion={onStopDiscussion}
+          isDiscussing={isDiscussing}
         />
         <ChatInput
           onSendMessage={onSendMessage}

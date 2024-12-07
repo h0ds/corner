@@ -37,7 +37,7 @@ export const Footer: React.FC<FooterProps> = ({
 
   return (
     <>
-      <div className="absolute bottom-5 left-0 right-0 flex justify-center z-30">
+      <div className="absolute bottom-4 left-0 right-0 flex justify-center z-30">
         <div className="bg-accent-light rounded-xl flex items-center border border-border">
           <div className="flex items-center justify-center gap-1 p-1">
             <TooltipProvider>
