@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Send } from "lucide-react";
 import { Input } from './ui/input';
@@ -10,23 +10,24 @@ import { useToast } from "@/hooks/use-toast";
 import { ReferenceMenu } from './ReferenceMenu';
 import { Thread } from '@/types';
 import { showToast } from '@/lib/toast';
-import { VoiceDictation } from './VoiceDictation';
 import cn from 'classnames';
 
 interface ChatInputProps {
   onSendMessage: (message: string, overrideModel?: string) => void;
-  onCompareModels?: (message: string, model1: string, model2: string) => void;
-  onStartDiscussion?: (message: string, model1: string, model2: string) => void;
-  onStopDiscussion?: () => void;
-  onClearThread?: () => void;
-  disabled?: boolean;
+  onCompareModels: (message: string, model1: string, model2: string) => void;
+  onStartDiscussion: (message: string, model1: string, model2: string) => void;
+  onStopDiscussion: () => void;
+  onClearThread: () => void;
+  disabled: boolean;
   selectedModel: string;
-  isDiscussing?: boolean;
-  isPaused?: boolean;
+  isDiscussing: boolean;
+  isPaused: boolean;
   allThreads: Thread[];
   currentThreadId: string;
-  onUpdateThreads?: (threads: Thread[]) => void;
-  onShowLinkedItems?: (noteId: string) => void;
+  onUpdateThreads: (threads: Thread[]) => void;
+  onShowLinkedItems?: (items: any[]) => void;
+  setInputValue?: (value: string) => void;
+  initialValue?: string;
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({ 
@@ -43,8 +44,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   currentThreadId,
   onUpdateThreads,
   onShowLinkedItems,
+  setInputValue,
+  initialValue = "",
 }) => {
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState(initialValue);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionStartIndex, setMentionStartIndex] = useState<number | null>(null);
   const [commandQuery, setCommandQuery] = useState<string | null>(null);
@@ -56,28 +59,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const [referenceQuery, setReferenceQuery] = useState('');
   const [referenceStartIndex, setReferenceStartIndex] = useState<number | null>(null);
 
-  const handleTranscriptionResult = useCallback((text: string) => {
-    console.log('ChatInput handleTranscriptionResult:', text);
-    setMessage(prev => {
-      console.log('ChatInput previous message:', prev);
-      const start = inputRef.current?.selectionStart ?? prev.length;
-      const end = inputRef.current?.selectionEnd ?? prev.length;
-      const newMessage = prev.substring(0, start) + text + prev.substring(end);
-      console.log('ChatInput new message:', newMessage);
-      return newMessage;
-    });
-
-    // Focus the input after transcription
-    requestAnimationFrame(() => {
-      if (inputRef.current) {
-        console.log('ChatInput focusing input');
-        inputRef.current.focus();
-        const newCursorPos = (inputRef.current.selectionStart ?? 0) + text.length;
-        inputRef.current.selectionStart = newCursorPos;
-        inputRef.current.selectionEnd = newCursorPos;
-      }
-    });
-  }, []);
+  useEffect(() => {
+    setMessage(initialValue);
+  }, [initialValue]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -198,6 +182,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     setMessage(newValue);
+    if (setInputValue) {
+      setInputValue(newValue);
+    }
 
     const currentPosition = e.target.selectionStart ?? 0;
 
@@ -369,7 +356,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   return (
-    <div className="relative w-full">
+    <div className="relative w-full bg-accent-light p-1 rounded-xl border border-border">
       {mentionQuery !== null && (
         <ModelMention
           query={mentionQuery}
@@ -441,7 +428,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                 size="icon"
                 className={cn(
                   "absolute right-1.5 top-1/2 -translate-y-1/2",
-                  "h-[27px] w-[27px] rounded-lg",
+                  "h-[27px] w-[27px] rounded-md",
                   "bg-accent-foreground hover:bg-accent",
                   "border-0 hover:border-0",
                   !message.trim() && "opacity-50",
@@ -451,10 +438,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                 <Send className="h-3.5 w-3.5" />
               </Button>
             </div>
-            <VoiceDictation 
-              onTranscriptionResult={handleTranscriptionResult}
-              className="shrink-0"
-            />
           </div>
         </div>
       </form>

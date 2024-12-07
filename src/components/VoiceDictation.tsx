@@ -6,6 +6,8 @@ import { Mic, MicOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
+type Size = 'sm' | 'md' | 'lg';
+
 interface TranscriptionPayload {
   text: string;
   is_final: boolean;
@@ -14,9 +16,16 @@ interface TranscriptionPayload {
 interface VoiceDictationProps {
   onTranscriptionResult: (text: string) => void;
   className?: string;
+  buttonSize?: Size;
+  iconSize?: Size;
 }
 
-export const VoiceDictation: React.FC<VoiceDictationProps> = ({ onTranscriptionResult, className }) => {
+export const VoiceDictation: React.FC<VoiceDictationProps> = ({
+  onTranscriptionResult,
+  className,
+  buttonSize = 'md',
+  iconSize = 'md'
+}) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isModelDownloaded, setIsModelDownloaded] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -93,15 +102,28 @@ export const VoiceDictation: React.FC<VoiceDictationProps> = ({ onTranscriptionR
     }
   };
 
+  // Get sizes based on props
+  const buttonSizeClass = {
+    sm: 'h-6 w-6',
+    md: 'h-8 w-8',
+    lg: 'h-10 w-10'
+  }[buttonSize];
+
+  const iconSizeClass = {
+    sm: 'h-3 w-3',
+    md: 'h-4 w-4',
+    lg: 'h-5 w-5'
+  }[iconSize];
+
   if (!isInitialized) {
     return (
       <Button
         disabled
         size="icon"
         variant="ghost"
-        className={className}
+        className={cn(buttonSizeClass, className)}
       >
-        <Mic className="h-4 w-4" />
+        <Mic className={iconSizeClass} />
       </Button>
     );
   }
@@ -118,11 +140,13 @@ export const VoiceDictation: React.FC<VoiceDictationProps> = ({ onTranscriptionR
         variant={isRecording ? "destructive" : "default"}
         size="icon"
         className={cn(
-          "h-10 w-10 shrink-0 rounded-lg",
-          isRecording && "relative after:absolute after:inset-0 after:z-[1] after:rounded-xl after:animate-ping-slow after:bg-destructive/50"
+          buttonSizeClass,
+          "shrink-0 rounded-md",
+          isRecording && "relative after:absolute after:inset-0 after:z-[1] after:rounded-xl after:animate-ping-slow after:bg-destructive/50",
+          className
         )}
       >
-        {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+        {isRecording ? <MicOff className={iconSizeClass} /> : <Mic className={iconSizeClass} />}
       </Button>
     </div>
   );

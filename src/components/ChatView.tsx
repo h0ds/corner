@@ -7,7 +7,6 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { ChatInput } from './ChatInput';
 import { invoke } from '@tauri-apps/api/core';
 import { useToast } from "@/hooks/use-toast";
-import { AudioControls } from './AudioControls';
 import {
   Dialog,
   DialogContent,
@@ -17,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Sparkles, MessageSquare, Keyboard } from 'lucide-react';
+import { ChatTaskbar } from './ChatTaskbar';
 
 interface ChatViewProps {
   messages: Message[];
@@ -71,6 +71,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const [duration, setDuration] = useState(0);
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
   const [isListening, setIsListening] = useState(false);
+  const [inputValue, setInputValue] = useState("");
 
   const { toast } = useToast();
 
@@ -324,9 +325,16 @@ export const ChatView: React.FC<ChatViewProps> = ({
     setIsListening(!isListening);
   };
 
+  const handleTranscriptionResult = (result: string) => {
+    setInputValue(result);
+  };
+
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-1 rounded-xl bg-accent overflow-y-auto" ref={containerRef}>
+      <div
+        ref={containerRef}
+        className="flex-1 overflow-y-auto p-2 border border-border bg-accent-light rounded-xl"
+      >
         {showEmptyState ? (
           <div className="h-full flex items-center justify-center">
             <div className="text-center space-y-6 max-w-lg mx-auto px-4">
@@ -394,7 +402,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
             </div>
           </div>
         ) : (
-          <div className="flex-1 p-4 space-y-2">
+          <div className="flex-1 space-y-4">
             <AnimatePresence mode="popLayout">
               {isLoadingThread ? (
                 <motion.div 
@@ -480,39 +488,29 @@ export const ChatView: React.FC<ChatViewProps> = ({
         )}
       </div>
 
-      <div className="flex-shrink-0 mt-2 mb-2">
-        <div className="relative">
-          <div className="absolute right-4 flex items-center gap-2">
-            {(isAudioPlaying || isAudioLoading) && audioRef.current?.src && (
-              <AudioControls
-                isPlaying={isAudioPlaying}
-                isLoading={isAudioLoading}
-                onPlay={handlePlayAudio}
-                onStop={handleStopAudio}
-                onRestart={handleRestartAudio}
-              />
-            )}
-          </div>
-          <div className="p-1 bg-accent-light border border-border rounded-xl">
-            <ChatInput
-              onSendMessage={onSendMessage}
-              onCompareModels={onCompareModels}
-              onStartDiscussion={onStartDiscussion}
-              onStopDiscussion={onStopDiscussion}
-              onClearThread={onClearThread}
-              disabled={loading}
-              selectedModel={selectedModel}
-              isDiscussing={isDiscussing}
-              isPaused={isDiscussionPaused}
-              allThreads={allThreads}
-              currentThreadId={activeThreadId}
-              onUpdateThreads={setThreads}
-              onShowLinkedItems={handleShowLinkedItems}
-              onStartVoiceDictation={handleStartVoiceDictation}
-              isListening={isListening}
-            />
-          </div>
-        </div>
+      <div ref={messagesEndRef} />
+      <div className="py-4 space-y-1">
+        <ChatTaskbar
+          onTranscriptionResult={handleTranscriptionResult}
+          isListening={isListening}
+        />
+        <ChatInput
+          onSendMessage={onSendMessage}
+          onCompareModels={onCompareModels}
+          onStartDiscussion={onStartDiscussion}
+          onStopDiscussion={onStopDiscussion}
+          onClearThread={onClearThread}
+          disabled={loading}
+          selectedModel={selectedModel}
+          isDiscussing={isDiscussing}
+          isPaused={isDiscussionPaused}
+          allThreads={allThreads}
+          currentThreadId={activeThreadId}
+          onUpdateThreads={setThreads}
+          onShowLinkedItems={handleShowLinkedItems}
+          setInputValue={setInputValue}
+          initialValue={inputValue}
+        />
       </div>
 
       <Dialog 
