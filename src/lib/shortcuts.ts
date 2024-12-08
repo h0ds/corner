@@ -81,20 +81,36 @@ export async function resetShortcuts(): Promise<KeyboardShortcut[]> {
 }
 
 export function matchesShortcut(e: KeyboardEvent<Element>, shortcut: KeyboardShortcut): boolean {
+  // Special case for delete thread
   if (shortcut.id === 'delete-thread') {
     return (e.key === 'Backspace' && (e.metaKey || e.ctrlKey));
   }
 
-  const key = shortcut.currentKey.toLowerCase();
-  const isCmd = key.includes('⌘') || key.includes('cmd') || key.includes('ctrl');
-  const isAlt = key.includes('alt');
-  const isShift = key.includes('shift');
-  const mainKey = key.split(' + ').pop()?.toLowerCase() || '';
+  // Parse the current key combination
+  const currentKeyParts = shortcut.currentKey.toLowerCase().split(' + ');
+  
+  // Build the pressed key combination
+  const pressedKeys: string[] = [];
+  if (e.metaKey) pressedKeys.push('⌘');
+  if (e.ctrlKey && !e.metaKey) pressedKeys.push('ctrl');
+  if (e.altKey) pressedKeys.push('alt');
+  if (e.shiftKey) pressedKeys.push('shift');
+  
+  // Add the main key
+  if (e.key !== 'Meta' && e.key !== 'Control' && e.key !== 'Alt' && e.key !== 'Shift') {
+    pressedKeys.push(e.key.toLowerCase());
+  }
 
-  return (
-    ((e.metaKey || e.ctrlKey) === isCmd) &&
-    (e.altKey === isAlt) &&
-    (e.shiftKey === isShift) &&
-    e.key.toLowerCase() === mainKey
-  );
-} 
+  // Convert pressed keys to a string for comparison
+  const pressedKeyString = pressedKeys.join(' + ');
+
+  // Check if the combinations match
+  return currentKeyParts.length === pressedKeys.length &&
+    currentKeyParts.every(key => {
+      // Handle command key variations
+      if (key === '⌘' || key === 'cmd' || key === 'ctrl') {
+        return pressedKeys.some(pressed => pressed === '⌘' || pressed === 'ctrl');
+      }
+      return pressedKeys.includes(key);
+    });
+}

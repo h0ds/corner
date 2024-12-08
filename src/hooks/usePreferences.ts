@@ -1,12 +1,20 @@
 import { useState, useCallback, useEffect } from 'react';
 
 interface Preferences {
-  name: string | null;
-  profile_picture: string | null;
-  theme: string | null;
+  name?: string;
+  username?: string;
+  profile_picture?: string;
+  theme?: string;
 }
 
 const PREFERENCES_KEY = 'corner_preferences';
+
+const defaultPreferences: Preferences = {
+  name: '',
+  username: '',
+  profile_picture: '',
+  theme: 'system'
+};
 
 const getStoredPreferences = (): Preferences => {
   try {
@@ -17,11 +25,7 @@ const getStoredPreferences = (): Preferences => {
   } catch (error) {
     console.error('Failed to load preferences:', error);
   }
-  return {
-    name: null,
-    profile_picture: null,
-    theme: null
-  };
+  return defaultPreferences;
 };
 
 // Add event listener for storage changes
@@ -49,28 +53,24 @@ export function usePreferences() {
     };
   }, []);
 
-  const updatePreferences = useCallback(async (newPreferences: Partial<Preferences>) => {
+  const updatePreferences = useCallback(async (updates: Partial<Preferences>): Promise<boolean> => {
     try {
-      const updatedPreferences = { ...preferences, ...newPreferences };
-      localStorage.setItem(PREFERENCES_KEY, JSON.stringify(updatedPreferences));
-      setPreferences(updatedPreferences);
-      
-      // Dispatch storage event to notify other components
-      window.dispatchEvent(new StorageEvent('storage', {
-        key: PREFERENCES_KEY,
-        newValue: JSON.stringify(updatedPreferences),
-        storageArea: localStorage
-      }));
-      
+      const currentPreferences = getStoredPreferences();
+      const newPreferences = {
+        ...currentPreferences,
+        ...updates
+      };
+      localStorage.setItem(PREFERENCES_KEY, JSON.stringify(newPreferences));
+      setPreferences(newPreferences);
       return true;
     } catch (error) {
       console.error('Failed to update preferences:', error);
       return false;
     }
-  }, [preferences]);
+  }, []);
 
   return {
     preferences,
-    updatePreferences,
+    updatePreferences
   };
 }

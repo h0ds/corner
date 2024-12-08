@@ -57,7 +57,7 @@ interface ApiKeys {
 
 type PreferenceTab = 'profile' | 'api-keys' | 'appearance' | 'models' | 'shortcuts' | 'plugins' | 'connections' | 'actions' | 'storage' | 'voice';
 
-export function Preferences({
+export const Preferences: React.FC<PreferencesProps> = ({
   isOpen,
   onClose,
   selectedModel,
@@ -71,61 +71,25 @@ export function Preferences({
   onApiKeysChange,
   shortcuts = [],
   onShortcutsChange,
-}: PreferencesProps) {
-  const { preferences, updatePreferences } = usePreferences();
-  const [activeTab, setActiveTab] = useState<PreferenceTab>(defaultTab);
-  const [error, setError] = useState<string | null>(null);
+}) => {
+  const [activeTab, setActiveTab] = useState(defaultTab);
+  const [nameInput, setNameInput] = useState('');
+  const [usernameInput, setUsernameInput] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-  const [nameInput, setNameInput] = useState(() => preferences.name || '');
+  const [error, setError] = useState<string | null>(null);
+  const { preferences, updatePreferences } = usePreferences();
   const debouncedName = useDebounce(nameInput, 500);
-  const [verificationStatus, setVerificationStatus] = useState<Record<string, VerificationStatus>>({
-    anthropic: 'idle',
-    perplexity: 'idle',
-    openai: 'idle',
-    xai: 'idle',
-    google: 'idle',
-    elevenlabs: 'idle'
-  });
-  const [shortcutsState, setShortcuts] = useState<KeyboardShortcut[]>(shortcuts);
-  const [editingShortcutId, setEditingShortcutId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (isOpen) {
-      setActiveTab(defaultTab);
-      setError(null);
-      setVerificationStatus({
-        anthropic: 'idle',
-        perplexity: 'idle',
-        openai: 'idle',
-        xai: 'idle',
-        google: 'idle',
-        elevenlabs: 'idle'
-      });
-      setEditingShortcutId(null);
-    }
-  }, [isOpen, defaultTab]);
-
-  useEffect(() => {
-    if (isOpen) {
-      setShortcuts(shortcuts);
-    }
-  }, [isOpen, shortcuts]);
+  const debouncedUsername = useDebounce(usernameInput, 500);
 
   useEffect(() => {
     if (isOpen) {
       setNameInput(preferences.name || '');
+      setUsernameInput(preferences.username || '');
     }
-  }, [isOpen, preferences.name]);
-
-  useEffect(() => {
-    if (debouncedName !== preferences.name) {
-      handleNameChange(debouncedName);
-    }
-  }, [debouncedName]);
+  }, [isOpen, preferences.name, preferences.username]);
 
   const handleNameChange = async (value: string) => {
-    if (value === preferences.name) return;
-    
+    setNameInput(value);
     setIsSaving(true);
     try {
       const success = await updatePreferences({ name: value });
@@ -141,6 +105,29 @@ export function Preferences({
           variant: "destructive",
         });
         setNameInput(preferences.name || '');
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleUsernameChange = async (value: string) => {
+    setUsernameInput(value);
+    setIsSaving(true);
+    try {
+      const success = await updatePreferences({ username: value });
+      if (success) {
+        showToast({
+          title: "Success",
+          description: "Username updated",
+        });
+      } else {
+        showToast({
+          title: "Error",
+          description: "Failed to update username",
+          variant: "destructive",
+        });
+        setUsernameInput(preferences.username || '');
       }
     } finally {
       setIsSaving(false);
@@ -183,6 +170,52 @@ export function Preferences({
     };
     reader.readAsDataURL(file);
   };
+
+  const [verificationStatus, setVerificationStatus] = useState<Record<string, VerificationStatus>>({
+    anthropic: 'idle',
+    perplexity: 'idle',
+    openai: 'idle',
+    xai: 'idle',
+    google: 'idle',
+    elevenlabs: 'idle'
+  });
+
+  // Initialize verification status when dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      // Set all statuses to idle initially
+      const initialStatus = Object.entries(apiKeys).reduce((acc, [provider]) => {
+        acc[provider] = 'idle';
+        return acc;
+      }, {} as Record<string, VerificationStatus>);
+      
+      setVerificationStatus(initialStatus);
+      setError(null);
+
+      // Verify all non-empty keys
+      Object.entries(apiKeys).forEach(([provider, key]) => {
+        if (key && key.trim().length > 0) {
+          verifyKey(provider as keyof ApiKeys, key);
+        }
+      });
+    }
+  }, [isOpen]);
+
+  // Update verification status when API keys change
+  useEffect(() => {
+    if (isOpen) {  // Only verify if dialog is open
+      Object.entries(apiKeys).forEach(([provider, key]) => {
+        if (key && key.trim().length > 0) {
+          verifyKey(provider as keyof ApiKeys, key);
+        } else {
+          setVerificationStatus(prev => ({
+            ...prev,
+            [provider]: 'idle'
+          }));
+        }
+      });
+    }
+  }, [apiKeys, isOpen]);
 
   const verifyKey = async (type: keyof ApiKeys, key: string) => {
     if (!key.trim()) {
@@ -236,9 +269,11 @@ export function Preferences({
 
   const handleKeyChange = (type: keyof ApiKeys, value: string) => {
     if (onApiKeysChange) {
-      onApiKeysChange({ ...apiKeys, [type]: value });
+      const newKeys = { ...apiKeys };
+      newKeys[type] = value;
+      onApiKeysChange(newKeys);
     }
-    if (!value.trim()) {
+    if (!value) {
       setVerificationStatus(prev => ({ ...prev, [type]: 'idle' }));
     }
     setError(null);
@@ -314,29 +349,102 @@ export function Preferences({
     }
   };
 
+  const [editingShortcutId, setEditingShortcutId] = useState<string | null>(null);
+  const [shortcutsState, setShortcuts] = useState<KeyboardShortcut[]>(shortcuts);
+
+  useEffect(() => {
+    setShortcuts(shortcuts);
+  }, [shortcuts]);
+
+  const handleShortcutChange = async (shortcut: KeyboardShortcut) => {
+    if (editingShortcutId === shortcut.id) {
+      setEditingShortcutId(null);
+    } else {
+      setEditingShortcutId(shortcut.id);
+    }
+  };
+
+  const handleShortcutSave = async (shortcuts: KeyboardShortcut[]) => {
+    try {
+      await saveShortcuts(shortcuts);
+      setShortcuts(shortcuts);
+      if (onShortcutsChange) {
+        onShortcutsChange(shortcuts);
+      }
+      showToast({
+        title: "Success",
+        description: "Shortcuts saved",
+      });
+    } catch (error) {
+      console.error('Failed to save shortcuts:', error);
+      showToast({
+        title: "Error",
+        description: "Failed to save shortcuts",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleShortcutReset = async () => {
+    try {
+      const defaultShortcuts = await resetShortcuts();
+      setShortcuts(defaultShortcuts);
+      if (onShortcutsChange) {
+        onShortcutsChange(defaultShortcuts);
+      }
+      showToast({
+        title: "Success",
+        description: "Shortcuts reset to default",
+      });
+    } catch (error) {
+      console.error('Failed to reset shortcuts:', error);
+      showToast({
+        title: "Error",
+        description: "Failed to reset shortcuts",
+        variant: "destructive"
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab(defaultTab);
+      setError(null);
+      setVerificationStatus({
+        anthropic: 'idle',
+        perplexity: 'idle',
+        openai: 'idle',
+        xai: 'idle',
+        google: 'idle',
+        elevenlabs: 'idle'
+      });
+      setEditingShortcutId(null);
+    }
+  }, [isOpen, defaultTab]);
+
   const tabs: { id: PreferenceTab; label: string; icon: React.ReactNode }[] = [
     { id: 'profile', label: 'Profile', icon: <UserCircle className="h-4 w-4" /> },
     { id: 'api-keys', label: 'APIs', icon: <KeyRound className="h-4 w-4" /> },
-    { id: 'connections', label: 'Connections', icon: <Network className="h-4 w-4" /> },
     { id: 'appearance', label: 'Appearance', icon: <Palette className="h-4 w-4" /> },
     { id: 'models', label: 'Models', icon: <Bot className="h-4 w-4" /> },
     { id: 'shortcuts', label: 'Shortcuts', icon: <Keyboard className="h-4 w-4" /> },
     { id: 'plugins', label: 'Plugins', icon: <Code className="h-4 w-4" /> },
+    { id: 'connections', label: 'Connections', icon: <Network className="h-4 w-4" /> },
     { id: 'actions', label: 'Actions', icon: <Zap className="h-4 w-4" /> },
     { id: 'storage', label: 'Storage', icon: <Database className="h-4 w-4" /> },
     { id: 'voice', label: 'Voice', icon: <Volume2 className="h-4 w-4" /> },
   ];
 
   const renderContent = () => {
-    console.log('Current activeTab:', activeTab); // Debug log
-    
     switch (activeTab) {
       case 'profile':
         return (
           <Profile
-            name={preferences.name || ''}
+            name={nameInput}
+            username={usernameInput}
             profilePicture={preferences.profile_picture}
             onNameChange={handleNameChange}
+            onUsernameChange={handleUsernameChange}
             onImageUpload={handleImageUpload}
             isSaving={isSaving}
             error={error}
@@ -380,11 +488,8 @@ export function Preferences({
             shortcuts={shortcutsState}
             editingShortcutId={editingShortcutId}
             onShortcutChange={handleShortcutChange}
-            onReset={async () => {
-              const reset = await resetShortcuts();
-              setShortcuts(reset);
-            }}
-            onSave={saveShortcuts}
+            onSave={handleShortcutSave}
+            onReset={handleShortcutReset}
           />
         );
       case 'plugins':
@@ -414,57 +519,16 @@ export function Preferences({
       default:
         console.warn('Unknown tab:', activeTab);
         return <Profile
-          name={preferences.name || ''}
+          name={nameInput}
+          username={usernameInput}
           profilePicture={preferences.profile_picture}
           onNameChange={handleNameChange}
+          onUsernameChange={handleUsernameChange}
           onImageUpload={handleImageUpload}
           isSaving={isSaving}
           error={error}
         />;
     }
-  };
-
-  const handleShortcutChange = (shortcut: KeyboardShortcut) => {
-    setEditingShortcutId(shortcut.id);
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-
-      if (e.key === 'Escape') {
-        setEditingShortcutId(null);
-        window.removeEventListener('keydown', handleKeyDown);
-        return;
-      }
-
-      // Build the shortcut combination
-      const parts: string[] = [];
-      if (e.metaKey) parts.push('⌘');
-      if (e.ctrlKey && !e.metaKey) parts.push('Ctrl');
-      if (e.altKey) parts.push('Alt');
-      if (e.shiftKey) parts.push('Shift');
-
-      // Only add the main key if it's not a modifier
-      if (!['Meta', 'Control', 'Alt', 'Shift'].includes(e.key)) {
-        // Capitalize single letters
-        const mainKey = e.key.length === 1 ? e.key.toUpperCase() : e.key;
-        parts.push(mainKey);
-
-        // Update the shortcut
-        const newShortcut = parts.join(' + ');
-        const updatedShortcuts = shortcutsState.map(s => 
-          s.id === shortcut.id ? { ...s, currentKey: newShortcut } : s
-        );
-
-        setShortcuts(updatedShortcuts);
-        saveShortcuts(updatedShortcuts);
-        setEditingShortcutId(null);
-        window.removeEventListener('keydown', handleKeyDown);
-      }
-    };
-
-    // Add the event listener
-    window.addEventListener('keydown', handleKeyDown);
   };
 
   return (

@@ -329,6 +329,36 @@ export const ChatView: React.FC<ChatViewProps> = ({
     setInputValue(result);
   };
 
+  const handleCompareModels = () => {
+    if (inputValue.trim()) {
+      // Simulate the @model mention format that ChatInput expects
+      const messageWithMention = `@gpt-4 ${inputValue.trim()}`;
+      setInputValue(messageWithMention);
+      onCompareModels(inputValue.trim(), "gpt-4", selectedModel);
+    } else {
+      toast({
+        title: "No message to compare",
+        description: "Please enter a message first",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleStartDiscussion = () => {
+    if (inputValue.trim()) {
+      // Simulate the @model mention format that ChatInput expects
+      const messageWithMention = `@gpt-4 ${inputValue.trim()}`;
+      setInputValue(messageWithMention);
+      onStartDiscussion(inputValue.trim(), "gpt-4", selectedModel);
+    } else {
+      toast({
+        title: "No message to discuss",
+        description: "Please enter a message first",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
       <div
@@ -494,8 +524,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
           onTranscriptionResult={handleTranscriptionResult}
           isListening={isListening}
           onClearThread={onClearThread}
-          onCompareModels={() => {}} // TODO: Implement compare models
-          onStartDiscussion={() => {}} // TODO: Implement start discussion
+          onCompareModels={handleCompareModels}
+          onStartDiscussion={handleStartDiscussion}
           onStopDiscussion={onStopDiscussion}
           isDiscussing={isDiscussing}
         />

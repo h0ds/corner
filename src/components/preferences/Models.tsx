@@ -2,7 +2,8 @@ import { AVAILABLE_MODELS } from '../ModelSelector';
 import { ModelIcon } from '../ModelIcon';
 import { formatProviderName } from '@/lib/utils';
 import { ApiKeys } from '@/types';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
+import React from 'react';
 
 interface ModelsProps {
   selectedModel: string;
@@ -12,16 +13,27 @@ interface ModelsProps {
 }
 
 export const Models = ({ selectedModel, onModelChange, availableProviders, apiKeys }: ModelsProps) => {
+  // Filter available models based on verified API keys
   const availableModels = AVAILABLE_MODELS.filter(model => {
-    // Check if the key exists and is not empty
-    const hasKey = apiKeys[model.provider] && apiKeys[model.provider].length > 0;
+    // Check if the provider has a non-empty API key
+    const hasKey = apiKeys[model.provider] && apiKeys[model.provider].trim().length > 0;
     return hasKey;
   });
+
+  // Ensure we have a valid selected model
+  React.useEffect(() => {
+    if (availableModels.length > 0 && (!selectedModel || !availableModels.some(m => m.id === selectedModel))) {
+      onModelChange(availableModels[0].id);
+    }
+  }, [selectedModel, availableModels, onModelChange]);
+
+  // Get the current model's display info
+  const currentModel = availableModels.find(m => m.id === selectedModel) || availableModels[0];
 
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-medium">Models</h3>
+        <h3 className="text-lg font-medium">Remote Models</h3>
         <p className="text-sm text-muted-foreground">
           Select which model to use for chat. Models are shown for providers with configured API keys.
         </p>
@@ -35,8 +47,15 @@ export const Models = ({ selectedModel, onModelChange, availableProviders, apiKe
           >
             <SelectTrigger className="w-full">
               <div className="flex items-center gap-2">
-                <ModelIcon modelId={selectedModel} className="h-4 w-4" />
-                <SelectValue placeholder="Select a model" />
+                {currentModel && (
+                  <>
+                    <ModelIcon modelId={currentModel.id} className="h-4 w-4" />
+                    <span>{currentModel.name}</span>
+                    <span className="text-xs text-muted-foreground">
+                      ({formatProviderName(currentModel.provider)})
+                    </span>
+                  </>
+                )}
               </div>
             </SelectTrigger>
             <SelectContent>

@@ -151,7 +151,9 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onPreferencesClick }) => {
             <button
               onClick={() => onPreferencesClick?.('profile')}
               className="h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground"
-              title={preferences.name ? `Profile: ${preferences.name}` : "Profile Settings"}
+              title={preferences.name || preferences.username ? 
+                `${preferences.name || ''}${preferences.name && preferences.username ? ' • ' : ''}${preferences.username || ''}` : 
+                "Profile Settings"}
             >
               <Avatar className="h-5 w-5">
                 {preferences.profile_picture ? (
@@ -212,7 +214,9 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onPreferencesClick }) => {
           <button
             onClick={() => onPreferencesClick?.('profile')}
             className="h-5 w-5 inline-flex items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground"
-            title={preferences.name ? `Profile: ${preferences.name}` : "Profile Settings"}
+            title={preferences.name || preferences.username ? 
+              `${preferences.name || ''}${preferences.name && preferences.username ? ' • ' : ''}${preferences.username || ''}` : 
+              "Profile Settings"}
           >
             <Avatar className="h-4 w-4">
               {preferences.profile_picture ? (

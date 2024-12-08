@@ -8,7 +8,6 @@ interface ChatTaskbarProps {
   onTranscriptionResult: (text: string) => void;
   isListening: boolean;
   onClearThread: () => void;
-  onQuit: () => void;
   onCompareModels: () => void;
   onStartDiscussion: () => void;
   onStopDiscussion: () => void;
@@ -20,7 +19,6 @@ export const ChatTaskbar: React.FC<ChatTaskbarProps> = ({
   onTranscriptionResult,
   isListening,
   onClearThread,
-  onQuit,
   onCompareModels,
   onStartDiscussion,
   onStopDiscussion,
@@ -30,13 +28,13 @@ export const ChatTaskbar: React.FC<ChatTaskbarProps> = ({
   return (
     <div className="flex justify-end">
       <div className={cn(
-        "inline-flex items-center gap-1 bg-accent-light p-1 border border-border rounded-lg",
+        "inline-flex items-center gap-1 p-1 rounded-lg",
         className
       )}>
         <Button
           variant="ghost"
           size="icon"
-          className="h-6 w-6"
+          className="h-6 w-6 bg-accent-light border border-border"
           onClick={onClearThread}
           title="Clear Thread"
         >
@@ -45,7 +43,7 @@ export const ChatTaskbar: React.FC<ChatTaskbarProps> = ({
         <Button
           variant="ghost"
           size="icon"
-          className="h-6 w-6"
+          className="h-6 w-6 bg-accent-light border border-border"
           onClick={onCompareModels}
           title="Compare Models"
         >
@@ -55,7 +53,7 @@ export const ChatTaskbar: React.FC<ChatTaskbarProps> = ({
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6"
+            className="h-6 w-6 bg-accent-light border border-border"
             onClick={onStartDiscussion}
             title="Start Model Discussion"
           >
@@ -65,7 +63,7 @@ export const ChatTaskbar: React.FC<ChatTaskbarProps> = ({
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6"
+            className="h-6 w-6 bg-accent-light border border-border"
             onClick={onStopDiscussion}
             title="Stop Discussion"
           >

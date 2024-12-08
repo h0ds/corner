@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -7,32 +7,53 @@ import { User } from "lucide-react";
 
 interface ProfileProps {
   name: string;
-  profilePicture: string | null;
-  onNameChange: (value: string) => void;
+  username: string;
+  profilePicture?: string;
+  onNameChange: (name: string) => void;
+  onUsernameChange: (username: string) => void;
   onImageUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
   isSaving?: boolean;
   error?: string | null;
 }
 
-export const Profile = ({
+export const Profile: React.FC<ProfileProps> = ({
   name,
+  username,
   profilePicture,
   onNameChange,
+  onUsernameChange,
   onImageUpload,
-  isSaving = false,
-  error = null
-}: ProfileProps) => {
+  isSaving,
+  error,
+}) => {
   const [inputValue, setInputValue] = useState(name);
-  const hasUnsavedChanges = inputValue !== name;
+  const [usernameValue, setUsernameValue] = useState(username);
+  const hasUnsavedChanges = inputValue !== name || usernameValue !== username;
+
+  useEffect(() => {
+    setInputValue(name);
+  }, [name]);
+
+  useEffect(() => {
+    setUsernameValue(username);
+  }, [username]);
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     setInputValue(newValue);
+    onNameChange(newValue);
+  };
+
+  const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    setUsernameValue(newValue);
+    onUsernameChange(newValue);
   };
 
   const handleSave = () => {
     if (!hasUnsavedChanges) return;
-    onNameChange(inputValue);
+    if (inputValue !== name) onNameChange(inputValue);
+    if (usernameValue !== username) onUsernameChange(usernameValue);
   };
 
   const handleAvatarClick = () => {
@@ -66,19 +87,36 @@ export const Profile = ({
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="name">Name</Label>
-        <div className="flex gap-2 items-center">
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="name">Display Name</Label>
           <Input
             id="name"
+            placeholder="Enter your name"
             value={inputValue}
             onChange={handleNameChange}
-            placeholder="Enter your name"
             disabled={isSaving}
-            className="flex-1"
             maxLength={50}
-            onBlur={handleSave}
           />
+          <p className="text-sm text-muted-foreground">
+            This name will be displayed when you hover over your profile picture
+          </p>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="username">Username</Label>
+          <Input
+            id="username"
+            placeholder="Enter your username"
+            value={usernameValue}
+            onChange={handleUsernameChange}
+            disabled={isSaving}
+            maxLength={30}
+          />
+          <p className="text-sm text-muted-foreground">
+            Your username will be used to identify you in the app
+          </p>
+        </div>
+        <div className="space-y-2">
           <Button
             onClick={handleSave}
             disabled={!hasUnsavedChanges || isSaving}
@@ -88,9 +126,6 @@ export const Profile = ({
             {isSaving ? "Saving..." : "Save Changes"}
           </Button>
         </div>
-        <p className="text-sm text-muted-foreground">
-          This name will be displayed when you hover over your profile picture
-        </p>
         {error && (
           <p className="text-sm text-destructive mt-1">{error}</p>
         )}

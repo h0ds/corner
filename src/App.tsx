@@ -20,7 +20,7 @@ import { ModelIcon } from './components/ModelIcon';
 import { nanoid } from 'nanoid';
 import { Message, Thread, NoteThread, ChatThread, FileAttachment } from '@/types';
 import { initializeCache } from '@/lib/fileCache';
-import { KeyboardShortcut, loadShortcuts, matchesShortcut } from '@/lib/shortcuts';
+import { KeyboardShortcut, loadShortcuts, matchesShortcut, saveShortcuts } from '@/lib/shortcuts';
 import { Footer } from './components/Footer';
 import { ResizeObserver } from './components/ResizeObserver';
 import { Plugin, loadPlugins } from '@/lib/plugins';
@@ -379,7 +379,9 @@ function App() {
   }, [activeThreadId]);
 
   useEffect(() => {
-    loadShortcuts().then(setShortcuts);
+    loadShortcuts().then(loadedShortcuts => {
+      setShortcuts(loadedShortcuts);
+    }).catch(console.error);
   }, []);
 
   const clearHistoryShortcut = useMemo(() => {
@@ -1204,7 +1206,62 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown as unknown as EventListener);
   }, []);
 
-  // Simplify delete handler
+  // Handle keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = async (e: KeyboardEvent) => {
+      // Don't trigger shortcuts if we're in an input or contenteditable
+      if (e.target instanceof HTMLElement && 
+         (e.target.tagName === 'INPUT' || 
+          e.target.tagName === 'TEXTAREA' || 
+          e.target.isContentEditable)) {
+        return;
+      }
+
+      // Load current shortcuts
+      const currentShortcuts = shortcuts;
+      
+      for (const shortcut of currentShortcuts) {
+        if (matchesShortcut(e, shortcut)) {
+          e.preventDefault();
+          
+          switch (shortcut.id) {
+            case 'search':
+              setShowSearch(true);
+              break;
+            case 'clear-history':
+              if (activeThread && !activeThread.isNote) {
+                const chatThread = activeThread as ChatThread;
+                setThreads(prev => prev.map(t => 
+                  t.id === activeThreadId 
+                    ? { ...chatThread, messages: [] }
+                    : t
+                ));
+              }
+              break;
+            case 'toggle-sidebar':
+              setSidebarVisible(prev => !prev);
+              break;
+            case 'new-note':
+              handleNewNote();
+              break;
+            case 'new-thread':
+              handleNewThread();
+              break;
+            case 'delete-thread':
+              if (activeThreadId) {
+                setThreadToDelete(activeThreadId);
+                setShowDeleteConfirm(true);
+              }
+              break;
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [shortcuts, activeThreadId, activeThread, handleNewNote, handleNewThread]);
+
   const handleDeleteKeyPress = useCallback((e: KeyboardEvent) => {
     console.log('Key pressed:', e.key, 'Ctrl/Cmd:', e.metaKey || e.ctrlKey);
 
@@ -1543,6 +1600,15 @@ function App() {
     return noteId;
   }, [handleNewThread]);
 
+  const handleShortcutsChange = useCallback(async (newShortcuts: KeyboardShortcut[]) => {
+    try {
+      await saveShortcuts(newShortcuts);
+      setShortcuts(newShortcuts);
+    } catch (error) {
+      console.error('Failed to save shortcuts:', error);
+    }
+  }, []);
+
   return (
     <>
       <div className="flex h-screen bg-background overflow-hidden rounded-xl">
@@ -1692,6 +1758,8 @@ function App() {
             plugins={plugins}
             onPluginChange={setPlugins}
             apiKeys={apiKeys}
+            shortcuts={shortcuts}
+            onShortcutsChange={handleShortcutsChange}
           />
 
           {/* Add FilePreview dialog */}
