@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Command } from 'cmdk';
-import { Trash2, Power, Split, MessageCircle, Square } from 'lucide-react';
+import { Trash2, Split, MessageCircle, Square } from 'lucide-react';
 
 interface CommandMenuProps {
   query: string;
@@ -21,12 +21,6 @@ const AVAILABLE_COMMANDS: CommandItem[] = [
     name: 'Clear Thread',
     description: 'Clear all messages in the current thread',
     icon: <Trash2 className="h-4 w-4" />
-  },
-  {
-    id: 'quit',
-    name: 'Quit App',
-    description: 'Close the application',
-    icon: <Power className="h-4 w-4" />
   },
   {
     id: 'compare',

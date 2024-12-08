@@ -72,6 +72,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
   const [isListening, setIsListening] = useState(false);
   const [inputValue, setInputValue] = useState("");
+  const [selectedCommand, setSelectedCommand] = useState<string | null>(null);
 
   const { toast } = useToast();
 
@@ -528,6 +529,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
           onStartDiscussion={handleStartDiscussion}
           onStopDiscussion={onStopDiscussion}
           isDiscussing={isDiscussing}
+          onSelectCommand={setSelectedCommand}
+          selectedCommand={selectedCommand}
         />
         <ChatInput
           onSendMessage={onSendMessage}
@@ -545,6 +548,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
           onShowLinkedItems={handleShowLinkedItems}
           setInputValue={setInputValue}
           initialValue={inputValue}
+          selectedCommand={selectedCommand}
+          onSelectCommand={setSelectedCommand}
         />
       </div>
 

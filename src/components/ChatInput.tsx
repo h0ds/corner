@@ -28,6 +28,8 @@ interface ChatInputProps {
   onShowLinkedItems?: (items: any[]) => void;
   setInputValue?: (value: string) => void;
   initialValue?: string;
+  selectedCommand?: string | null;
+  onSelectCommand?: (command: string | null) => void;
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({ 
@@ -46,13 +48,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   onShowLinkedItems,
   setInputValue,
   initialValue = "",
+  selectedCommand,
+  onSelectCommand,
 }) => {
   const [message, setMessage] = useState(initialValue);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [mentionStartIndex, setMentionStartIndex] = useState<number | null>(null);
   const [commandQuery, setCommandQuery] = useState<string | null>(null);
   const [commandStartIndex, setCommandStartIndex] = useState<number | null>(null);
-  const [selectedCommand, setSelectedCommand] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const [showReferenceMenu, setShowReferenceMenu] = useState(false);
@@ -105,7 +108,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                 onSendMessage(cleanMessage, model.id);
               }
               setMessage('');
-              setSelectedCommand(null);
+              onSelectCommand?.(null);
             }
             return;
           }
@@ -121,12 +124,12 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         onSendMessage(message.trim());
       }
       setMessage('');
-      setSelectedCommand(null);
+      onSelectCommand?.(null);
     }
   };
 
   const deactivateCommand = () => {
-    setSelectedCommand(null);
+    onSelectCommand?.(null);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -264,10 +267,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         await exit(0);
         break;
       case 'compare':
-        setSelectedCommand('compare');
+        onSelectCommand?.('compare');
         break;
       case 'discuss':
-        setSelectedCommand('discuss');
+        onSelectCommand?.('discuss');
         break;
       case 'stop':
         if (onStopDiscussion) {
@@ -301,7 +304,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         }
         if (onCompareModels) {
           onCompareModels(message, mentionedModelId, selectedModel);
-          setSelectedCommand(null);
+          onSelectCommand?.(null);
         }
         break;
       case 'discuss':
@@ -315,7 +318,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         }
         if (onStartDiscussion) {
           onStartDiscussion(message, mentionedModelId, selectedModel);
-          setSelectedCommand(null);
+          onSelectCommand?.(null);
         }
         break;
     }
@@ -352,11 +355,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         });
       }
     }
-    setSelectedCommand(null);
   };
 
   return (
-    <div className="relative w-full bg-accent-light p-1 rounded-xl border border-border">
+    <div className="relative">
       {mentionQuery !== null && (
         <ModelMention
           query={mentionQuery}
@@ -402,6 +404,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             <div className="relative flex-1">
               <Input
                 ref={inputRef}
+                type="text"
                 value={message}
                 onChange={handleChange}
                 onKeyDown={handleKeyDown}
@@ -414,56 +417,25 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                 }
                 disabled={disabled}
                 className={cn(
-                  "h-[35px] resize-none rounded-lg text-sm shadow-none pr-[42px]",
-                  "bg-background placeholder:text-muted-foreground/50",
-                  "selectable-text selection:bg-palette-blue selection:text-white",
-                  "focus-visible:ring-0 focus-visible:ring-offset-0",
-                  selectedCommand && "border-primary",
-                  isDiscussing && isPaused && "border-yellow-500"
+                  "pr-16",
+                  disabled && "opacity-50 cursor-not-allowed"
                 )}
               />
-              <Button 
-                type="submit" 
-                disabled={disabled || !message.trim()}
+              <Button
+                type="submit"
                 size="icon"
                 className={cn(
-                  "absolute right-1.5 top-1/2 -translate-y-1/2",
-                  "h-[27px] w-[27px] rounded-md",
-                  "bg-accent-foreground hover:bg-accent",
-                  "border-0 hover:border-0",
-                  !message.trim() && "opacity-50",
-                  "transition-colors"
+                  "absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6",
+                  !message.trim() && "opacity-50"
                 )}
+                disabled={!message.trim() || disabled}
               >
-                <Send className="h-3.5 w-3.5" />
+                <Send className="h-3 w-3" />
               </Button>
             </div>
           </div>
         </div>
       </form>
-      {selectedCommand === 'compare' && (
-        <div className="absolute -top-8 left-0 text-xs text-muted-foreground">
-          Mention a model to compare with the currently selected model (@model-name)
-        </div>
-      )}
-      {selectedCommand === 'discuss' && (
-        <div className="absolute -top-8 left-0 text-xs text-muted-foreground">
-          Mention a model to start a discussion with the currently selected model (@model-name)
-        </div>
-      )}
-
-      <ReferenceMenu
-        query={referenceQuery}
-        currentThreadId={currentThreadId}
-        onSelect={handleReferenceSelect}
-        onClose={() => {
-          setShowReferenceMenu(false);
-          setReferenceQuery('');
-          setReferenceStartIndex(null);
-        }}
-        open={showReferenceMenu}
-        onQueryChange={setReferenceQuery}
-      />
     </div>
   );
 };

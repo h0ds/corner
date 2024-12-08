@@ -13,6 +13,7 @@ interface ChatTaskbarProps {
   onStopDiscussion: () => void;
   isDiscussing: boolean;
   className?: string;
+  onSelectCommand: (command: string | null) => void;
 }
 
 export const ChatTaskbar: React.FC<ChatTaskbarProps> = ({
@@ -23,8 +24,28 @@ export const ChatTaskbar: React.FC<ChatTaskbarProps> = ({
   onStartDiscussion,
   onStopDiscussion,
   isDiscussing,
-  className
+  className,
+  onSelectCommand
 }) => {
+  const handleCompareClick = () => {
+    onSelectCommand('compare');
+  };
+
+  const handleDiscussClick = () => {
+    onSelectCommand('discuss');
+    onStartDiscussion();
+  };
+
+  const handleStopDiscussClick = () => {
+    onSelectCommand(null);
+    onStopDiscussion();
+  };
+
+  const handleClearClick = () => {
+    onSelectCommand(null);
+    onClearThread();
+  };
+
   return (
     <div className="flex justify-end">
       <div className={cn(
@@ -34,8 +55,12 @@ export const ChatTaskbar: React.FC<ChatTaskbarProps> = ({
         <Button
           variant="ghost"
           size="icon"
-          className="h-6 w-6 bg-accent-light border border-border"
-          onClick={onClearThread}
+          className={cn(
+            "h-6 w-6",
+            "bg-transparent hover:bg-accent hover:text-accent-foreground",
+            "transition-colors duration-200"
+          )}
+          onClick={handleClearClick}
           title="Clear Thread"
         >
           <Trash2 className="h-3 w-3" />
@@ -43,8 +68,12 @@ export const ChatTaskbar: React.FC<ChatTaskbarProps> = ({
         <Button
           variant="ghost"
           size="icon"
-          className="h-6 w-6 bg-accent-light border border-border"
-          onClick={onCompareModels}
+          className={cn(
+            "h-6 w-6",
+            "bg-transparent hover:bg-accent hover:text-accent-foreground",
+            "transition-colors duration-200"
+          )}
+          onClick={handleCompareClick}
           title="Compare Models"
         >
           <Split className="h-3 w-3" />
@@ -53,8 +82,12 @@ export const ChatTaskbar: React.FC<ChatTaskbarProps> = ({
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6 bg-accent-light border border-border"
-            onClick={onStartDiscussion}
+            className={cn(
+              "h-6 w-6",
+              "bg-transparent hover:bg-accent hover:text-accent-foreground",
+              "transition-colors duration-200"
+            )}
+            onClick={handleDiscussClick}
             title="Start Model Discussion"
           >
             <MessageCircle className="h-3 w-3" />
@@ -63,8 +96,12 @@ export const ChatTaskbar: React.FC<ChatTaskbarProps> = ({
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6 bg-accent-light border border-border"
-            onClick={onStopDiscussion}
+            className={cn(
+              "h-6 w-6",
+              "bg-transparent hover:bg-accent hover:text-accent-foreground",
+              "transition-colors duration-200"
+            )}
+            onClick={handleStopDiscussClick}
             title="Stop Discussion"
           >
             <Square className="h-3 w-3" />
