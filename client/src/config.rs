@@ -40,7 +40,7 @@ pub fn load_stored_keys(app: &AppHandle) -> Result<serde_json::Value, String> {
 pub fn save_keys(app: &AppHandle, keys: &serde_json::Value) -> Result<(), String> {
     let config_path = get_config_path(app)?;
     println!("Saving keys to: {:?}", config_path);
-    
+
     let content = match serde_json::to_string_pretty(keys) {
         Ok(c) => c,
         Err(e) => {
@@ -48,7 +48,7 @@ pub fn save_keys(app: &AppHandle, keys: &serde_json::Value) -> Result<(), String
             return Err(e.to_string());
         }
     };
-    
+
     println!("Writing config content: {}", content);
     match fs::write(&config_path, content) {
         Ok(_) => {
@@ -91,16 +91,34 @@ pub struct StoredApiKeys {
 #[tauri::command]
 pub fn get_stored_api_keys(app_handle: AppHandle) -> Result<StoredApiKeys, String> {
     let stored_json = load_stored_keys(&app_handle)?;
-    
+
     let stored_keys = StoredApiKeys {
-        anthropic: stored_json.get("anthropic").and_then(|v| v.as_str()).map(String::from),
-        perplexity: stored_json.get("perplexity").and_then(|v| v.as_str()).map(String::from),
-        openai: stored_json.get("openai").and_then(|v| v.as_str()).map(String::from),
-        xai: stored_json.get("xai").and_then(|v| v.as_str()).map(String::from),
-        google: stored_json.get("google").and_then(|v| v.as_str()).map(String::from),
-        elevenlabs: stored_json.get("elevenlabs").and_then(|v| v.as_str()).map(String::from),
+        anthropic: stored_json
+            .get("anthropic")
+            .and_then(|v| v.as_str())
+            .map(String::from),
+        perplexity: stored_json
+            .get("perplexity")
+            .and_then(|v| v.as_str())
+            .map(String::from),
+        openai: stored_json
+            .get("openai")
+            .and_then(|v| v.as_str())
+            .map(String::from),
+        xai: stored_json
+            .get("xai")
+            .and_then(|v| v.as_str())
+            .map(String::from),
+        google: stored_json
+            .get("google")
+            .and_then(|v| v.as_str())
+            .map(String::from),
+        elevenlabs: stored_json
+            .get("elevenlabs")
+            .and_then(|v| v.as_str())
+            .map(String::from),
     };
-    
+
     Ok(stored_keys)
 }
 
@@ -113,10 +131,7 @@ pub fn store_api_key(app_handle: AppHandle, request: StoreApiKeyRequest) -> Resu
     let stored_obj = stored_keys
         .as_object_mut()
         .ok_or("Invalid stored keys format")?;
-    stored_obj.insert(
-        provider,
-        serde_json::Value::String(key),
-    );
+    stored_obj.insert(provider, serde_json::Value::String(key));
 
     save_keys(&app_handle, &stored_keys)
 }
@@ -131,7 +146,7 @@ pub fn set_api_keys(app_handle: AppHandle, request: SetApiKeysRequest) -> Result
             return Err(e);
         }
     };
-    
+
     let stored_obj = match stored_keys.as_object_mut() {
         Some(obj) => obj,
         None => {
@@ -180,9 +195,7 @@ pub struct ConfigState {
 
 impl ConfigState {
     pub fn new() -> Self {
-        ConfigState {
-            initialized: false,
-        }
+        ConfigState { initialized: false }
     }
 }
 

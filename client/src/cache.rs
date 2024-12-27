@@ -66,9 +66,7 @@ pub struct CacheState {
 
 impl CacheState {
     pub fn new() -> Self {
-        CacheState {
-            initialized: false,
-        }
+        CacheState { initialized: false }
     }
 }
 

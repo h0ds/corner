@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { ChatInput } from './ChatInput';
 import { invoke } from '@tauri-apps/api/core';
 import { useToast } from "@/hooks/use-toast";
+import { AVAILABLE_MODELS } from './ModelSelector';
 import {
   Dialog,
   DialogContent,
@@ -106,6 +107,11 @@ export const ChatView: React.FC<ChatViewProps> = ({
       }, 100);
       return () => clearTimeout(timeout);
     }
+  }, [activeThreadId]);
+
+  useEffect(() => {
+    // Reset loading state when active thread changes
+    setIsLoadingThread(false);
   }, [activeThreadId]);
 
   const handleTextToSpeech = async (text: string) => {
@@ -230,7 +236,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
         return {
           ...chatThread,
           messages: chatThread.messages.filter((msg: Message) => msg.timestamp !== messageToDelete.timestamp),
-          updatedAt: Date.now(),
+          updatedAt: Date.now()
         };
       }
       return thread;
@@ -330,22 +336,266 @@ export const ChatView: React.FC<ChatViewProps> = ({
     setInputValue(result);
   };
 
-  const handleCompareModels = () => {
-    if (inputValue.trim()) {
-      // Simulate the @model mention format that ChatInput expects
-      const messageWithMention = `@gpt-4 ${inputValue.trim()}`;
-      setInputValue(messageWithMention);
-      onCompareModels(inputValue.trim(), "gpt-4", selectedModel);
-    } else {
+  const handleCompareModels = async (message: string, model1Id: string, model2Id: string) => {
+    try {
+      if (!activeThreadId) return;
+
+      console.log('Starting model comparison:', {
+        message,
+        model1Id,
+        model2Id,
+        threadId: activeThreadId
+      });
+
+      // Add user message first
+      const userMessage = {
+        role: 'user',
+        content: message,
+        id: Date.now().toString()
+      };
+
+      // Add loading message
+      const loadingMessage = {
+        role: 'system',
+        content: 'Comparing responses...',
+        id: (Date.now() + 1).toString()
+      };
+
+      setThreads(prev => prev.map(thread => {
+        if (thread.id === activeThreadId) {
+          return {
+            ...thread,
+            messages: [...thread.messages, userMessage, loadingMessage],
+            updatedAt: Date.now()
+          };
+        }
+        return thread;
+      }));
+
+      // Get responses from both models
+      const model1 = AVAILABLE_MODELS.find(m => m.id === model1Id);
+      const model2 = AVAILABLE_MODELS.find(m => m.id === model2Id);
+      
+      if (!model1 || !model2) {
+        throw new Error(`Invalid model selected: ${!model1 ? model1Id : model2Id}`);
+      }
+
+      console.log('Fetching responses for:', {
+        message,
+        model1: { id: model1Id, provider: model1.provider },
+        model2: { id: model2Id, provider: model2.provider }
+      });
+
+      const [response1, response2] = await Promise.all([
+        invoke<ApiResponse>('send_message', {
+          request: {
+            message,
+            model: model1Id,
+            provider: model1.provider,
+            threadId: activeThreadId
+          }
+        }),
+        invoke<ApiResponse>('send_message', {
+          request: {
+            message,
+            model: model2Id,
+            provider: model2.provider,
+            threadId: activeThreadId
+          }
+        })
+      ]);
+
+      if (response1.error || response2.error) {
+        throw new Error(response1.error || response2.error);
+      }
+
+      console.log('Received responses:', {
+        model1: response1,
+        model2: response2
+      });
+
+      // Remove loading message and add comparison message
+      setThreads(prev => prev.map(thread => {
+        if (thread.id === activeThreadId) {
+          const messages = thread.messages.filter(m => m.id !== loadingMessage.id);
+          return {
+            ...thread,
+            messages: [...messages, {
+              role: 'comparison',
+              content: '',
+              id: (Date.now() + 2).toString(),
+              comparison: {
+                message,
+                model1: {
+                  id: model1Id,
+                  response: response1.content || ''
+                },
+                model2: {
+                  id: model2Id,
+                  response: response2.content || ''
+                }
+              }
+            }],
+            updatedAt: Date.now()
+          };
+        }
+        return thread;
+      }));
+    } catch (error) {
+      console.error('Error comparing models:', error);
+      // Remove loading message and add error message
+      setThreads(prev => prev.map(thread => {
+        if (thread.id === activeThreadId) {
+          const messages = thread.messages.filter(m => m.id !== loadingMessage.id);
+          return {
+            ...thread,
+            messages: [...messages, {
+              role: 'error',
+              content: error.message || "Failed to get responses from models",
+              id: (Date.now() + 2).toString()
+            }],
+            updatedAt: Date.now()
+          };
+        }
+        return thread;
+      }));
+
       toast({
-        title: "No message to compare",
-        description: "Please enter a message first",
+        title: "Error comparing models",
+        description: error.message || "Failed to get responses from models",
         variant: "destructive",
       });
     }
   };
 
-  const handleStartDiscussion = () => {
+  const handleStartDiscussion = async (message: string, model1Id: string, model2Id: string) => {
+    try {
+      if (!activeThreadId) return;
+
+      console.log('Starting model discussion:', {
+        message,
+        model1Id,
+        model2Id,
+        threadId: activeThreadId
+      });
+
+      // Add user message first
+      const userMessage = {
+        role: 'user',
+        content: message,
+        id: Date.now().toString()
+      };
+
+      // Add loading message
+      const loadingMessage = {
+        role: 'system',
+        content: 'Starting discussion...',
+        id: (Date.now() + 1).toString()
+      };
+
+      setThreads(prev => prev.map(thread => {
+        if (thread.id === activeThreadId) {
+          return {
+            ...thread,
+            messages: [...thread.messages, userMessage, loadingMessage],
+            updatedAt: Date.now()
+          };
+        }
+        return thread;
+      }));
+
+      // Get responses from both models
+      const model1 = AVAILABLE_MODELS.find(m => m.id === model1Id);
+      const model2 = AVAILABLE_MODELS.find(m => m.id === model2Id);
+      
+      if (!model1 || !model2) {
+        throw new Error(`Invalid model selected: ${!model1 ? model1Id : model2Id}`);
+      }
+
+      console.log('Fetching responses for:', {
+        message,
+        model1: { id: model1Id, provider: model1.provider },
+        model2: { id: model2Id, provider: model2.provider }
+      });
+
+      const [response1, response2] = await Promise.all([
+        invoke<ApiResponse>('send_message', {
+          request: {
+            message,
+            model: model1Id,
+            provider: model1.provider,
+            threadId: activeThreadId
+          }
+        }),
+        invoke<ApiResponse>('send_message', {
+          request: {
+            message,
+            model: model2Id,
+            provider: model2.provider,
+            threadId: activeThreadId
+          }
+        })
+      ]);
+
+      if (response1.error || response2.error) {
+        throw new Error(response1.error || response2.error);
+      }
+
+      console.log('Received responses:', {
+        model1: response1,
+        model2: response2
+      });
+
+      // Remove loading message and add responses
+      setThreads(prev => prev.map(thread => {
+        if (thread.id === activeThreadId) {
+          const messages = thread.messages.filter(m => m.id !== loadingMessage.id);
+          return {
+            ...thread,
+            messages: [...messages, {
+              role: 'assistant',
+              content: response1.content || '',
+              id: (Date.now() + 2).toString(),
+              modelId: model1Id
+            }, {
+              role: 'assistant',
+              content: response2.content || '',
+              id: (Date.now() + 3).toString(),
+              modelId: model2Id
+            }],
+            updatedAt: Date.now()
+          };
+        }
+        return thread;
+      }));
+    } catch (error) {
+      console.error('Error starting discussion:', error);
+      // Remove loading message and add error message
+      setThreads(prev => prev.map(thread => {
+        if (thread.id === activeThreadId) {
+          const messages = thread.messages.filter(m => m.id !== loadingMessage.id);
+          return {
+            ...thread,
+            messages: [...messages, {
+              role: 'error',
+              content: error.message || "Failed to start discussion",
+              id: (Date.now() + 2).toString()
+            }],
+            updatedAt: Date.now()
+          };
+        }
+        return thread;
+      }));
+
+      toast({
+        title: "Error starting discussion",
+        description: error.message || "Failed to start discussion",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleStartDiscussionButton = () => {
     if (inputValue.trim()) {
       // Simulate the @model mention format that ChatInput expects
       const messageWithMention = `@gpt-4 ${inputValue.trim()}`;
@@ -526,7 +776,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
           isListening={isListening}
           onClearThread={onClearThread}
           onCompareModels={handleCompareModels}
-          onStartDiscussion={handleStartDiscussion}
+          onStartDiscussion={handleStartDiscussionButton}
           onStopDiscussion={onStopDiscussion}
           isDiscussing={isDiscussing}
           onSelectCommand={setSelectedCommand}
@@ -534,8 +784,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
         />
         <ChatInput
           onSendMessage={onSendMessage}
-          onCompareModels={onCompareModels}
-          onStartDiscussion={onStartDiscussion}
+          onCompareModels={handleCompareModels}
+          onStartDiscussion={handleStartDiscussionButton}
           onStopDiscussion={onStopDiscussion}
           onClearThread={onClearThread}
           disabled={loading}

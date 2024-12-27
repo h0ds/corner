@@ -3,25 +3,25 @@
 mod api;
 mod cache;
 mod config;
+mod files;
 mod keyboard_shortcuts;
 mod models;
-mod utils;
 mod speech;
-mod files;
+mod utils;
 
+use crate::api::{ApiKeys, ApiState};
 use dotenv::dotenv;
-use tauri::Manager;
-use crate::api::{ApiState, ApiKeys};
 use std::sync::{Arc, Mutex};
+use tauri::Manager;
 
 #[tauri::command]
 async fn handle_file_drop(path: String, app: tauri::AppHandle) -> Result<String, String> {
     println!("Handling file drop for path: {}", path);
-    
+
     // Use the original file path directly
     let file_path = std::path::PathBuf::from(&path);
     println!("Using file path: {:?}", file_path);
-    
+
     files::read_file_content(file_path.to_string_lossy().into_owned()).await
 }
 
@@ -29,7 +29,10 @@ async fn handle_file_drop(path: String, app: tauri::AppHandle) -> Result<String,
 async fn check_file_exists(path: String) -> bool {
     let path = std::path::PathBuf::from(path);
     println!("Checking file existence: {:?}", path);
-    println!("Current dir: {:?}", std::env::current_dir().unwrap_or_default());
+    println!(
+        "Current dir: {:?}",
+        std::env::current_dir().unwrap_or_default()
+    );
     path.exists()
 }
 
@@ -37,9 +40,10 @@ fn main() {
     dotenv().ok();
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_os::init())
         .manage(ApiState::new())
-        .manage(ApiKeys::default())  
+        .manage(ApiKeys::default())
         .manage(speech::WhisperAppState::new().unwrap())
         .invoke_handler(tauri::generate_handler![
             api::get_completion,
@@ -70,12 +74,12 @@ fn main() {
             // Load stored API keys
             if let Ok(stored_keys) = config::load_stored_keys(&app_handle) {
                 let api_state = app.state::<ApiState>();
-                let api_keys = app.state::<ApiKeys>();  
-                
+                let api_keys = app.state::<ApiKeys>();
+
                 // Initialize each provider's key if it exists in storage
                 if let Some(key) = stored_keys["anthropic"].as_str() {
                     api_state.keys.set_key("anthropic", key.to_string());
-                    api_keys.set_key("anthropic", key.to_string());  
+                    api_keys.set_key("anthropic", key.to_string());
                 }
                 if let Some(key) = stored_keys["perplexity"].as_str() {
                     api_state.keys.set_key("perplexity", key.to_string());

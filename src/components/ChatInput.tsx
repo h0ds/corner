@@ -115,7 +115,17 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         }
       }
       
-      // No valid model mention, send normally
+      // No valid model mention found
+      if (selectedCommand === 'compare' || selectedCommand === 'discuss') {
+        toast({
+          variant: "destructive",
+          description: `Please mention a model to ${selectedCommand} with (e.g. @GPT-4)`,
+          duration: 2000,
+        });
+        return;
+      }
+
+      // Handle other commands or send normally
       if (selectedCommand) {
         console.log('Submit - Executing command without model mention');
         handleCommandExecute(selectedCommand, message.trim());
@@ -292,31 +302,47 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       selectedModel
     });
 
+    if (!mentionedModelId) {
+      toast({
+        variant: "destructive",
+        description: `Please mention a model to ${command} with (e.g. @GPT-4)`,
+        duration: 2000,
+      });
+      return;
+    }
+
+    // Ensure both models are valid
+    const model1 = AVAILABLE_MODELS.find(m => m.id === mentionedModelId);
+    const model2 = AVAILABLE_MODELS.find(m => m.id === selectedModel);
+
+    if (!model1 || !model2) {
+      toast({
+        variant: "destructive",
+        description: "Invalid model selection",
+        duration: 2000,
+      });
+      return;
+    }
+
     switch (command) {
       case 'compare':
-        if (!mentionedModelId) {
-          toast({
-            variant: "destructive",
-            description: "Please mention a model to compare with (e.g. @GPT-4)",
-            duration: 2000,
-          });
-          return;
-        }
         if (onCompareModels) {
+          console.log('Executing compare with:', {
+            message,
+            model1: mentionedModelId,
+            model2: selectedModel
+          });
           onCompareModels(message, mentionedModelId, selectedModel);
           onSelectCommand?.(null);
         }
         break;
       case 'discuss':
-        if (!mentionedModelId) {
-          toast({
-            variant: "destructive",
-            description: "Please mention a model to discuss with (e.g. @GPT-4)",
-            duration: 2000,
-          });
-          return;
-        }
         if (onStartDiscussion) {
+          console.log('Starting discussion with:', {
+            message,
+            model1: mentionedModelId,
+            model2: selectedModel
+          });
           onStartDiscussion(message, mentionedModelId, selectedModel);
           onSelectCommand?.(null);
         }

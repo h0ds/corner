@@ -1,9 +1,9 @@
-use tauri::{
-    plugin::{Builder, TauriPlugin, PluginApi},
-    Runtime, Window, State, Manager,
-};
 use serde::Serialize;
 use std::sync::{Arc, Mutex};
+use tauri::{
+    plugin::{Builder, PluginApi, TauriPlugin},
+    Manager, Runtime, State, Window,
+};
 
 use crate::speech::WhisperAppState;
 
@@ -24,9 +24,7 @@ async fn stop_recording<R: Runtime>(
 }
 
 #[tauri::command]
-async fn download_whisper_model<R: Runtime>(
-    window: Window<R>,
-) -> Result<(), String> {
+async fn download_whisper_model<R: Runtime>(window: Window<R>) -> Result<(), String> {
     crate::speech::download_whisper_model(window).await
 }
 

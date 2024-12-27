@@ -33,7 +33,6 @@ export const ChatTaskbar: React.FC<ChatTaskbarProps> = ({
 
   const handleDiscussClick = () => {
     onSelectCommand('discuss');
-    onStartDiscussion();
   };
 
   const handleStopDiscussClick = () => {
@@ -54,57 +53,53 @@ export const ChatTaskbar: React.FC<ChatTaskbarProps> = ({
       )}>
         <Button
           variant="ghost"
-          size="icon"
+          size="md"
           className={cn(
-            "h-6 w-6",
-            "bg-transparent hover:bg-accent hover:text-accent-foreground",
+            "bg-transparent hover:bg-accent hover:text-accent-foreground p-2",
             "transition-colors duration-200"
           )}
           onClick={handleClearClick}
           title="Clear Thread"
         >
-          <Trash2 className="h-3 w-3" />
+          <Trash2 className="h-4 w-4" />
         </Button>
         <Button
           variant="ghost"
-          size="icon"
+          size="md"
           className={cn(
-            "h-6 w-6",
-            "bg-transparent hover:bg-accent hover:text-accent-foreground",
+            "bg-transparent hover:bg-accent hover:text-accent-foreground p-2",
             "transition-colors duration-200"
           )}
           onClick={handleCompareClick}
           title="Compare Models"
         >
-          <Split className="h-3 w-3" />
+          <Split className="h-4 w-4" />
         </Button>
         {!isDiscussing ? (
           <Button
             variant="ghost"
-            size="icon"
+            size="md"
             className={cn(
-              "h-6 w-6",
-              "bg-transparent hover:bg-accent hover:text-accent-foreground",
+              "bg-transparent hover:bg-accent hover:text-accent-foreground p-2",
               "transition-colors duration-200"
             )}
             onClick={handleDiscussClick}
             title="Start Model Discussion"
           >
-            <MessageCircle className="h-3 w-3" />
+            <MessageCircle className="h-4 w-4" />
           </Button>
         ) : (
           <Button
             variant="ghost"
-            size="icon"
+            size="md"
             className={cn(
-              "h-6 w-6",
-              "bg-transparent hover:bg-accent hover:text-accent-foreground",
+              "bg-transparent hover:bg-accent hover:text-accent-foreground p-2",
               "transition-colors duration-200"
             )}
             onClick={handleStopDiscussClick}
-            title="Stop Discussion"
+            title="Stop Model Discussion"
           >
-            <Square className="h-3 w-3" />
+            <Square className="h-4 w-4" />
           </Button>
         )}
         <VoiceDictation

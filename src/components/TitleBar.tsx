@@ -141,7 +141,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onPreferencesClick }) => {
 
           {/* Title */}
           <div className="flex-1 flex items-center justify-end pr-1.5 h-full space-x-2">
-            <div 
+            {/* <div 
               onClick={() => setShowSessionModal(true)}
               className="h-4 w-4 bg-accent rounded-md flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
               title="Start Session"
@@ -164,7 +164,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onPreferencesClick }) => {
                   </AvatarFallback>
                 )}
               </Avatar>
-            </button>
+            </button> */}
             <div 
               onClick={handleLogoClick}
               className="h-5 w-5 bg-gray-200 rounded-md flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"

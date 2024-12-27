@@ -1,8 +1,8 @@
-use std::sync::{Arc, Mutex};
-use tauri::State;
+use anyhow::Result;
 use reqwest::Client;
 use serde_json::{json, Value};
-use anyhow::Result;
+use std::sync::{Arc, Mutex};
+use tauri::State;
 
 const OPENAI_API_BASE: &str = "https://api.openai.com/v1";
 
@@ -59,8 +59,14 @@ impl ApiState {
         }
     }
 
-    async fn make_request(&self, endpoint: &str, body: Value, api_key: &str) -> Result<Value, String> {
-        let response = self.client
+    async fn make_request(
+        &self,
+        endpoint: &str,
+        body: Value,
+        api_key: &str,
+    ) -> Result<Value, String> {
+        let response = self
+            .client
             .post(&format!("{}{}", OPENAI_API_BASE, endpoint))
             .header("Authorization", format!("Bearer {}", api_key))
             .header("Content-Type", "application/json")
@@ -70,19 +76,22 @@ impl ApiState {
             .map_err(|e| e.to_string())?;
 
         if !response.status().is_success() {
-            let error = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+            let error = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
             return Err(format!("API request failed: {}", error));
         }
 
-        response.json::<Value>()
-            .await
-            .map_err(|e| e.to_string())
+        response.json::<Value>().await.map_err(|e| e.to_string())
     }
 }
 
 #[tauri::command]
 pub async fn get_completion(prompt: String, state: State<'_, ApiState>) -> Result<String, String> {
-    let api_key = state.keys.get_key("openai")
+    let api_key = state
+        .keys
+        .get_key("openai")
         .ok_or_else(|| "OpenAI API key not found".to_string())?;
 
     let body = json!({
@@ -93,7 +102,7 @@ pub async fn get_completion(prompt: String, state: State<'_, ApiState>) -> Resul
     });
 
     let response = state.make_request("/completions", body, &api_key).await?;
-    
+
     response["choices"][0]["text"]
         .as_str()
         .map(|s| s.trim().to_string())
@@ -101,8 +110,13 @@ pub async fn get_completion(prompt: String, state: State<'_, ApiState>) -> Resul
 }
 
 #[tauri::command]
-pub async fn get_chat_completion(messages: Vec<Value>, state: State<'_, ApiState>) -> Result<String, String> {
-    let api_key = state.keys.get_key("openai")
+pub async fn get_chat_completion(
+    messages: Vec<Value>,
+    state: State<'_, ApiState>,
+) -> Result<String, String> {
+    let api_key = state
+        .keys
+        .get_key("openai")
         .ok_or_else(|| "OpenAI API key not found".to_string())?;
 
     let body = json!({
@@ -111,8 +125,10 @@ pub async fn get_chat_completion(messages: Vec<Value>, state: State<'_, ApiState
         "temperature": 0.7
     });
 
-    let response = state.make_request("/chat/completions", body, &api_key).await?;
-    
+    let response = state
+        .make_request("/chat/completions", body, &api_key)
+        .await?;
+
     response["choices"][0]["message"]["content"]
         .as_str()
         .map(|s| s.trim().to_string())
@@ -121,7 +137,9 @@ pub async fn get_chat_completion(messages: Vec<Value>, state: State<'_, ApiState
 
 #[tauri::command]
 pub async fn get_embeddings(text: String, state: State<'_, ApiState>) -> Result<Vec<f32>, String> {
-    let api_key = state.keys.get_key("openai")
+    let api_key = state
+        .keys
+        .get_key("openai")
         .ok_or_else(|| "OpenAI API key not found".to_string())?;
 
     let body = json!({
@@ -130,22 +148,28 @@ pub async fn get_embeddings(text: String, state: State<'_, ApiState>) -> Result<
     });
 
     let response = state.make_request("/embeddings", body, &api_key).await?;
-    
+
     response["data"][0]["embedding"]
         .as_array()
         .ok_or_else(|| "Invalid response format".to_string())?
         .iter()
-        .map(|v| v.as_f64().ok_or_else(|| "Invalid embedding value".to_string()).map(|f| f as f32))
+        .map(|v| {
+            v.as_f64()
+                .ok_or_else(|| "Invalid embedding value".to_string())
+                .map(|f| f as f32)
+        })
         .collect::<Result<Vec<f32>, String>>()
 }
 
 #[tauri::command]
 pub async fn get_models(state: State<'_, ApiState>) -> Result<Vec<String>, String> {
-    let api_key = state.keys.get_key("openai")
+    let api_key = state
+        .keys
+        .get_key("openai")
         .ok_or_else(|| "OpenAI API key not found".to_string())?;
 
     let response = state.make_request("/models", json!({}), &api_key).await?;
-    
+
     let models = response["data"]
         .as_array()
         .ok_or_else(|| "Invalid response format".to_string())?

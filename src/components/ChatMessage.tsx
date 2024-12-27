@@ -304,81 +304,47 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
 
   if (role === 'comparison' && comparison) {
     return (
-      <div className="flex flex-col pt-2 gap-2 w-full">
-        <div className="text-sm text-muted-foreground/50">
-          Comparing responses for: "{comparison.message}"
-        </div>
-        <div className="flex gap-2">
-          <div className="flex-1 border border-border rounded-lg p-4 bg-background">
-            <div className="flex items-center gap-2 mb-2">
-              <ModelIcon modelId={comparison.model1.id} className="h-4 w-4" />
-              <span className="text-sm font-medium">
-                {AVAILABLE_MODELS.find(m => m.id === comparison.model1.id)?.name}
-              </span>
-            </div>
-            <div className="text-sm">
-              <ReactMarkdown
-                remarkPlugins={[
-                  remarkGfm,
-                  [remarkMath, { 
-                    singleDollarTextMath: true
-                  }]
-                ]}
-                rehypePlugins={[[rehypeKatex, {
-                  strict: false,
-                  trust: true,
-                  throwOnError: false,
-                  macros: {
-                    "\\N": "\\mathbb{N}",
-                    "\\R": "\\mathbb{R}",
-                    "\\Z": "\\mathbb{Z}",
-                    "\\Q": "\\mathbb{Q}",
-                    "\\C": "\\mathbb{C}",
-                    "\\P": "\\mathbb{P}"
-                  }
-                }]]}
-                components={components}
-              >
-                {comparison.model1.response}
-              </ReactMarkdown>
-            </div>
+      <ChatMessageContextMenu content={content}>
+        <div className="flex flex-col pt-2 gap-2 w-full">
+          <div className="text-sm text-muted-foreground/50">
+            Comparing responses for: "{comparison.message}"
           </div>
-          <div className="flex-1 border border-border rounded-lg p-4 bg-background">
-            <div className="flex items-center gap-2 mb-2">
-              <ModelIcon modelId={comparison.model2.id} className="h-4 w-4" />
-              <span className="text-sm font-medium">
-                {AVAILABLE_MODELS.find(m => m.id === comparison.model2.id)?.name}
-              </span>
+          <div className="flex gap-2">
+            <div className="flex-1 border border-border rounded-lg p-4 bg-background">
+              <div className="flex items-center gap-2 mb-2">
+                <ModelIcon modelId={comparison.model1.id} className="h-4 w-4" />
+                <span className="text-sm font-medium">
+                  {AVAILABLE_MODELS.find(m => m.id === comparison.model1.id)?.name || comparison.model1.id}
+                </span>
+              </div>
+              <div className="text-sm">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={components}
+                >
+                  {comparison.model1.response}
+                </ReactMarkdown>
+              </div>
             </div>
-            <div className="text-sm">
-              <ReactMarkdown
-                remarkPlugins={[
-                  remarkGfm,
-                  [remarkMath, { 
-                    singleDollarTextMath: true
-                  }]
-                ]}
-                rehypePlugins={[[rehypeKatex, {
-                  strict: false,
-                  trust: true,
-                  throwOnError: false,
-                  macros: {
-                    "\\N": "\\mathbb{N}",
-                    "\\R": "\\mathbb{R}",
-                    "\\Z": "\\mathbb{Z}",
-                    "\\Q": "\\mathbb{Q}",
-                    "\\C": "\\mathbb{C}",
-                    "\\P": "\\mathbb{P}"
-                  }
-                }]]}
-                components={components}
-              >
-                {comparison.model2.response}
-              </ReactMarkdown>
+            <div className="flex-1 border border-border rounded-lg p-4 bg-background">
+              <div className="flex items-center gap-2 mb-2">
+                <ModelIcon modelId={comparison.model2.id} className="h-4 w-4" />
+                <span className="text-sm font-medium">
+                  {AVAILABLE_MODELS.find(m => m.id === comparison.model2.id)?.name || comparison.model2.id}
+                </span>
+              </div>
+              <div className="text-sm">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={components}
+                >
+                  {comparison.model2.response}
+                </ReactMarkdown>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </ChatMessageContextMenu>
     );
   }
 

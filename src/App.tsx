@@ -169,6 +169,9 @@ function App() {
         switchingTo: thread.isNote ? 'notes' : 'threads'
       });
       
+      // Reset loading state when switching threads
+      setLoading(false);
+      
       // Update the tab based on the thread type
       setActiveTab(thread.isNote ? 'notes' : 'threads');
       // Then set the active thread
@@ -184,6 +187,9 @@ function App() {
       currentTab: activeTab,
       thread: threads.find(t => t.id === threadId)
     });
+    
+    // Reset loading state when switching threads
+    setLoading(false);
     
     // First switch the tab
     setActiveTab(isNote ? 'notes' : 'threads');

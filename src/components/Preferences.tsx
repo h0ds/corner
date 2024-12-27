@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { KeyRound, Palette, Bot, Keyboard, Network, Code, Zap, Volume2, Database, UserCircle } from "lucide-react";
+import { KeyRound, Palette, Bot, Keyboard, Code, Zap, Volume2, Database, UserCircle } from "lucide-react";
 import { cn } from '@/lib/utils';
 import { KeyboardShortcut, saveShortcuts, resetShortcuts } from '@/lib/shortcuts';
 import { Plugin } from '@/lib/plugins';
@@ -17,7 +17,6 @@ import { ApiKeys } from './preferences/ApiKeys';
 import { Appearance } from './preferences/Appearance';
 import { Models } from './preferences/Models';
 import { Shortcuts } from './preferences/Shortcuts';
-import { Connections } from './preferences/Connections';
 import { Plugins } from './preferences/Plugins';
 import { Actions, Action } from './preferences/Actions';
 import { Storage } from './preferences/Storage';
@@ -55,7 +54,7 @@ interface ApiKeys {
   elevenlabs: string;
 }
 
-type PreferenceTab = 'profile' | 'api-keys' | 'appearance' | 'models' | 'shortcuts' | 'plugins' | 'connections' | 'actions' | 'storage' | 'voice';
+type PreferenceTab = 'profile' | 'api-keys' | 'appearance' | 'models' | 'shortcuts' | 'plugins' | 'actions' | 'storage' | 'voice';
 
 export const Preferences: React.FC<PreferencesProps> = ({
   isOpen,
@@ -429,7 +428,7 @@ export const Preferences: React.FC<PreferencesProps> = ({
     { id: 'models', label: 'Models', icon: <Bot className="h-4 w-4" /> },
     { id: 'shortcuts', label: 'Shortcuts', icon: <Keyboard className="h-4 w-4" /> },
     { id: 'plugins', label: 'Plugins', icon: <Code className="h-4 w-4" /> },
-    { id: 'connections', label: 'Connections', icon: <Network className="h-4 w-4" /> },
+    // { id: 'connections', label: 'Connections', icon: <Network className="h-4 w-4" /> },
     { id: 'actions', label: 'Actions', icon: <Zap className="h-4 w-4" /> },
     { id: 'storage', label: 'Storage', icon: <Database className="h-4 w-4" /> },
     { id: 'voice', label: 'Voice', icon: <Volume2 className="h-4 w-4" /> },
@@ -499,8 +498,8 @@ export const Preferences: React.FC<PreferencesProps> = ({
             onPluginChange={onPluginChange}
           />
         );
-      case 'connections':
-        return <Connections />;
+      // case 'connections':
+      //   return <Connections />;
       case 'actions':
         return (
           <Actions

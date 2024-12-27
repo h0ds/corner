@@ -3,9 +3,9 @@ mod cache;
 mod config;
 mod keyboard_shortcuts;
 mod models;
+mod plugins;
 mod speech;
 mod utils;
-mod plugins;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]

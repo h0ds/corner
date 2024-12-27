@@ -54,7 +54,7 @@ pub fn init_shortcuts(app_handle: &tauri::AppHandle) {
 #[tauri::command]
 pub async fn register_shortcut(window: Window, shortcut_str: String) -> Result<(), String> {
     let app = window.app_handle();
-    
+
     let mods = if shortcut_str.contains("Alt") {
         Some(Modifiers::ALT)
     } else if shortcut_str.contains("Ctrl") || shortcut_str.contains("Command") {
@@ -73,18 +73,18 @@ pub async fn register_shortcut(window: Window, shortcut_str: String) -> Result<(
     };
 
     let shortcut = Shortcut::new(mods, key);
-    
+
     app.global_shortcut()
         .register(shortcut)
         .map_err(|e| e.to_string())?;
-    
+
     Ok(())
 }
 
 #[tauri::command]
 pub async fn unregister_shortcut(window: Window, shortcut_str: String) -> Result<(), String> {
     let app = window.app_handle();
-    
+
     let mods = if shortcut_str.contains("Alt") {
         Some(Modifiers::ALT)
     } else if shortcut_str.contains("Ctrl") || shortcut_str.contains("Command") {
@@ -103,10 +103,10 @@ pub async fn unregister_shortcut(window: Window, shortcut_str: String) -> Result
     };
 
     let shortcut = Shortcut::new(mods, key);
-    
+
     app.global_shortcut()
         .unregister(shortcut)
         .map_err(|e| e.to_string())?;
-    
+
     Ok(())
 }

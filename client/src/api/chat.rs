@@ -100,11 +100,11 @@ pub async fn send_message(
                     Some(key) if !key.is_empty() => {
                         println!("Using state API key");
                         key
-                    },
+                    }
                     _ => {
                         println!("Falling back to env API key");
                         env::var("OPENAI_API_KEY").unwrap_or_default()
-                    },
+                    }
                 }
             };
 
@@ -112,7 +112,10 @@ pub async fn send_message(
                 println!("No OpenAI API key found");
                 return Ok(ApiResponse {
                     content: None,
-                    error: Some("OpenAI API key not configured. Please add your API key in settings.".to_string()),
+                    error: Some(
+                        "OpenAI API key not configured. Please add your API key in settings."
+                            .to_string(),
+                    ),
                     citations: None,
                     images: None,
                     related_questions: None,
@@ -144,7 +147,7 @@ pub async fn send_message(
                 Ok(resp) => {
                     let status = resp.status();
                     println!("Received response with status: {}", status);
-                    
+
                     let response_text = resp.text().await.map_err(|e| {
                         println!("Failed to read response text: {}", e);
                         e.to_string()
@@ -152,26 +155,33 @@ pub async fn send_message(
                     println!("Response text: {}", response_text);
 
                     if status.is_success() {
-                        let json: serde_json::Value = serde_json::from_str(&response_text).map_err(|e| {
-                            println!("Failed to parse JSON response: {}", e);
-                            e.to_string()
-                        })?;
+                        let json: serde_json::Value = serde_json::from_str(&response_text)
+                            .map_err(|e| {
+                                println!("Failed to parse JSON response: {}", e);
+                                e.to_string()
+                            })?;
                         println!("Successfully parsed response JSON");
-                        
+
                         Ok(ApiResponse {
-                            content: Some(json["choices"][0]["message"]["content"].as_str().unwrap_or_default().to_string()),
+                            content: Some(
+                                json["choices"][0]["message"]["content"]
+                                    .as_str()
+                                    .unwrap_or_default()
+                                    .to_string(),
+                            ),
                             error: None,
                             citations: None,
                             images: None,
                             related_questions: None,
                         })
                     } else {
-                        let error_json: serde_json::Value = serde_json::from_str(&response_text).unwrap_or_default();
+                        let error_json: serde_json::Value =
+                            serde_json::from_str(&response_text).unwrap_or_default();
                         let error_message = error_json["error"]["message"]
                             .as_str()
                             .unwrap_or("Unknown error occurred")
                             .to_string();
-                        
+
                         println!("API error: {}", error_message);
                         Ok(ApiResponse {
                             content: None,
@@ -181,7 +191,7 @@ pub async fn send_message(
                             related_questions: None,
                         })
                     }
-                },
+                }
                 Err(e) => {
                     println!("Failed to send request: {}", e);
                     Ok(ApiResponse {
@@ -193,7 +203,7 @@ pub async fn send_message(
                     })
                 }
             }
-        },
+        }
         "perplexity" => {
             let stored_keys = crate::config::load_stored_keys(&app_handle)?;
             let api_key = if let Some(key) = stored_keys["perplexity"].as_str() {
@@ -209,7 +219,10 @@ pub async fn send_message(
             if api_key.is_empty() {
                 return Ok(ApiResponse {
                     content: None,
-                    error: Some("Perplexity API key not configured. Please add your API key in settings.".to_string()),
+                    error: Some(
+                        "Perplexity API key not configured. Please add your API key in settings."
+                            .to_string(),
+                    ),
                     citations: None,
                     images: None,
                     related_questions: None,
@@ -238,9 +251,15 @@ pub async fn send_message(
                     let response_text = resp.text().await.map_err(|e| e.to_string())?;
 
                     if status.is_success() {
-                        let json: serde_json::Value = serde_json::from_str(&response_text).map_err(|e| e.to_string())?;
+                        let json: serde_json::Value =
+                            serde_json::from_str(&response_text).map_err(|e| e.to_string())?;
                         Ok(ApiResponse {
-                            content: Some(json["choices"][0]["message"]["content"].as_str().unwrap_or_default().to_string()),
+                            content: Some(
+                                json["choices"][0]["message"]["content"]
+                                    .as_str()
+                                    .unwrap_or_default()
+                                    .to_string(),
+                            ),
                             error: None,
                             citations: None,
                             images: None,
@@ -255,21 +274,19 @@ pub async fn send_message(
                             related_questions: None,
                         })
                     }
-                },
-                Err(e) => {
-                    Ok(ApiResponse {
-                        content: None,
-                        error: Some(format!("Failed to send request to Perplexity API: {}", e)),
-                        citations: None,
-                        images: None,
-                        related_questions: None,
-                    })
                 }
+                Err(e) => Ok(ApiResponse {
+                    content: None,
+                    error: Some(format!("Failed to send request to Perplexity API: {}", e)),
+                    citations: None,
+                    images: None,
+                    related_questions: None,
+                }),
             }
-        },
+        }
         "google" => {
             println!("Starting Gemini API request processing");
-            
+
             let stored_keys = crate::config::load_stored_keys(&app_handle)?;
             let api_key = if let Some(key) = stored_keys["google"].as_str() {
                 key.to_string()
@@ -286,7 +303,10 @@ pub async fn send_message(
             if api_key.is_empty() {
                 return Ok(ApiResponse {
                     content: None,
-                    error: Some("Google API key not configured. Please add your API key in settings.".to_string()),
+                    error: Some(
+                        "Google API key not configured. Please add your API key in settings."
+                            .to_string(),
+                    ),
                     citations: None,
                     images: None,
                     related_questions: None,
@@ -328,7 +348,10 @@ pub async fn send_message(
             });
 
             println!("Request model: {}", request.model);
-            println!("Request body: {}", serde_json::to_string_pretty(&request_body).unwrap());
+            println!(
+                "Request body: {}",
+                serde_json::to_string_pretty(&request_body).unwrap()
+            );
 
             let url = format!(
                 "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent?key={}",
@@ -347,7 +370,7 @@ pub async fn send_message(
                 Ok(mut resp) => {
                     let status = resp.status();
                     println!("Response status: {}", status);
-                    
+
                     let response_text = resp.text().await.map_err(|e| e.to_string())?;
                     println!("Raw response: {}", response_text);
 
@@ -355,14 +378,18 @@ pub async fn send_message(
                         match serde_json::from_str::<serde_json::Value>(&response_text) {
                             Ok(json) => {
                                 println!("Successfully parsed JSON response");
-                                
+
                                 // Check for error field first
                                 if json.get("error").is_some() {
-                                    let error_msg = json["error"]["message"].as_str().unwrap_or("Unknown error");
+                                    let error_msg = json["error"]["message"]
+                                        .as_str()
+                                        .unwrap_or("Unknown error");
                                     println!("Found error in response: {}", error_msg);
-                                    
+
                                     // Handle rate limit error specifically
-                                    if error_msg.contains("rate limit exceeded") || error_msg.contains("resource exhausted") {
+                                    if error_msg.contains("rate limit exceeded")
+                                        || error_msg.contains("resource exhausted")
+                                    {
                                         return Ok(ApiResponse {
                                             content: None,
                                             error: Some("Rate limit exceeded for Gemini API. Please try again in about an hour.".to_string()),
@@ -371,7 +398,7 @@ pub async fn send_message(
                                             related_questions: None,
                                         });
                                     }
-                                    
+
                                     return Ok(ApiResponse {
                                         content: None,
                                         error: Some(format!("API Error: {}", error_msg)),
@@ -413,12 +440,14 @@ pub async fn send_message(
                                 println!("Could not find expected response structure");
                                 Ok(ApiResponse {
                                     content: None,
-                                    error: Some("Could not parse Gemini response structure".to_string()),
+                                    error: Some(
+                                        "Could not parse Gemini response structure".to_string(),
+                                    ),
                                     citations: None,
                                     images: None,
                                     related_questions: None,
                                 })
-                            },
+                            }
                             Err(e) => {
                                 println!("Failed to parse JSON response: {}", e);
                                 Ok(ApiResponse {
@@ -432,15 +461,18 @@ pub async fn send_message(
                         }
                     } else {
                         println!("Request failed with status: {}", status);
-                        
+
                         // Try to parse error response
                         match serde_json::from_str::<serde_json::Value>(&response_text) {
                             Ok(error_json) => {
                                 if let Some(error) = error_json.get("error") {
-                                    let error_msg = error["message"].as_str().unwrap_or("Unknown error");
-                                    
+                                    let error_msg =
+                                        error["message"].as_str().unwrap_or("Unknown error");
+
                                     // Handle rate limit error specifically
-                                    if error_msg.contains("rate limit exceeded") || error_msg.contains("resource exhausted") {
+                                    if error_msg.contains("rate limit exceeded")
+                                        || error_msg.contains("resource exhausted")
+                                    {
                                         return Ok(ApiResponse {
                                             content: None,
                                             error: Some("Rate limit exceeded for Gemini API. Please try again in about an hour.".to_string()),
@@ -449,7 +481,7 @@ pub async fn send_message(
                                             related_questions: None,
                                         });
                                     }
-                                    
+
                                     return Ok(ApiResponse {
                                         content: None,
                                         error: Some(format!("Gemini API Error: {}", error_msg)),
@@ -458,19 +490,22 @@ pub async fn send_message(
                                         related_questions: None,
                                     });
                                 }
-                            },
+                            }
                             Err(_) => {}
                         }
 
                         Ok(ApiResponse {
                             content: None,
-                            error: Some(format!("Gemini API request failed with status {}: {}", status, response_text)),
+                            error: Some(format!(
+                                "Gemini API request failed with status {}: {}",
+                                status, response_text
+                            )),
                             citations: None,
                             images: None,
                             related_questions: None,
                         })
                     }
-                },
+                }
                 Err(e) => {
                     println!("Request failed: {}", e);
                     Ok(ApiResponse {
@@ -482,7 +517,7 @@ pub async fn send_message(
                     })
                 }
             }
-        },
+        }
         "xai" => {
             let stored_keys = crate::config::load_stored_keys(&app_handle)?;
             let api_key = if let Some(key) = stored_keys["xai"].as_str() {
@@ -498,7 +533,10 @@ pub async fn send_message(
             if api_key.is_empty() {
                 return Ok(ApiResponse {
                     content: None,
-                    error: Some("xAI API key not configured. Please add your API key in settings.".to_string()),
+                    error: Some(
+                        "xAI API key not configured. Please add your API key in settings."
+                            .to_string(),
+                    ),
                     citations: None,
                     images: None,
                     related_questions: None,
@@ -528,37 +566,50 @@ pub async fn send_message(
                     let response_text = resp.text().await.map_err(|e| e.to_string())?;
 
                     if status.is_success() {
-                        let json: serde_json::Value = serde_json::from_str(&response_text).map_err(|e| e.to_string())?;
-                        
+                        let json: serde_json::Value =
+                            serde_json::from_str(&response_text).map_err(|e| e.to_string())?;
+
                         // Check for rate limit error in success response
                         if let Some(error) = json["error"].as_object() {
                             if error["type"].as_str() == Some("rate_limit_exceeded") {
                                 return Ok(ApiResponse {
                                     content: None,
-                                    error: Some("Rate limit exceeded for Grok. Please try again later.".to_string()),
+                                    error: Some(
+                                        "Rate limit exceeded for Grok. Please try again later."
+                                            .to_string(),
+                                    ),
                                     citations: None,
                                     images: None,
                                     related_questions: None,
                                 });
                             }
                         }
-                        
+
                         Ok(ApiResponse {
-                            content: Some(json["choices"][0]["message"]["content"].as_str().unwrap_or_default().to_string()),
+                            content: Some(
+                                json["choices"][0]["message"]["content"]
+                                    .as_str()
+                                    .unwrap_or_default()
+                                    .to_string(),
+                            ),
                             error: None,
                             citations: None,
                             images: None,
                             related_questions: None,
                         })
                     } else {
-                        let error_json: Result<serde_json::Value, _> = serde_json::from_str(&response_text);
-                        
+                        let error_json: Result<serde_json::Value, _> =
+                            serde_json::from_str(&response_text);
+
                         if let Ok(error_value) = error_json {
                             if let Some(error) = error_value["error"].as_object() {
                                 if error["type"].as_str() == Some("rate_limit_exceeded") {
                                     return Ok(ApiResponse {
                                         content: None,
-                                        error: Some("Rate limit exceeded for Grok. Please try again later.".to_string()),
+                                        error: Some(
+                                            "Rate limit exceeded for Grok. Please try again later."
+                                                .to_string(),
+                                        ),
                                         citations: None,
                                         images: None,
                                         related_questions: None,
@@ -566,7 +617,7 @@ pub async fn send_message(
                                 }
                             }
                         }
-                        
+
                         Ok(ApiResponse {
                             content: None,
                             error: Some(format!("API Error: {}", response_text)),
@@ -575,18 +626,16 @@ pub async fn send_message(
                             related_questions: None,
                         })
                     }
-                },
-                Err(e) => {
-                    Ok(ApiResponse {
-                        content: None,
-                        error: Some(format!("Failed to send request to Grok API: {}", e)),
-                        citations: None,
-                        images: None,
-                        related_questions: None,
-                    })
                 }
+                Err(e) => Ok(ApiResponse {
+                    content: None,
+                    error: Some(format!("Failed to send request to Grok API: {}", e)),
+                    citations: None,
+                    images: None,
+                    related_questions: None,
+                }),
             }
-        },
+        }
         "elevenlabs" => {
             let stored_keys = crate::config::load_stored_keys(&app_handle)?;
             let api_key = if let Some(key) = stored_keys["elevenlabs"].as_str() {
@@ -602,7 +651,10 @@ pub async fn send_message(
             if api_key.is_empty() {
                 return Ok(ApiResponse {
                     content: None,
-                    error: Some("ElevenLabs API key not configured. Please add your API key in settings.".to_string()),
+                    error: Some(
+                        "ElevenLabs API key not configured. Please add your API key in settings."
+                            .to_string(),
+                    ),
                     citations: None,
                     images: None,
                     related_questions: None,
@@ -617,7 +669,7 @@ pub async fn send_message(
                 images: None,
                 related_questions: None,
             })
-        },
+        }
         "grok" => {
             let stored_keys = crate::config::load_stored_keys(&app_handle)?;
             let api_key = if let Some(key) = stored_keys["xai"].as_str() {
@@ -633,7 +685,10 @@ pub async fn send_message(
             if api_key.is_empty() {
                 return Ok(ApiResponse {
                     content: None,
-                    error: Some("Grok API key not configured. Please add your API key in settings.".to_string()),
+                    error: Some(
+                        "Grok API key not configured. Please add your API key in settings."
+                            .to_string(),
+                    ),
                     citations: None,
                     images: None,
                     related_questions: None,
@@ -651,7 +706,10 @@ pub async fn send_message(
                 "stream": false
             });
 
-            println!("Request body: {}", serde_json::to_string_pretty(&request_body).unwrap());
+            println!(
+                "Request body: {}",
+                serde_json::to_string_pretty(&request_body).unwrap()
+            );
 
             let response = client
                 .post("https://api.grok.x.ai/v1/chat/completions")
@@ -669,9 +727,15 @@ pub async fn send_message(
                     println!("Raw response: {}", response_text);
 
                     if status.is_success() {
-                        let json: serde_json::Value = serde_json::from_str(&response_text).map_err(|e| e.to_string())?;
+                        let json: serde_json::Value =
+                            serde_json::from_str(&response_text).map_err(|e| e.to_string())?;
                         Ok(ApiResponse {
-                            content: Some(json["choices"][0]["message"]["content"].as_str().unwrap_or_default().to_string()),
+                            content: Some(
+                                json["choices"][0]["message"]["content"]
+                                    .as_str()
+                                    .unwrap_or_default()
+                                    .to_string(),
+                            ),
                             error: None,
                             citations: None,
                             images: None,
@@ -686,18 +750,16 @@ pub async fn send_message(
                             related_questions: None,
                         })
                     }
-                },
-                Err(e) => {
-                    Ok(ApiResponse {
-                        content: None,
-                        error: Some(format!("Failed to send request to Grok API: {}", e)),
-                        citations: None,
-                        images: None,
-                        related_questions: None,
-                    })
                 }
+                Err(e) => Ok(ApiResponse {
+                    content: None,
+                    error: Some(format!("Failed to send request to Grok API: {}", e)),
+                    citations: None,
+                    images: None,
+                    related_questions: None,
+                }),
             }
-        },
+        }
         _ => Ok(ApiResponse {
             content: None,
             error: Some(format!("Unsupported provider: {}", request.provider)),
@@ -754,7 +816,10 @@ pub async fn verify_api_key(provider: &str, key: &str) -> Result<serde_json::Val
 
             println!("Verifying Gemini API key...");
             println!("Request URL: {}", url.replace(key, "API_KEY_HIDDEN"));
-            println!("Request body: {}", serde_json::to_string_pretty(&request_body).unwrap());
+            println!(
+                "Request body: {}",
+                serde_json::to_string_pretty(&request_body).unwrap()
+            );
 
             let response = client
                 .post(&url)
@@ -775,7 +840,7 @@ pub async fn verify_api_key(provider: &str, key: &str) -> Result<serde_json::Val
                 println!("Gemini API key verification failed: {}", error);
                 Ok(serde_json::json!({ "error": error }))
             }
-        },
+        }
         "anthropic" => {
             let response = client
                 .get("https://api.anthropic.com/v1/models")
@@ -791,7 +856,7 @@ pub async fn verify_api_key(provider: &str, key: &str) -> Result<serde_json::Val
                 let error = response.text().await.map_err(|e| e.to_string())?;
                 Ok(serde_json::json!({ "error": error }))
             }
-        },
+        }
         "perplexity" => {
             let response = client
                 .post("https://api.perplexity.ai/chat/completions")
@@ -814,7 +879,7 @@ pub async fn verify_api_key(provider: &str, key: &str) -> Result<serde_json::Val
                 let error = response.text().await.map_err(|e| e.to_string())?;
                 Ok(serde_json::json!({ "error": error }))
             }
-        },
+        }
         "openai" => {
             let response = client
                 .post("https://api.openai.com/v1/chat/completions")
@@ -837,7 +902,7 @@ pub async fn verify_api_key(provider: &str, key: &str) -> Result<serde_json::Val
                 let error = response.text().await.map_err(|e| e.to_string())?;
                 Ok(serde_json::json!({ "error": error }))
             }
-        },
+        }
         "xai" => {
             let response = client
                 .post("https://api.x.ai/v1/chat/completions")
@@ -860,12 +925,10 @@ pub async fn verify_api_key(provider: &str, key: &str) -> Result<serde_json::Val
                         let error = resp.text().await.map_err(|e| e.to_string())?;
                         Ok(serde_json::json!({ "error": error }))
                     }
-                },
-                Err(e) => {
-                    Ok(serde_json::json!({ "error": e.to_string() }))
                 }
+                Err(e) => Ok(serde_json::json!({ "error": e.to_string() })),
             }
-        },
+        }
         "google" => {
             let response = client
                 .post(format!(
@@ -891,12 +954,10 @@ pub async fn verify_api_key(provider: &str, key: &str) -> Result<serde_json::Val
                         let error = resp.text().await.map_err(|e| e.to_string())?;
                         Ok(serde_json::json!({ "error": error }))
                     }
-                },
-                Err(e) => {
-                    Ok(serde_json::json!({ "error": e.to_string() }))
                 }
+                Err(e) => Ok(serde_json::json!({ "error": e.to_string() })),
             }
-        },
+        }
         "elevenlabs" => {
             let response = client
                 .get("https://api.elevenlabs.io/v1/voices")
@@ -911,7 +972,7 @@ pub async fn verify_api_key(provider: &str, key: &str) -> Result<serde_json::Val
                 let error = response.text().await.map_err(|e| e.to_string())?;
                 Ok(serde_json::json!({ "error": error }))
             }
-        },
+        }
         "grok" => {
             let request_body = serde_json::json!({
                 "messages": [{
@@ -945,7 +1006,7 @@ pub async fn verify_api_key(provider: &str, key: &str) -> Result<serde_json::Val
                 println!("Grok API key verification failed: {}", error);
                 Ok(serde_json::json!({ "error": error }))
             }
-        },
-        _ => Ok(serde_json::json!({ "error": "Unsupported provider" }))
+        }
+        _ => Ok(serde_json::json!({ "error": "Unsupported provider" })),
     }
 }
