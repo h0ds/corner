@@ -1,28 +1,16 @@
 import React, { useState } from 'react';
 import { Thread } from '@/types';
-import { ModelIcon } from './ModelIcon';
-import { AVAILABLE_MODELS } from './ModelSelector';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 interface ThreadHeaderProps {
   thread: Thread;
   onRename: (newName: string) => void;
   onIconChange: (newIcon: string) => void;
-  onOpenModelSelect?: () => void;
-  selectedModel?: string;
 }
 
 export const ThreadHeader: React.FC<ThreadHeaderProps> = ({
   thread,
   onRename,
   onIconChange,
-  onOpenModelSelect,
-  selectedModel
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(thread.name);
@@ -62,44 +50,13 @@ export const ThreadHeader: React.FC<ThreadHeaderProps> = ({
             autoFocus
           />
         ) : (
-          <>
-            <h1 
-              onDoubleClick={handleDoubleClick}
-              title="Double click to edit name"
-              className="flex-1"
-            >
-              {thread.name || 'New Thread'}
-            </h1>
-
-            {!thread.isNote && selectedModel && onOpenModelSelect && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={onOpenModelSelect} 
-                      className="-mt-1 p-1.5 bg-accent-light border border-border text-muted-foreground hover:text-foreground 
-                              hover:bg-accent rounded-md transition-colors cursor-pointer"
-                    >
-                      <ModelIcon modelId={selectedModel} className="h-5 w-5" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="text-xs">
-                    {(() => {
-                      const model = AVAILABLE_MODELS.find(m => m.id === selectedModel);
-                      return model ? (
-                        <div className="flex flex-col gap-0.5">
-                          <span className="font-medium">{model.name}</span>
-                          <span className="text-muted-foreground capitalize">
-                            {model.provider}
-                          </span>
-                        </div>
-                      ) : selectedModel;
-                    })()}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-          </>
+          <h1 
+            onDoubleClick={handleDoubleClick}
+            title="Double click to edit name"
+            className="flex-1"
+          >
+            {thread.name || 'New Thread'}
+          </h1>
         )}
       </div>
     </div>

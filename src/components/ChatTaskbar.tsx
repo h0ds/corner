@@ -3,6 +3,14 @@ import { VoiceDictation } from './VoiceDictation';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
 import { Trash2, Split, MessageCircle, Square } from 'lucide-react';
+import { ModelIcon } from './ModelIcon';
+import { AVAILABLE_MODELS } from './ModelSelector';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface ChatTaskbarProps {
   onTranscriptionResult: (text: string) => void;
@@ -14,6 +22,8 @@ interface ChatTaskbarProps {
   isDiscussing: boolean;
   className?: string;
   onSelectCommand: (command: string | null) => void;
+  selectedModel?: string;
+  onOpenModelSelect?: () => void;
 }
 
 export const ChatTaskbar: React.FC<ChatTaskbarProps> = ({
@@ -25,7 +35,9 @@ export const ChatTaskbar: React.FC<ChatTaskbarProps> = ({
   onStopDiscussion,
   isDiscussing,
   className,
-  onSelectCommand
+  onSelectCommand,
+  selectedModel,
+  onOpenModelSelect
 }) => {
   const handleCompareClick = () => {
     onSelectCommand('compare');
@@ -51,55 +63,89 @@ export const ChatTaskbar: React.FC<ChatTaskbarProps> = ({
         "inline-flex items-center gap-1 p-1 rounded-lg",
         className
       )}>
+        {selectedModel && onOpenModelSelect && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="md"
+                  className={cn(
+                    "bg-transparent hover:bg-accent hover:text-accent-foreground p-1",
+                    "transition-colors duration-200"
+                  )}
+                  onClick={onOpenModelSelect}
+                  title="Change Model"
+                >
+                  <ModelIcon modelId={selectedModel} className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                {(() => {
+                  const model = AVAILABLE_MODELS.find(m => m.id === selectedModel);
+                  return model ? (
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-medium">{model.name}</span>
+                      <span className="text-muted-foreground capitalize">
+                        {model.provider}
+                      </span>
+                    </div>
+                  ) : selectedModel;
+                })()}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
         <Button
           variant="ghost"
           size="md"
           className={cn(
-            "bg-transparent hover:bg-accent hover:text-accent-foreground p-2",
+            "bg-transparent hover:bg-accent hover:text-accent-foreground p-1",
             "transition-colors duration-200"
           )}
           onClick={handleClearClick}
           title="Clear Thread"
         >
-          <Trash2 className="h-4 w-4" />
+          <Trash2 className="h-4 w-4 text-muted-foreground" />
         </Button>
+        
         <Button
           variant="ghost"
           size="md"
           className={cn(
-            "bg-transparent hover:bg-accent hover:text-accent-foreground p-2",
+            "bg-transparent hover:bg-accent hover:text-accent-foreground p-1",
             "transition-colors duration-200"
           )}
           onClick={handleCompareClick}
           title="Compare Models"
         >
-          <Split className="h-4 w-4" />
+          <Split className="h-4 w-4 text-muted-foreground" />
         </Button>
         {!isDiscussing ? (
           <Button
             variant="ghost"
             size="md"
             className={cn(
-              "bg-transparent hover:bg-accent hover:text-accent-foreground p-2",
+              "bg-transparent hover:bg-accent hover:text-accent-foreground p-1",
               "transition-colors duration-200"
             )}
             onClick={handleDiscussClick}
             title="Start Model Discussion"
           >
-            <MessageCircle className="h-4 w-4" />
+            <MessageCircle className="h-4 w-4 text-muted-foreground" />
           </Button>
         ) : (
           <Button
             variant="ghost"
             size="md"
             className={cn(
-              "bg-transparent hover:bg-accent hover:text-accent-foreground p-2",
+              "bg-transparent hover:bg-accent hover:text-accent-foreground p-1",
               "transition-colors duration-200"
             )}
             onClick={handleStopDiscussClick}
             title="Stop Model Discussion"
           >
-            <Square className="h-4 w-4" />
+            <Square className="h-4 w-4 text-muted-foreground" />
           </Button>
         )}
         <VoiceDictation

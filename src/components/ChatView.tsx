@@ -781,6 +781,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
           isDiscussing={isDiscussing}
           onSelectCommand={setSelectedCommand}
           selectedCommand={selectedCommand}
+          selectedModel={selectedModel}
+          onOpenModelSelect={onOpenModelSelect}
         />
         <ChatInput
           onSendMessage={onSendMessage}
