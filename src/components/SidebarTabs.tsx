@@ -23,7 +23,7 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
           "flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm rounded-l-xl transition-colors border",
           activeTab === 'threads'
             ? "bg-accent text-accent-foreground border-border"
-            : "hover:bg-accent/50 border-transparent"
+            : "hover:bg-accent/50 border-border border-r-0"
         )}
       >
         <MessageSquare className="h-4 w-4" />
@@ -38,7 +38,7 @@ export const SidebarTabs: React.FC<SidebarTabsProps> = ({
           "flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm rounded-r-xl transition-colors border",
           activeTab === 'notes'
             ? "bg-accent text-accent-foreground border-border"
-            : "hover:bg-accent/50 border-transparent"
+            : "hover:bg-accent/50 border-border border-l-0"
         )}
       >
         <StickyNote className="h-4 w-4" />

@@ -168,7 +168,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             placeholder={`Search ${activeTab === 'notes' ? 'notes' : 'threads'}...`}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10"
+            className="w-full pl-10 rounded-xl"
           />
           <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           {searchQuery && (
