@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { KeyRound, Palette, Bot, Keyboard, Code, Zap, Volume2, Database, UserCircle } from "lucide-react";
+import { KeyRound, Palette, Bot, Keyboard, Zap, Volume2, Database, UserCircle } from "lucide-react";
 import { cn } from '@/lib/utils';
 import { KeyboardShortcut, saveShortcuts, resetShortcuts } from '@/lib/shortcuts';
 import { Plugin } from '@/lib/plugins';
@@ -54,7 +54,7 @@ interface ApiKeys {
   elevenlabs: string;
 }
 
-type PreferenceTab = 'profile' | 'api-keys' | 'appearance' | 'models' | 'shortcuts' | 'plugins' | 'actions' | 'storage' | 'voice';
+type PreferenceTab = 'profile' | 'api-keys' | 'appearance' | 'models' | 'shortcuts' | 'actions' | 'storage' | 'voice';
 
 export const Preferences: React.FC<PreferencesProps> = ({
   isOpen,
@@ -427,7 +427,7 @@ export const Preferences: React.FC<PreferencesProps> = ({
     { id: 'appearance', label: 'Appearance', icon: <Palette className="h-4 w-4" /> },
     { id: 'models', label: 'Models', icon: <Bot className="h-4 w-4" /> },
     { id: 'shortcuts', label: 'Shortcuts', icon: <Keyboard className="h-4 w-4" /> },
-    { id: 'plugins', label: 'Plugins', icon: <Code className="h-4 w-4" /> },
+    // { id: 'plugins', label: 'Plugins', icon: <Code className="h-4 w-4" /> },
     // { id: 'connections', label: 'Connections', icon: <Network className="h-4 w-4" /> },
     { id: 'actions', label: 'Actions', icon: <Zap className="h-4 w-4" /> },
     { id: 'storage', label: 'Storage', icon: <Database className="h-4 w-4" /> },
