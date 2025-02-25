@@ -1,15 +1,11 @@
 # Corner
 
-<div align="center">
-  <img src="assets/lex-demo.gif" alt="Lex Demo" width="600px"/>
-</div>
-
 Corner is a sleek, minimalist chat UI for AI models.
 
 <div align="center">
-  <img src="https://img.shields.io/github/license/h0ds/lex?style=flat-square"/>
-  <img src="https://img.shields.io/github/stars/h0ds/lex?style=flat-square"/>
-  <img src="https://img.shields.io/github/issues/h0ds/lex?style=flat-square"/>
+  <img src="https://img.shields.io/github/license/h0ds/corner?style=flat-square"/>
+  <img src="https://img.shields.io/github/stars/h0ds/corner?style=flat-square"/>
+  <img src="https://img.shields.io/github/issues/h0ds/corner?style=flat-square"/>
 </div>
 
 ## Goals
@@ -34,9 +30,4 @@ Customize Corner to your liking with themes.
 - 🤖 Out-of-the-box support for multiple AI models (Claude, GPT-4, Llama)
 - 🎨 Customizable themes and appearance
 - ⌨️ Keyboard shortcuts for power users
-- 🔌 Plugin system for extensibility
 - 🚀 Built on top of Tauri, using Rust for performance
-
-<div align="center">
-  <img src="assets/lex-themes.gif" alt="Lex Themes Demo" width="600px"/>
-</div>
